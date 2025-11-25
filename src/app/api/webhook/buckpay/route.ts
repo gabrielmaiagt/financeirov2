@@ -244,9 +244,61 @@ async function createNotificationAndPush(
     };
     await addDoc(notificacoesRef, newNotification);
 
-    const host = request.headers.get('host');
-    const protocol = host?.startsWith('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${host}`;
-    await sendPushNotification(notificationTitle, notificationMessage, '/vendas', baseUrl);
+    // Send push notification directly using Admin SDK
+    try {
+      console.log(`📲 Sending push notification: ${notificationTitle}`);
+
+      const { initializeFirebase } = await import('@/firebase/server-admin');
+      const adminServices = initializeFirebase();
+      const adminFirestore = adminServices.firestore;
+      const messaging = adminServices.messaging;
+
+      // Get all FCM tokens
+      const profilesSnapshot = await adminFirestore.collection('perfis').get();
+      const tokens: string[] = [];
+
+      profilesSnapshot.forEach((doc: any) => {
+        const data = doc.data();
+        if (data.fcmTokens && Array.isArray(data.fcmTokens)) {
+          data.fcmTokens.forEach((token: string) => {
+            if (token && !tokens.includes(token)) {
+              tokens.push(token);
+            }
+          });
+        }
+      });
+
+      if (tokens.length > 0) {
+        const message: any = {
+          tokens: tokens,
+          notification: {
+            title: notificationTitle,
+            body: notificationMessage,
+          },
+          webpush: {
+            fcmOptions: {
+              link: '/vendas',
+            },
+            notification: {
+              icon: '/icon-192x192.png',
+              badge: '/icon-192x192.png',
+              requireInteraction: true,
+            },
+          },
+          data: {
+            title: notificationTitle,
+            body: notificationMessage,
+            link: '/vendas',
+          }
+        };
+
+        const response = await messaging.sendEachForMulticast(message);
+        console.log(`✅ Push sent: ${response.successCount} success, ${response.failureCount} failed`);
+      } else {
+        console.log('⚠️ No FCM tokens found');
+      }
+    } catch (pushError) {
+      console.error('❌ Failed to send push notification:', pushError);
+    }
   }
 }
