@@ -1,0 +1,553 @@
+
+{
+  "entities": {
+    "ErrorLog": {
+      "title": "ErrorLog",
+      "type": "object",
+      "description": "Represents an error log entry for debugging.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the error log." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the error occurred." },
+        "message": { "type": "string", "description": "The error message." },
+        "stack": { "type": "string", "description": "The stack trace of the error." },
+        "context": { "type": "string", "description": "The context where the error occurred (e.g., 'send-push-api')." },
+        "details": { "type": "object", "description": "Any other relevant details." }
+      },
+      "required": ["id", "timestamp", "message", "context"]
+    },
+    "WebhookRequest": {
+      "title": "WebhookRequest",
+      "type": "object",
+      "description": "Represents a raw, unprocessed webhook request received by the system.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the webhook request log." },
+        "receivedAt": { "type": "string", "format": "date-time", "description": "When the webhook was received." },
+        "source": { "type": "string", "description": "The source of the webhook (e.g., 'buckpay', 'paradise')." },
+        "headers": { "type": "object", "description": "The headers of the incoming request." },
+        "body": { "type": "object", "description": "The raw body of the incoming request." },
+        "processingStatus": { "type": "string", "enum": ["success", "ignored", "error"], "description": "The final status after processing the webhook." }
+      },
+      "required": ["id", "receivedAt", "source", "body", "processingStatus"]
+    },
+    "OperacaoSocios": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OperacaoSocios",
+      "type": "object",
+      "description": "Represents a financial operation with profit sharing among partners.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the operation."
+        },
+        "data": {
+          "type": "string",
+          "description": "Date of the operation.",
+          "format": "date-time"
+        },
+        "descricao": {
+          "type": "string",
+          "description": "Name of the operation or observation."
+        },
+        "faturamentoLiquido": {
+          "type": "number",
+          "description": "Total net revenue of the operation."
+        },
+        "gastoAnuncio": {
+          "type": "number",
+          "description": "Total advertising expenses for the operation."
+        },
+        "taxaGateway": {
+          "type": "number",
+          "description": "Fixed gateway withdrawal fee."
+        },
+        "lucroLiquido": {
+          "type": "number",
+          "description": "Net profit calculated as faturamentoLiquido - gastoAnuncio - taxaGateway."
+        },
+        "percentualCabral": {
+          "type": "number",
+          "description": "Percentage of profit allocated to Cabral (default 65)."
+        },
+        "percentualBiel": {
+          "type": "number",
+          "description": "Percentage of profit allocated to Biel (default 25)."
+        },
+        "percentualSoares": {
+          "type": "number",
+          "description": "Percentage of profit allocated to Soares (default 10)."
+        },
+        "valorCabral": {
+          "type": "number",
+          "description": "Profit value allocated to Cabral."
+        },
+        "valorBiel": {
+          "type": "number",
+          "description": "Profit value allocated to Biel."
+        },
+        "valorSoares": {
+          "type": "number",
+          "description": "Profit value allocated to Soares."
+        },
+        "totalCabral": {
+          "type": "number",
+          "description": "Total amount to be received by Cabral (gastoAnuncio + valorCabral)."
+        }
+      },
+      "required": [
+        "id",
+        "data",
+        "descricao",
+        "faturamentoLiquido",
+        "gastoAnuncio",
+        "taxaGateway",
+        "lucroLiquido",
+        "percentualCabral",
+        "percentualBiel",
+        "percentualSoares",
+        "valorCabral",
+        "valorBiel",
+        "valorSoares",
+        "totalCabral"
+      ]
+    },
+    "Tarefa": {
+      "title": "Tarefa",
+      "type": "object",
+      "description": "Represents a task in the productivity board.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the task." },
+        "title": { "type": "string", "description": "The title or description of the task." },
+        "description": { "type": "string", "description": "An optional, more detailed description of the task." },
+        "assignee": { "type": "string", "enum": ["Cabral", "Biel", "Soares", "Geral"], "description": "The partner assigned to the task." },
+        "urgency": { "type": "string", "enum": ["Baixa", "Média", "Alta", "Crítica"], "description": "The urgency level of the task." },
+        "status": { "type": "string", "enum": ["A Fazer", "Em Progresso", "Concluído"], "description": "The current status of the task." },
+        "dueDate": { "type": "string", "format": "date", "description": "Optional due date for the task." },
+        "order": { "type": "number", "description": "The vertical sort order of the task within its column." }
+      },
+      "required": ["id", "title", "assignee", "urgency", "status", "order"]
+    },
+    "LevaCriativos": {
+      "title": "LevaCriativos",
+      "type": "object",
+      "description": "Represents a batch of ad creatives with performance metrics.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the creative batch." },
+        "dataLeva": { "type": "string", "format": "date-time", "description": "The date of the creative batch." },
+        "driveLink": { "type": "string", "format": "uri", "description": "A URL to the Google Drive folder containing the creatives." },
+        "criativosValidados": {
+          "type": "array",
+          "description": "A list of validated creatives from the batch.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "sales": { "type": "number" }
+            },
+            "required": ["id", "name", "sales"]
+          }
+        },
+        "faturamento": { "type": "number", "description": "Optional: Total revenue generated by this batch." },
+        "roi": { "type": "number", "description": "Optional: Return On Investment for this batch." },
+        "lucro": { "type": "number", "description": "Optional: Net profit from this batch." },
+        "cpa": { "type": "number", "description": "Optional: Cost Per Acquisition for this batch." }
+      },
+      "required": ["id", "dataLeva", "driveLink"]
+    },
+    "Anotacao": {
+      "title": "Anotacao",
+      "type": "object",
+      "description": "Represents a general note or annotation.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the note." },
+        "title": { "type": "string", "description": "The title of the note." },
+        "content": { "type": "string", "description": "The main content of the note." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The date the note was created." }
+      },
+      "required": ["id", "title", "content", "createdAt"]
+    },
+    "Meta": {
+      "title": "Meta",
+      "type": "object",
+      "description": "Represents a goal with progress tracking.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the goal." },
+        "title": { "type": "string", "description": "The title or description of the goal." },
+        "currentValue": { "type": "number", "description": "The current progress value of the goal." },
+        "targetValue": { "type": "number", "description": "The target value to complete the goal." },
+        "unit": { "type": "string", "description": "The unit of measurement for the values (e.g., 'R$', 'dias')." },
+        "completed": { "type": "boolean", "description": "Whether the goal has been achieved." },
+        "proofImageUrls": {
+          "type": "array",
+          "description": "An array of up to 3 image URLs as proof of achievement.",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "required": ["id", "title", "currentValue", "targetValue", "completed"]
+    },
+    "OfertaEscalada": {
+      "title": "OfertaEscalada",
+      "type": "object",
+      "description": "Represents a scaled offer with relevant links.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the offer." },
+        "title": { "type": "string", "description": "The title of the offer." },
+        "description": { "type": "string", "description": "A brief description of the offer." },
+        "adLibraryLink": { "type": "string", "format": "uri", "description": "Link to the ad library." },
+        "salesPageLink": { "type": "string", "format": "uri", "description": "Link to the sales page." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The date the offer was added." }
+      },
+      "required": ["id", "title", "createdAt"]
+    },
+    "Insight": {
+      "title": "Insight",
+      "type": "object",
+      "description": "Represents an insight that can be text or an image.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the insight." },
+        "title": { "type": "string", "description": "The title of the insight." },
+        "content": { "type": "string", "description": "The text content of the insight." },
+        "imageUrl": { "type": "string", "format": "uri", "description": "URL of the uploaded image for the insight." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The date the insight was created." }
+      },
+      "required": ["id", "title", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user profile for a partner.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the profile, usually the auth UID." },
+        "name": { "type": "string", "description": "The name of the partner." },
+        "role": { "type": "string", "description": "The partner's role or title in the team." },
+        "photoUrl": { "type": "string", "format": "uri", "description": "URL of the partner's profile picture." },
+        "email": { "type": "string", "format": "email", "description": "The login email for the partner." },
+        "fcmTokens": {
+          "type": "array",
+          "description": "A list of Firebase Cloud Messaging tokens for sending push notifications.",
+          "items": { "type": "string" }
+        },
+        "sounds": {
+          "type": "object",
+          "description": "URLs for personalized sound effects.",
+          "properties": {
+            "goalCompleted": { "type": "string", "format": "uri", "description": "Sound for when a goal is completed." },
+            "taskCompleted": { "type": "string", "format": "uri", "description": "Sound for when a task is completed." },
+            "recordBroken": { "type": "string", "format": "uri", "description": "Sound for when a record is broken." }
+          }
+        }
+      },
+      "required": ["id", "name", "role", "photoUrl", "email"]
+    },
+    "FraseDoDia": {
+      "title": "FraseDoDia",
+      "type": "object",
+      "description": "Represents a quote of the day.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the quote."
+        },
+        "text": {
+          "type": "string",
+          "description": "The content of the quote."
+        },
+        "author": {
+          "type": "string",
+          "description": "The author of the quote (optional)."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ]
+    },
+    "Despesa": {
+      "title": "Despesa",
+      "type": "object",
+      "description": "Represents a business expense.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the expense." },
+        "descricao": { "type": "string", "description": "Description of the expense." },
+        "valor": { "type": "number", "description": "The value of the expense." },
+        "data": { "type": "string", "format": "date-time", "description": "The date of the expense." },
+        "categoria": { "type": "string", "description": "Category of the expense (e.g., Ferramenta, Assinatura)." }
+      },
+      "required": ["id", "descricao", "valor", "data", "categoria"]
+    },
+     "Notificacao": {
+      "title": "Notificacao",
+      "type": "object",
+      "description": "Represents a real-time notification in the system.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the notification." },
+        "message": { "type": "string", "description": "The content of the notification message." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The timestamp when the notification was created." },
+        "read": { "type": "boolean", "description": "A flag indicating if the notification has been read." },
+        "type": { "type": "string", "description": "The type of event that triggered the notification (e.g., 'goal_completed')." }
+      },
+      "required": ["id", "message", "createdAt", "read", "type"]
+    },
+    "Login": {
+      "title": "Login",
+      "type": "object",
+      "description": "Represents a set of credentials for a service.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the login entry." },
+        "title": { "type": "string", "description": "The name of the service or login." },
+        "websiteUrl": { "type": "string", "format": "uri", "description": "The URL of the login page." },
+        "username": { "type": "string", "description": "The username or email for the login." },
+        "password": { "type": "string", "description": "The password for the login." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The date the login was added." }
+      },
+      "required": ["id", "title", "username", "password", "createdAt"]
+    },
+    "Venda": {
+      "title": "Venda",
+      "type": "object",
+      "description": "Represents a sale event received from a webhook.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the sale event." },
+        "status": { "type": "string", "description": "Status of the sale (e.g., 'pix gerado', 'pix pago')." },
+        "customerName": { "type": "string", "description": "Name of the customer." },
+        "customerEmail": { "type": "string", "format": "email", "description": "Email of the customer." },
+        "customerPhone": { "type": "string", "description": "Phone number of the customer." },
+        "value": { "type": "number", "description": "Value of the sale." },
+        "gateway": { "type": "string", "description": "The payment gateway that processed the sale." },
+        "receivedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the webhook was received." },
+        "payload": { "type": "object", "description": "The full, raw payload from the webhook." }
+      },
+      "required": ["id", "status", "receivedAt", "payload", "gateway"]
+    }
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "operacoesSocios/{operacaoId}",
+        "definition": {
+          "entityName": "OperacaoSocios",
+          "schema": {
+            "$ref": "#/backend/entities/OperacaoSocios"
+          },
+          "description": "Stores financial operation data, including revenue, expenses, and profit sharing details for Cabral, Biel, and Soares.",
+          "params": [
+            {
+              "name": "operacaoId",
+              "description": "Unique identifier for the operation document."
+            }
+          ]
+        }
+      },
+       {
+        "path": "tarefas/{tarefaId}",
+        "definition": {
+          "entityName": "Tarefa",
+          "schema": { "$ref": "#/backend/entities/Tarefa" },
+          "description": "Stores individual tasks for the Kanban board.",
+           "params": [
+            {
+              "name": "tarefaId",
+              "description": "Unique identifier for the task document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "criativos/{levaId}",
+        "definition": {
+          "entityName": "LevaCriativos",
+          "schema": { "$ref": "#/backend/entities/LevaCriativos" },
+          "description": "Stores batches of ad creatives, including Drive links and lists of validated creatives.",
+          "params": [
+            {
+              "name": "levaId",
+              "description": "Unique identifier for the creative batch document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "anotacoes/{anotacaoId}",
+        "definition": {
+          "entityName": "Anotacao",
+          "schema": { "$ref": "#/backend/entities/Anotacao" },
+          "description": "Stores general notes and annotations.",
+          "params": [
+            {
+              "name": "anotacaoId",
+              "description": "Unique identifier for the note document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "metas/{metaId}",
+        "definition": {
+          "entityName": "Meta",
+          "schema": { "$ref": "#/backend/entities/Meta" },
+          "description": "Stores user-defined goals with progress tracking.",
+          "params": [
+            {
+              "name": "metaId",
+              "description": "Unique identifier for the goal document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "ofertasEscaladas/{ofertaId}",
+        "definition": {
+          "entityName": "OfertaEscalada",
+          "schema": { "$ref": "#/backend/entities/OfertaEscalada" },
+          "description": "Stores scaled offers with relevant links.",
+          "params": [
+            {
+              "name": "ofertaId",
+              "description": "Unique identifier for the offer document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "insights/{insightId}",
+        "definition": {
+          "entityName": "Insight",
+          "schema": { "$ref": "#/backend/entities/Insight" },
+          "description": "Stores user insights, which can be text or include an image.",
+          "params": [
+            {
+              "name": "insightId",
+              "description": "Unique identifier for the insight document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "perfis/{perfilId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": { "$ref": "#/backend/entities/UserProfile" },
+          "description": "Stores user profile information for each partner.",
+          "params": [
+            {
+              "name": "perfilId",
+              "description": "Unique identifier for the user profile document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "frases/{fraseId}",
+        "definition": {
+          "entityName": "FraseDoDia",
+          "schema": {
+            "$ref": "#/backend/entities/FraseDoDia"
+          },
+          "description": "Stores quotes of the day for the dashboard.",
+          "params": [
+            {
+              "name": "fraseId",
+              "description": "Unique identifier for the quote document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "despesas/{despesaId}",
+        "definition": {
+          "entityName": "Despesa",
+          "schema": {
+            "$ref": "#/backend/entities/Despesa"
+          },
+          "description": "Stores business expenses.",
+          "params": [
+            {
+              "name": "despesaId",
+              "description": "Unique identifier for the expense document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "notificacoes/{notificacaoId}",
+        "definition": {
+          "entityName": "Notificacao",
+          "schema": { "$ref": "#/backend/entities/Notificacao" },
+          "description": "Stores real-time notifications for all users.",
+          "params": [
+            {
+              "name": "notificacaoId",
+              "description": "Unique identifier for the notification document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "logins/{loginId}",
+        "definition": {
+          "entityName": "Login",
+          "schema": { "$ref": "#/backend/entities/Login" },
+          "description": "Stores encrypted login credentials for various services.",
+          "params": [
+            {
+              "name": "loginId",
+              "description": "Unique identifier for the login document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "vendas/{vendaId}",
+        "definition": {
+          "entityName": "Venda",
+          "schema": {
+            "$ref": "#/backend/entities/Venda"
+          },
+          "description": "Stores sales events from webhooks.",
+          "params": [
+            {
+              "name": "vendaId",
+              "description": "Unique identifier for the sale document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "errorLogs/{logId}",
+        "definition": {
+          "entityName": "ErrorLog",
+          "schema": {
+            "$ref": "#/backend/entities/ErrorLog"
+          },
+          "description": "Stores error logs from both client and server for debugging.",
+          "params": [
+            {
+              "name": "logId",
+              "description": "Unique identifier for the error log document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "webhookRequests/{requestId}",
+        "definition": {
+          "entityName": "WebhookRequest",
+          "schema": {
+            "$ref": "#/backend/entities/WebhookRequest"
+          },
+          "description": "Stores every raw webhook request received by the server for debugging.",
+           "params": [
+            {
+              "name": "requestId",
+              "description": "Unique identifier for the webhook request document."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed for a multi-purpose internal dashboard. It includes collections for financial operations (`operacoesSocios`), task management (`tarefas`), creative asset tracking (`criativos`), general notes (`anotacoes`), goal tracking (`metas`), scaled offers (`ofertasEscaladas`), insights (`insights`), user profiles (`perfis`), expenses (`despesas`), and a new collection for service credentials (`logins`). The structure for each is a flat collection to maintain simplicity and ease of querying. All authenticated users are treated as trusted partners with equal access to create, read, and modify data within these collections, supporting the collaborative nature of the dashboard."
+  }
+}

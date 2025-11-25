@@ -1,0 +1,143 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { collection, query, orderBy, where, Timestamp } from 'firebase/firestore';
+import { useFirestore, useCollection, useUser, useAuth } from '@/firebase';
+import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+
+import Header from '@/components/dashboard/Header';
+import SummaryCards from '@/components/dashboard/SummaryCards';
+import OperationForm from '@/components/dashboard/OperationForm';
+import OperationsTable from '@/components/dashboard/OperationsTable';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+
+export interface Operacao {
+  id?: string;
+  data: Timestamp;
+  descricao: string;
+  faturamentoLiquido: number;
+  gastoAnuncio: number;
+  taxaGateway: number;
+  lucroLiquido: number;
+  percentualCabral: number;
+  percentualBiel: number;
+  percentualSoares: number;
+  valorCabral: number;
+  valorBiel: number;
+  valorSoares: number;
+  totalCabral: number;
+}
+
+export default function Home() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const { isUserLoading, user } = useUser();
+  const auth = useAuth();
+  const firestore = useFirestore();
+
+  const operacoesRef = useMemo(
+    () => (firestore ? collection(firestore, 'operacoesSocios') : null),
+    [firestore]
+  );
+
+  const operacoesQuery = useMemo(() => {
+    if (!operacoesRef) return null;
+
+    let q = query(operacoesRef, orderBy('data', 'desc'));
+
+    if (selectedMonth) {
+      const [year, month] = selectedMonth.split('-');
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+      q = query(
+        q,
+        where('data', '>=', Timestamp.fromDate(startDate)),
+        where('data', '<=', Timestamp.fromDate(endDate))
+      );
+    }
+    return q;
+  }, [operacoesRef, selectedMonth]);
+
+  const { data: operacoes, isLoading: isLoadingOperacoes } = useCollection<Operacao>(operacoesQuery);
+
+  if (isUserLoading) {
+    return <div className="flex items-center justify-center min-h-screen bg-gray-50">Carregando...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+        <Card className="w-full max-w-md p-8 text-center">
+          <CardContent>
+            <h2 className="text-2xl font-bold mb-4">Acesso ao Painel</h2>
+            <p className="mb-6 text-gray-600">
+              Para garantir a segurança dos dados, o acesso ao painel é necessário.
+            </p>
+            <Button onClick={() => initiateAnonymousSignIn(auth)}>
+              Acessar Painel Financeiro
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const filteredOperacoes = useMemo(() => {
+    if (!operacoes) return [];
+    return operacoes.filter(op =>
+      op.descricao.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [operacoes, searchTerm]);
+
+  const handleSaveOperation = (operation: Omit<Operacao, 'id'>) => {
+    if (!operacoesRef) return;
+    addDocumentNonBlocking(operacoesRef, operation);
+  };
+
+  const handleDeleteOperation = (id: string) => {
+    if (!firestore) return;
+    const docRef = collection(firestore, 'operacoesSocios');
+    const docToDelete = docRef.doc(id);
+    deleteDocumentNonBlocking(docToDelete);
+  };
+
+  const uniqueMonths = useMemo(() => {
+    if (!operacoes) return [];
+    const months = new Set<string>();
+    operacoes.forEach(op => {
+      const date = op.data.toDate();
+      const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      months.add(monthYear);
+    });
+    return Array.from(months);
+  }, [operacoes]);
+
+  return (
+    <div className="bg-gradient-to-br from-gray-50 to-slate-100 min-h-screen">
+      <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
+        <Header />
+        <SummaryCards operacoes={operacoes || []} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+          <div className="lg:col-span-1">
+            <OperationForm onSave={handleSaveOperation} />
+          </div>
+          <div className="lg:col-span-2">
+            <OperationsTable
+              operacoes={filteredOperacoes}
+              isLoading={isLoadingOperacoes}
+              onDelete={handleDeleteOperation}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              selectedMonth={selectedMonth}
+              setSelectedMonth={setSelectedMonth}
+              availableMonths={uniqueMonths}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
