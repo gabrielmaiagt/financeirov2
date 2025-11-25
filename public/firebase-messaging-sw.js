@@ -1,8 +1,8 @@
 // public/firebase-messaging-sw.js
 
-// Scripts para inicializar o Firebase e o Messaging
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+// Scripts para inicializar o Firebase e o Messaging (versão modular)
+importScripts('https://www.gstatic.com/firebasejs/11.9.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/11.9.1/firebase-messaging-compat.js');
 
 // As credenciais são públicas e seguras para serem expostas no lado do cliente.
 const firebaseConfig = {
@@ -19,8 +19,51 @@ firebase.initializeApp(firebaseConfig);
 // Recupera uma instância do Firebase Messaging para que possa lidar com as mensagens em segundo plano.
 const messaging = firebase.messaging();
 
-// Este Service Worker agora apenas inicializa o Firebase.
-// O SDK do Firebase Messaging detectará automaticamente as mensagens recebidas
-// com um campo 'notification' e as exibirá.
-// A lógica customizada `onBackgroundMessage` foi removida para evitar a duplicação.
-console.log('Firebase Messaging Service Worker initialized.');
+console.log('🔔 Firebase Messaging Service Worker initialized and ready for background messages!');
+
+// Handler para mensagens em background (quando o app está fechado ou em background)
+messaging.onBackgroundMessage((payload) => {
+  console.log('[Service Worker] Background message received:', payload);
+
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'Nova notificação';
+  const notificationOptions = {
+    body: payload.notification?.body || payload.data?.body || 'Você tem uma nova mensagem',
+    icon: payload.notification?.icon || '/icon-192x192.png',
+    badge: '/icon-192x192.png',
+    tag: payload.messageId || 'notification',
+    requireInteraction: true,
+    data: {
+      url: payload.fcmOptions?.link || payload.data?.link || '/',
+      ...payload.data
+    }
+  };
+
+  return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Handler para quando o usuário clica na notificação
+self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notification click received:', event.notification);
+
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/';
+
+  // Abre a URL quando o usuário clica na notificação
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Se já existe uma janela/aba aberta, foca nela
+        for (let i = 0; i < clientList.length; i++) {
+          const client = clientList[i];
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            return client.focus().then(() => client.navigate(urlToOpen));
+          }
+        }
+        // Caso contrário, abre uma nova janela
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
+});
