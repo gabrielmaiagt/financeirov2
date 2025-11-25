@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, QuerySnapshot } from 'firebase/firestore';
 import { db } from '@/firebase/api-client';

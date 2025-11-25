@@ -1,3 +1,5 @@
+'use client';
+
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { formatCurrencyBRL } from '@/lib/formatters';
