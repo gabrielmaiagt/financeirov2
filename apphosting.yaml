@@ -5,3 +5,7 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_VAPID_KEY
+    value: "BJjaTUgNcb8GolljBoz7nksdI6ca1D9bvPzpl6jhufzB2Fb3xtPhxLDQd-IxfGlajlO5uSyo-oz_I3RLNKZHJuE"
