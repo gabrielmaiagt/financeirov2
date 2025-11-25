@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { initializeFirebase } from '@/firebase/server-admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { getFirebaseClient } from '@/firebase/api-client';
+import { Timestamp, collection, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { sendPushNotification, logError } from '@/lib/server-utils';
 import {
   GGCheckoutWebhookSchema,
@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
   let webhookLogRef: any;
 
   try {
-    const adminServices = initializeFirebase();
-    firestore = adminServices.firestore;
+    const client = getFirebaseClient();
+    firestore = client.firestore;
     const body = await request.json();
 
     // Log the raw webhook request immediately
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       body,
       processingStatus: 'pending',
     };
-    webhookLogRef = await firestore.collection('webhookRequests').add(webhookRequestData);
+    webhookLogRef = await addDoc(collection(firestore, 'webhookRequests'), webhookRequestData);
 
     // ============ VALIDATE PAYLOAD ============
     const validationResult = GGCheckoutWebhookSchema.safeParse(body);
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       console.error('GGCheckout webhook validation failed:', validationResult.error);
 
       if (webhookLogRef) {
-        await webhookLogRef.update({
+        await updateDoc(webhookLogRef, {
           processingStatus: 'validation_error',
           errorMessage,
           validationErrors: validationResult.error.errors,
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // ============ CHECK FOR DUPLICATES ============
     const duplicateCheck = await checkDuplicateTransaction(firestore, transactionId, 'GGCheckout');
 
-    const vendasRef = firestore.collection('vendas');
+    const vendasRef = collection(firestore, 'vendas');
     const saleValue = validatedData.payment.amount ? validatedData.payment.amount / 100 : null;
 
     // Extract tracking data from payload root
@@ -76,11 +76,12 @@ export async function POST(request: NextRequest) {
       sck: validatedData.sck || null,
     };
 
-    if (duplicateCheck.exists) {
+    if (duplicateCheck.exists && duplicateCheck.docId) {
       // Transaction already exists - UPDATE instead of creating duplicate
       console.log(`Duplicate transaction detected: ${transactionId}. Updating existing record.`);
 
-      const existingDoc = await vendasRef.doc(duplicateCheck.docId).get();
+      const existingDocRef = doc(firestore, 'vendas', duplicateCheck.docId);
+      const existingDoc = await getDoc(existingDocRef);
       const existingData = existingDoc.data();
 
       const updatedData = {
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
         payload: body,
       };
 
-      await vendasRef.doc(duplicateCheck.docId).update(updatedData);
+      await updateDoc(existingDocRef, updatedData);
 
       // Send notification if payment was completed
       const isPaid = eventType === 'pix.paid' || eventType === 'card.paid' || transactionStatus === 'paid';
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (webhookLogRef) {
-        await webhookLogRef.update({
+        await updateDoc(webhookLogRef, {
           processingStatus: 'success_updated',
           message: 'Duplicate transaction updated',
         });
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
       ],
     };
 
-    await vendasRef.add(newSale);
+    await addDoc(vendasRef, newSale);
 
     // ============ CREATE NOTIFICATION ============
     await createNotificationAndPush(
@@ -174,7 +175,7 @@ export async function POST(request: NextRequest) {
 
     // Update webhook log to success
     if (webhookLogRef) {
-      await webhookLogRef.update({
+      await updateDoc(webhookLogRef, {
         processingStatus: 'success',
         transactionId,
       });
@@ -200,7 +201,7 @@ export async function POST(request: NextRequest) {
 
     if (webhookLogRef) {
       try {
-        await webhookLogRef.update({
+        await updateDoc(webhookLogRef, {
           processingStatus: 'error',
           errorMessage: errorMessage,
         });
@@ -228,7 +229,7 @@ async function createNotificationAndPush(
   eventType: string,
   paymentMethod: string
 ) {
-  const notificacoesRef = firestore.collection('notificacoes');
+  const notificacoesRef = collection(firestore, 'notificacoes');
   let notificationMessage: string | null = null;
   let notificationTitle: string | null = null;
 
@@ -255,7 +256,7 @@ async function createNotificationAndPush(
       read: false,
       type: 'webhook_sale_ggcheckout',
     };
-    await notificacoesRef.add(newNotification);
+    await addDoc(notificacoesRef, newNotification);
 
     const host = request.headers.get('host');
     const protocol = host?.startsWith('localhost') ? 'http' : 'https';

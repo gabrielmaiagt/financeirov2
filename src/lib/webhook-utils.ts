@@ -175,18 +175,25 @@ export function normalizeTrackingData(
 /**
  * Check if a transaction already exists in the database
  */
+import { collection, query, where, limit, getDocs } from 'firebase/firestore';
+
+/**
+ * Check if a transaction already exists in the database
+ */
 export async function checkDuplicateTransaction(
     firestore: any,
     transactionId: string,
     gateway: string
 ): Promise<{ exists: boolean; docId?: string; currentStatus?: string }> {
     try {
-        const vendasRef = firestore.collection('vendas');
-        const snapshot = await vendasRef
-            .where('transactionId', '==', transactionId)
-            .where('gateway', '==', gateway)
-            .limit(1)
-            .get();
+        const vendasRef = collection(firestore, 'vendas');
+        const q = query(
+            vendasRef,
+            where('transactionId', '==', transactionId),
+            where('gateway', '==', gateway),
+            limit(1)
+        );
+        const snapshot = await getDocs(q);
 
         if (snapshot.empty) {
             return { exists: false };
