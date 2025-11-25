@@ -31,6 +31,10 @@ export const sendPushNotification = (title: string, message: string, link: strin
   // Construct the full URL for the API route
   const url = new URL('/api/send-push', baseUrl);
 
+  console.log(`📲 Sending push notification request to: ${url.toString()}`);
+  console.log(`   Title: ${title}`);
+  console.log(`   Message: ${message}`);
+
   try {
     // We don't await this, just fire and forget.
     // The webhook needs to respond quickly.
@@ -40,6 +44,14 @@ export const sendPushNotification = (title: string, message: string, link: strin
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ title, message, link }),
+    }).then(response => {
+      if (response.ok) {
+        console.log(`✅ Push notification request sent successfully`);
+      } else {
+        console.error(`❌ Push notification request failed with status: ${response.status}`);
+      }
+    }).catch(fetchError => {
+      console.error("❌ Push notification fetch error:", fetchError);
     });
   } catch (error) {
     console.error("Failed to trigger send-push API:", error);
