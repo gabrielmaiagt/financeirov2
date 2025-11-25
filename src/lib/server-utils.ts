@@ -23,12 +23,12 @@ export async function logError(firestore: any, error: any, context: string, deta
   }
 }
 
-export const sendPushNotification = (title: string, message: string, link: string = '/', baseUrl?: string) => {
+export const sendPushNotification = async (title: string, message: string, link: string = '/', baseUrl?: string) => {
   if (!baseUrl) {
-    console.error("sendPushNotification failed: baseUrl is required to make the API call.");
+    console.error("❌ sendPushNotification failed: baseUrl is required to make the API call.");
     return;
   }
-  // Construct the full URL for the API route
+
   const url = new URL('/api/send-push', baseUrl);
 
   console.log(`📲 Sending push notification request to: ${url.toString()}`);
@@ -36,24 +36,22 @@ export const sendPushNotification = (title: string, message: string, link: strin
   console.log(`   Message: ${message}`);
 
   try {
-    // We don't await this, just fire and forget.
-    // The webhook needs to respond quickly.
-    fetch(url.toString(), {
+    const response = await fetch(url.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ title, message, link }),
-    }).then(response => {
-      if (response.ok) {
-        console.log(`✅ Push notification request sent successfully`);
-      } else {
-        console.error(`❌ Push notification request failed with status: ${response.status}`);
-      }
-    }).catch(fetchError => {
-      console.error("❌ Push notification fetch error:", fetchError);
     });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`✅ Push notification sent successfully:`, data);
+    } else {
+      const errorText = await response.text();
+      console.error(`❌ Push notification failed with status ${response.status}:`, errorText);
+    }
   } catch (error) {
-    console.error("Failed to trigger send-push API:", error);
+    console.error("❌ Failed to trigger send-push API:", error);
   }
 };

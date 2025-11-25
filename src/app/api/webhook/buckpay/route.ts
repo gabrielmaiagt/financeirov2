@@ -247,6 +247,6 @@ async function createNotificationAndPush(
     const host = request.headers.get('host');
     const protocol = host?.startsWith('localhost') ? 'http' : 'https';
     const baseUrl = `${protocol}://${host}`;
-    sendPushNotification(notificationTitle, notificationMessage, '/vendas', baseUrl);
+    await sendPushNotification(notificationTitle, notificationMessage, '/vendas', baseUrl);
   }
 }
