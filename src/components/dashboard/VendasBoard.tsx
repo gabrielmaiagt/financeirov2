@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, PackageCheck, PackagePlus, Server, Copy, Trash2, TrendingUp, Percent, FileText, Eye, Clock } from 'lucide-react';
+import { Loader2, PackageCheck, PackagePlus, Server, Copy, Trash2, TrendingUp, Percent, FileText, Eye, Clock, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -102,7 +102,7 @@ const VendasBoard = () => {
   }, [vendasRaw]);
 
   const salesMetrics = useMemo(() => {
-    if (!vendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0, totalFees: 0, netRevenue: 0 };
+    if (!vendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0, totalFees: 0, netRevenue: 0, arpu: 0 };
 
     let paidCount = 0;
     let generatedCount = 0;
@@ -144,6 +144,7 @@ const VendasBoard = () => {
     const totalGenerated = generatedCount + paidCount;
     const conversionRate = totalGenerated > 0 ? (paidCount / totalGenerated) * 100 : 0;
     const netRevenue = totalRevenue - totalFees;
+    const arpu = paidCount > 0 ? totalRevenue / paidCount : 0;
 
     return {
       paidCount,
@@ -152,42 +153,75 @@ const VendasBoard = () => {
       totalRevenue,
       pendingRevenue,
       totalFees,
-      netRevenue
+      netRevenue,
+      arpu
     }
 
   }, [vendas]);
 
-  // Analytics por fonte e campanha
+  // Analytics por fonte, campanha, gateway, produto e horário
   const trackingAnalytics = useMemo(() => {
-    if (!vendas) return { bySource: {}, byCampaign: {} };
+    if (!vendas) return { bySource: {}, byCampaign: {}, byGateway: {}, byProduct: {}, byHour: {} };
 
     const bySource: Record<string, { count: number; revenue: number }> = {};
     const byCampaign: Record<string, { count: number; revenue: number }> = {};
+    const byGateway: Record<string, { count: number; revenue: number }> = {};
+    const byProduct: Record<string, { count: number; revenue: number }> = {};
+    const byHour: Record<string, { count: number; revenue: number }> = {};
 
     vendas.forEach(venda => {
       const lowerCaseStatus = venda.status.toLowerCase();
       const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
 
-      if (isPaid && venda.tracking) {
-        // Source (utm_source ou src)
-        const source = venda.tracking.utm_source || venda.tracking.src || 'N/A';
-        if (!bySource[source]) {
-          bySource[source] = { count: 0, revenue: 0 };
+      if (isPaid) {
+        // Gateway
+        const gateway = venda.gateway || 'N/A';
+        if (!byGateway[gateway]) {
+          byGateway[gateway] = { count: 0, revenue: 0 };
         }
-        bySource[source].count++;
-        bySource[source].revenue += venda.total_amount;
+        byGateway[gateway].count++;
+        byGateway[gateway].revenue += venda.total_amount;
 
-        // Campaign (utm_campaign)
-        const campaign = venda.tracking.utm_campaign || 'N/A';
-        if (!byCampaign[campaign]) {
-          byCampaign[campaign] = { count: 0, revenue: 0 };
+        // Produto
+        const product = venda.offer?.name || 'N/A';
+        if (!byProduct[product]) {
+          byProduct[product] = { count: 0, revenue: 0 };
         }
-        byCampaign[campaign].count++;
-        byCampaign[campaign].revenue += venda.total_amount;
+        byProduct[product].count++;
+        byProduct[product].revenue += venda.total_amount;
+
+        // Horário
+        const date = venda.created_at?.toDate();
+        if (date) {
+          const hour = date.getHours().toString().padStart(2, '0') + 'h';
+          if (!byHour[hour]) {
+            byHour[hour] = { count: 0, revenue: 0 };
+          }
+          byHour[hour].count++;
+          byHour[hour].revenue += venda.total_amount;
+        }
+
+        if (venda.tracking) {
+          // Source (utm_source ou src)
+          const source = venda.tracking.utm_source || venda.tracking.src || 'N/A';
+          if (!bySource[source]) {
+            bySource[source] = { count: 0, revenue: 0 };
+          }
+          bySource[source].count++;
+          bySource[source].revenue += venda.total_amount;
+
+          // Campaign (utm_campaign)
+          const campaign = venda.tracking.utm_campaign || 'N/A';
+          if (!byCampaign[campaign]) {
+            byCampaign[campaign] = { count: 0, revenue: 0 };
+          }
+          byCampaign[campaign].count++;
+          byCampaign[campaign].revenue += venda.total_amount;
+        }
       }
     });
 
-    return { bySource, byCampaign };
+    return { bySource, byCampaign, byGateway, byProduct, byHour };
   }, [vendas]);
 
   const copyToClipboard = (text: string | undefined, fieldName: string) => {
@@ -271,7 +305,7 @@ const VendasBoard = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
             <StatCard
               title="Faturamento"
               value={formatCurrencyBRL(salesMetrics.totalRevenue)}
@@ -286,6 +320,11 @@ const VendasBoard = () => {
               title="Fat. Pendente"
               value={formatCurrencyBRL(salesMetrics.pendingRevenue)}
               icon={Clock}
+            />
+            <StatCard
+              title="Ticket Médio"
+              value={formatCurrencyBRL(salesMetrics.arpu)}
+              icon={Wallet}
             />
             <StatCard
               title="PIX Gerado"
@@ -362,8 +401,43 @@ const VendasBoard = () => {
         </CardContent>
       </Card>
 
-      {/* Analytics por Fonte e Campanha */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Analytics por Fonte, Campanha e Gateway */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Vendas por Gateway */}
+        <Card className="bg-transparent border-neutral-800">
+          <CardHeader>
+            <CardTitle className="text-base">Vendas por Gateway</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(trackingAnalytics.byGateway)
+                .sort((a, b) => b[1].count - a[1].count)
+                .map(([gateway, data]) => (
+                  <div key={gateway} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{gateway}</p>
+                      <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{data.count}</Badge>
+                      <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary"
+                          style={{
+                            width: `${(data.count / salesMetrics.paidCount) * 100}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {Object.keys(trackingAnalytics.byGateway).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de gateway disponível</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Vendas por Fonte */}
         <Card className="bg-transparent border-neutral-800">
           <CardHeader>
@@ -431,6 +505,80 @@ const VendasBoard = () => {
                 ))}
               {Object.keys(trackingAnalytics.byCampaign).length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de campanha disponível</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Analytics por Produto e Horário */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Vendas por Produto */}
+        <Card className="bg-transparent border-neutral-800">
+          <CardHeader>
+            <CardTitle className="text-base">Vendas por Produto</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(trackingAnalytics.byProduct)
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, 5)
+                .map(([product, data]) => (
+                  <div key={product} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{product}</p>
+                      <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{data.count}</Badge>
+                      <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary"
+                          style={{
+                            width: `${(data.count / salesMetrics.paidCount) * 100}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {Object.keys(trackingAnalytics.byProduct).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de produto disponível</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Vendas por Horário */}
+        <Card className="bg-transparent border-neutral-800">
+          <CardHeader>
+            <CardTitle className="text-base">Vendas por Horário</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(trackingAnalytics.byHour)
+                .sort((a, b) => a[0].localeCompare(b[0])) // Sort by hour
+                .map(([hour, data]) => (
+                  <div key={hour} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{hour}</p>
+                      <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{data.count}</Badge>
+                      <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary"
+                          style={{
+                            width: `${(data.count / salesMetrics.paidCount) * 100}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {Object.keys(trackingAnalytics.byHour).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de horário disponível</p>
               )}
             </div>
           </CardContent>
