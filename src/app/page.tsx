@@ -62,14 +62,14 @@ interface BeforeInstallPromptEvent extends Event {
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState<DayPickerDateRange | undefined>(undefined);
-  
+
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     // This effect runs only on the client, after hydration
     setDateRange({
-        from: startOfMonth(new Date()),
-        to: endOfDay(new Date()),
+      from: startOfMonth(new Date()),
+      to: endOfDay(new Date()),
     });
 
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -120,7 +120,7 @@ export default function Home() {
     if (dateRange?.from) {
       const startDate = dateRange.from;
       const endDate = dateRange.to || dateRange.from;
-       filteredByDate = allOperacoes.filter(op => {
+      filteredByDate = allOperacoes.filter(op => {
         const opDate = op.data.toDate();
         // Adjust start time to beginning of the day and end time to end of the day
         const start = new Date(startDate.setHours(0, 0, 0, 0));
@@ -128,16 +128,16 @@ export default function Home() {
         return opDate >= start && opDate <= end;
       });
     }
-    
+
     if (searchTerm) {
       return filteredByDate.filter(op =>
         op.descricao.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     return filteredByDate;
   }, [allOperacoes, dateRange, searchTerm]);
-  
+
   const handleDeleteOperation = (id: string) => {
     if (!firestore) return;
     const docRef = doc(firestore, 'operacoesSocios', id);
@@ -147,86 +147,88 @@ export default function Home() {
   return (
     <div className="min-h-screen w-full text-foreground p-4 md:p-8 flex flex-col gap-4 md:gap-8">
       <div className="absolute top-0 left-0 w-full h-full bg-black -z-10">
-         <div className="absolute inset-0 bg-radial-gradient(ellipse_at_center,rgba(20,20,20,1)_0%,rgba(0,0,0,1)_100%)"></div>
+        <div className="absolute inset-0 bg-radial-gradient(ellipse_at_center,rgba(20,20,20,1)_0%,rgba(0,0,0,1)_100%)"></div>
       </div>
-        <Header />
-        
-        <Tabs defaultValue="lancamentos" className="w-full">
-          <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
-              <TabsList className="h-auto flex-wrap justify-start">
-                  <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
-                  <TabsTrigger value="vendas">Vendas</TabsTrigger>
-                  <TabsTrigger value="despesas">Despesas</TabsTrigger>
-                  <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
-                  <TabsTrigger value="calendario">Calendário</TabsTrigger>
-                  <TabsTrigger value="criativos">Criativos</TabsTrigger>
-                  <TabsTrigger value="anotacoes">Anotações</TabsTrigger>
-                  <TabsTrigger value="metas">Metas</TabsTrigger>
-                  <TabsTrigger value="ofertas">Ofertas Escaladas</TabsTrigger>
-                  <TabsTrigger value="insights">Insights</TabsTrigger>
-                  <TabsTrigger value="perfis">Perfis</TabsTrigger>
-                  <TabsTrigger value="frases">Frases</TabsTrigger>
-                  <TabsTrigger value="logins">Logins</TabsTrigger>
-              </TabsList>
-              <div className="flex items-center gap-2">
-                  <PrivacyToggleButton />
-                  {/* The date range picker is conditionally rendered based on the active tab */}
-              </div>
-          </div>
-          
-          <TabsContent value="lancamentos">
-            <div className="mb-4 flex justify-end">
-              <DateRangePicker date={dateRange} onDateChange={setDateRange} />
-            </div>
-              <div className="flex flex-col gap-4 md:gap-8">
-                  <SummaryCards operacoes={filteredOperacoes || []} />
-                  <OperationsTable
-                    operacoes={filteredOperacoes || []}
-                    isLoading={isLoadingAllOperacoes}
-                    onDelete={handleDeleteOperation}
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                  />
-              </div>
-          </TabsContent>
+      <Header />
 
-          <TabsContent value="vendas">
-            <VendasBoard />
-          </TabsContent>
-          <TabsContent value="despesas">
-            <ExpensesBoard />
-          </TabsContent>
-          <TabsContent value="tarefas">
-            <TasksBoard />
-          </TabsContent>
-           <TabsContent value="calendario">
-            <CalendarBoard />
-          </TabsContent>
-          <TabsContent value="criativos">
-            <CreativesBoard />
-          </TabsContent>
-          <TabsContent value="anotacoes">
-            <NotesBoard />
-          </TabsContent>
-          <TabsContent value="metas">
-            <GoalsBoard />
-          </TabsContent>
-          <TabsContent value="ofertas">
-            <OfertasEscaladasBoard />
-          </TabsContent>
-          <TabsContent value="insights">
-            <InsightsBoard />
-          </TabsContent>
-          <TabsContent value="perfis">
-            <ProfilesBoard installable={!!installEvent} handleInstall={handleInstallClick} />
-          </TabsContent>
-          <TabsContent value="frases">
-            <QuotesBoard />
-          </TabsContent>
-          <TabsContent value="logins">
-            <LoginsBoard />
-          </TabsContent>
-        </Tabs>
+      <Tabs defaultValue="lancamentos" className="w-full">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 no-scrollbar">
+            <TabsList className="h-auto w-max justify-start flex-nowrap bg-transparent p-0 gap-2">
+              <TabsTrigger value="lancamentos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Lançamentos</TabsTrigger>
+              <TabsTrigger value="vendas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Vendas</TabsTrigger>
+              <TabsTrigger value="despesas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Despesas</TabsTrigger>
+              <TabsTrigger value="tarefas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Tarefas</TabsTrigger>
+              <TabsTrigger value="calendario" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Calendário</TabsTrigger>
+              <TabsTrigger value="criativos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Criativos</TabsTrigger>
+              <TabsTrigger value="anotacoes" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Anotações</TabsTrigger>
+              <TabsTrigger value="metas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Metas</TabsTrigger>
+              <TabsTrigger value="ofertas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Ofertas Escaladas</TabsTrigger>
+              <TabsTrigger value="insights" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Insights</TabsTrigger>
+              <TabsTrigger value="perfis" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Perfis</TabsTrigger>
+              <TabsTrigger value="frases" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Frases</TabsTrigger>
+              <TabsTrigger value="logins" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Logins</TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+            <PrivacyToggleButton />
+            {/* The date range picker is conditionally rendered based on the active tab */}
+          </div>
+        </div>
+
+        <TabsContent value="lancamentos">
+          <div className="mb-4 flex justify-end">
+            <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+          </div>
+          <div className="flex flex-col gap-4 md:gap-8">
+            <SummaryCards operacoes={filteredOperacoes || []} />
+            <OperationsTable
+              operacoes={filteredOperacoes || []}
+              isLoading={isLoadingAllOperacoes}
+              onDelete={handleDeleteOperation}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="vendas">
+          <VendasBoard />
+        </TabsContent>
+        <TabsContent value="despesas">
+          <ExpensesBoard />
+        </TabsContent>
+        <TabsContent value="tarefas">
+          <TasksBoard />
+        </TabsContent>
+        <TabsContent value="calendario">
+          <CalendarBoard />
+        </TabsContent>
+        <TabsContent value="criativos">
+          <CreativesBoard />
+        </TabsContent>
+        <TabsContent value="anotacoes">
+          <NotesBoard />
+        </TabsContent>
+        <TabsContent value="metas">
+          <GoalsBoard />
+        </TabsContent>
+        <TabsContent value="ofertas">
+          <OfertasEscaladasBoard />
+        </TabsContent>
+        <TabsContent value="insights">
+          <InsightsBoard />
+        </TabsContent>
+        <TabsContent value="perfis">
+          <ProfilesBoard installable={!!installEvent} handleInstall={handleInstallClick} />
+        </TabsContent>
+        <TabsContent value="frases">
+          <QuotesBoard />
+        </TabsContent>
+        <TabsContent value="logins">
+          <LoginsBoard />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
