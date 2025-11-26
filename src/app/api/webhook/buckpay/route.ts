@@ -140,6 +140,7 @@ export async function POST(request: NextRequest) {
       offerPrice: saleData.offer?.discount_price || null,
       offerQuantity: saleData.offer?.quantity || null,
       trackingData,
+      created_at: Timestamp.now(), // For VendasBoard compatibility
       receivedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       payload: body,
@@ -271,24 +272,22 @@ async function createNotificationAndPush(
       if (tokens.length > 0) {
         const message: any = {
           tokens: tokens,
-          notification: {
-            title: notificationTitle,
-            body: notificationMessage,
-          },
+          // Remove 'notification' key to prevent automatic display by Firebase SDK
+          // Service Worker will handle display via onBackgroundMessage using 'data'
           webpush: {
             fcmOptions: {
               link: '/vendas',
             },
-            notification: {
-              icon: '/icon-192x192.png',
-              badge: '/icon-192x192.png',
-              requireInteraction: true,
+            headers: {
+              Urgency: 'high',
             },
           },
           data: {
             title: notificationTitle,
             body: notificationMessage,
             link: '/vendas',
+            icon: '/icon-192x192.png',
+            badge: '/icon-192x192.png',
           }
         };
 

@@ -148,6 +148,7 @@ export async function POST(request: NextRequest) {
       productQuantity: validatedData.product?.quantity || null,
       products: validatedData.products || [],
       trackingData,
+      created_at: Timestamp.now(), // For VendasBoard compatibility
       receivedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       payload: body,

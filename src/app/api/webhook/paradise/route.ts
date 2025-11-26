@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
       paymentMethod: validatedData.payment_method || null,
       rawStatus: validatedData.raw_status || null,
       trackingData,
+      created_at: Timestamp.now(), // For VendasBoard compatibility
       receivedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       payload: body,

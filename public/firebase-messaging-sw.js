@@ -25,19 +25,12 @@ console.log('🔔 Firebase Messaging Service Worker initialized and ready for ba
 messaging.onBackgroundMessage((payload) => {
   console.log('[Service Worker] Background message received:', payload);
 
-  // Se o payload já possui a propriedade 'notification', o SDK do Firebase (e o navegador)
-  // geralmente já exibem a notificação automaticamente.
-  // Para evitar duplicação, só exibimos manualmente se NÃO houver 'notification' (ou seja, mensagem apenas de dados).
-  if (payload.notification) {
-    console.log('[Service Worker] Notification handled automatically by Firebase SDK.');
-    return;
-  }
-
+  // Now we only send 'data' from server, so always show notification
   const notificationTitle = payload.data?.title || 'Nova notificação';
   const notificationOptions = {
     body: payload.data?.body || 'Você tem uma nova mensagem',
-    icon: '/icon-192x192.png',
-    badge: '/icon-192x192.png',
+    icon: payload.data?.icon || '/icon-192x192.png',
+    badge: payload.data?.badge || '/icon-192x192.png',
     tag: payload.messageId || 'notification',
     requireInteraction: true,
     data: {
