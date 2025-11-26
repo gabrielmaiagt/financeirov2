@@ -54,6 +54,13 @@ interface RecoveryScript {
   text: string;
   category: string;
 }
+
+interface Reminder {
+  id: string;
+  title: string;
+  date: Timestamp;
+  completed: boolean;
+}
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import DetalhesVendaModal from '@/components/DetalhesVendaModal';
 import { Venda } from '@/types/venda';
@@ -103,6 +110,15 @@ const VendasBoard = () => {
   const [editingScript, setEditingScript] = useState<RecoveryScript | null>(null);
   const [scriptForm, setScriptForm] = useState({ title: '', text: '', category: 'WhatsApp' });
 
+  // Novos estados para filtros avançados
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterProduct, setFilterProduct] = useState('all');
+  const [filterGateway, setFilterGateway] = useState('all');
+
+  // Reminder State
+  const [reminderTitle, setReminderTitle] = useState('');
+  const [reminderDate, setReminderDate] = useState<string>(''); // Using string for datetime-local input
+
   // Query atualizada para ordenar por created_at (novo padrão) ou receivedAt (legado)
   // Como não dá para ordenar por dois campos diferentes facilmente sem índice composto, vamos ordenar no cliente se necessário ou assumir created_at
   const vendasQuery = useMemoFirebase(
@@ -128,6 +144,51 @@ const VendasBoard = () => {
       category: s.category
     }));
   }, [scriptsRaw]);
+
+  // Lembretes Logic
+  const remindersQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'reminders'), orderBy('date', 'asc')) : null),
+    [firestore]
+  );
+  const { data: remindersRaw } = useCollection<any>(remindersQuery);
+
+  const reminders: Reminder[] = useMemo(() => {
+    if (!remindersRaw) return [];
+    return remindersRaw.map(r => ({
+      id: r.id,
+      title: r.title,
+      date: r.date,
+      completed: r.completed
+    }));
+  }, [remindersRaw]);
+
+  const handleAddReminder = async () => {
+    if (!firestore || !reminderTitle || !reminderDate) return;
+    try {
+      await addDoc(collection(firestore, 'reminders'), {
+        title: reminderTitle,
+        date: Timestamp.fromDate(new Date(reminderDate)),
+        completed: false,
+        createdAt: Timestamp.now()
+      });
+      setReminderTitle('');
+      setReminderDate('');
+      toast({ title: 'Lembrete adicionado!' });
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Erro ao adicionar lembrete', variant: 'destructive' });
+    }
+  };
+
+  const toggleReminder = async (id: string, currentStatus: boolean) => {
+    if (!firestore) return;
+    await updateDoc(doc(firestore, 'reminders', id), { completed: !currentStatus });
+  };
+
+  const deleteReminder = async (id: string) => {
+    if (!firestore) return;
+    await deleteDoc(doc(firestore, 'reminders', id));
+  };
 
   const handleSaveScript = async () => {
     if (!firestore || !scriptForm.title || !scriptForm.text) return;
@@ -176,13 +237,14 @@ const VendasBoard = () => {
     setIsScriptModalOpen(true);
   };
 
-  // Normalizar dados (suporte a legado e novo)
+  // Normalizar dados e aplicar filtros
   const vendas: Venda[] = useMemo(() => {
     if (!vendasRaw) return [];
-    return vendasRaw.map(v => ({
+
+    let processed = vendasRaw.map((v: any) => ({
       ...v,
       // Fallbacks para campos antigos
-      total_amount: v.total_amount ?? v.value ?? 0,
+      total_amount: typeof v.total_amount === 'string' ? parseFloat(v.total_amount) : (v.total_amount ?? v.value ?? 0),
       status: v.status ?? 'unknown',
       buyer: v.buyer ?? {
         name: v.customerName ?? 'Desconhecido',
@@ -200,26 +262,64 @@ const VendasBoard = () => {
       net_amount: v.net_amount ?? v.netAmount ?? 0,
       tracking: v.tracking ?? v.trackingData ?? {},
       gateway: v.gateway ?? 'N/A'
-    }));
+    })).sort((a: Venda, b: Venda) => {
+      const dateA = a.created_at?.toDate() || new Date(0);
+      const dateB = b.created_at?.toDate() || new Date(0);
+      return dateB.getTime() - dateA.getTime(); // Mais recentes primeiro
+    });
+
+    // Filtro de Data
+    if (dateRange?.from) {
+      processed = processed.filter((v: Venda) => {
+        const date = v.created_at?.toDate();
+        if (!date) return false;
+
+        const start = startOfDay(dateRange.from!);
+        const end = endOfDay(dateRange.to || dateRange.from!);
+
+        return isWithinInterval(date, { start, end });
+      });
+    }
+
+    // Filtro de Pesquisa (Nome, Email, Produto, ID)
+    if (searchTerm) {
+      const lowerTerm = searchTerm.toLowerCase();
+      processed = processed.filter((v: Venda) =>
+        (v.buyer?.name?.toLowerCase() || '').includes(lowerTerm) ||
+        (v.buyer?.email?.toLowerCase() || '').includes(lowerTerm) ||
+        (v.offer?.name?.toLowerCase() || '').includes(lowerTerm) ||
+        (v.id || '').toLowerCase().includes(lowerTerm)
+      );
+    }
+
+    // Filtro de Produto
+    if (filterProduct !== 'all') {
+      processed = processed.filter((v: Venda) => v.offer?.name === filterProduct);
+    }
+
+    // Filtro de Gateway
+    if (filterGateway !== 'all') {
+      processed = processed.filter((v: Venda) => v.gateway === filterGateway);
+    }
+
+    return processed;
+  }, [vendasRaw, dateRange, searchTerm, filterProduct, filterGateway]);
+
+  // Extrair listas únicas para os selects de filtro
+  const uniqueProducts = useMemo(() => {
+    if (!vendasRaw) return [];
+    const products = new Set(vendasRaw.map((v: any) => v.offer?.name).filter(Boolean));
+    return Array.from(products);
   }, [vendasRaw]);
 
-  // Filtrar vendas por data
-  const filteredVendas = useMemo(() => {
-    if (!vendas) return [];
-    if (!dateRange?.from) return vendas;
-
-    const from = startOfDay(dateRange.from);
-    const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
-
-    return vendas.filter(venda => {
-      if (!venda.created_at) return false;
-      const date = venda.created_at.toDate();
-      return isWithinInterval(date, { start: from, end: to });
-    });
-  }, [vendas, dateRange]);
+  const uniqueGateways = useMemo(() => {
+    if (!vendasRaw) return [];
+    const gateways = new Set(vendasRaw.map((v: any) => v.gateway).filter(Boolean));
+    return Array.from(gateways);
+  }, [vendasRaw]);
 
   const salesMetrics = useMemo(() => {
-    if (!filteredVendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0, totalFees: 0, netRevenue: 0, arpu: 0 };
+    if (!vendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0, totalFees: 0, netRevenue: 0, arpu: 0 };
 
     let paidCount = 0;
     let generatedCount = 0;
@@ -227,7 +327,7 @@ const VendasBoard = () => {
     let pendingRevenue = 0;
     let totalFees = 0;
 
-    filteredVendas.forEach(venda => {
+    vendas.forEach(venda => {
       const lowerCaseStatus = venda.status.toLowerCase();
       const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
       const isGenerated = lowerCaseStatus.includes('gerado') || lowerCaseStatus.includes('created') || lowerCaseStatus.includes('pending');
@@ -274,81 +374,72 @@ const VendasBoard = () => {
       arpu
     }
 
-  }, [filteredVendas]);
+  }, [vendas]);
 
   // Analytics por fonte, campanha, gateway, produto e horário
   const trackingAnalytics = useMemo(() => {
-    if (!filteredVendas) return { bySource: {}, byCampaign: {}, byGateway: {}, byProduct: {}, byHour: {} };
+    if (!vendas) return { bySource: {}, byCampaign: {}, byGateway: {}, byProduct: {}, byHour: {} };
 
-    const bySource: Record<string, { count: number; revenue: number }> = {};
-    const byCampaign: Record<string, { count: number; revenue: number }> = {};
-    const byGateway: Record<string, { count: number; revenue: number }> = {};
-    const byProduct: Record<string, { count: number; revenue: number }> = {};
-    const byHour: Record<string, { count: number; revenue: number }> = {};
+    const initMetric = () => ({ count: 0, generated: 0, revenue: 0 });
 
-    filteredVendas.forEach(venda => {
+    const bySource: Record<string, { count: number; generated: number; revenue: number }> = {};
+    const byCampaign: Record<string, { count: number; generated: number; revenue: number }> = {};
+    const byGateway: Record<string, { count: number; generated: number; revenue: number }> = {};
+    const byProduct: Record<string, { count: number; generated: number; revenue: number }> = {};
+    const byHour: Record<string, { count: number; generated: number; revenue: number }> = {};
+
+    vendas.forEach(venda => {
       const lowerCaseStatus = venda.status.toLowerCase();
       const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+      const isGenerated = true; // Consideramos toda venda como "gerada" inicialmente para fins de funil
 
-      if (isPaid) {
-        // Gateway
-        const gateway = venda.gateway || 'N/A';
-        if (!byGateway[gateway]) {
-          byGateway[gateway] = { count: 0, revenue: 0 };
+      // Helper
+      const processMetric = (dict: any, key: string, amount: number) => {
+        if (!dict[key]) dict[key] = initMetric();
+        dict[key].generated++;
+        if (isPaid) {
+          dict[key].count++;
+          dict[key].revenue += amount;
         }
-        byGateway[gateway].count++;
-        byGateway[gateway].revenue += venda.total_amount;
+      };
 
-        // Produto
-        const product = venda.offer?.name || 'N/A';
-        if (!byProduct[product]) {
-          byProduct[product] = { count: 0, revenue: 0 };
-        }
-        byProduct[product].count++;
-        byProduct[product].revenue += venda.total_amount;
+      // Gateway
+      const gateway = venda.gateway || 'N/A';
+      processMetric(byGateway, gateway, venda.total_amount);
 
-        // Horário
-        const date = venda.created_at?.toDate();
-        if (date) {
-          const hour = date.getHours().toString().padStart(2, '0') + 'h';
-          if (!byHour[hour]) {
-            byHour[hour] = { count: 0, revenue: 0 };
-          }
-          byHour[hour].count++;
-          byHour[hour].revenue += venda.total_amount;
-        }
+      // Produto
+      const product = venda.offer?.name || 'N/A';
+      processMetric(byProduct, product, venda.total_amount);
 
-        if (venda.tracking) {
-          // Source (utm_source ou src)
-          const source = venda.tracking.utm_source || venda.tracking.src || 'N/A';
-          if (!bySource[source]) {
-            bySource[source] = { count: 0, revenue: 0 };
-          }
-          bySource[source].count++;
-          bySource[source].revenue += venda.total_amount;
+      // Horário
+      const date = venda.created_at?.toDate();
+      if (date) {
+        const hour = date.getHours().toString().padStart(2, '0') + 'h';
+        processMetric(byHour, hour, venda.total_amount);
+      }
 
-          // Campaign (utm_campaign)
-          const campaign = venda.tracking.utm_campaign || 'N/A';
-          if (!byCampaign[campaign]) {
-            byCampaign[campaign] = { count: 0, revenue: 0 };
-          }
-          byCampaign[campaign].count++;
-          byCampaign[campaign].revenue += venda.total_amount;
-        }
+      if (venda.tracking) {
+        // Source
+        const source = venda.tracking.utm_source || venda.tracking.src || 'N/A';
+        processMetric(bySource, source, venda.total_amount);
+
+        // Campaign
+        const campaign = venda.tracking.utm_campaign || 'N/A';
+        processMetric(byCampaign, campaign, venda.total_amount);
       }
     });
 
     return { bySource, byCampaign, byGateway, byProduct, byHour };
-  }, [filteredVendas]);
+  }, [vendas]);
 
   // Dados para o gráfico de evolução
   const chartData = useMemo(() => {
-    if (!filteredVendas) return [];
+    if (!vendas) return [];
 
     const dataMap: Record<string, number> = {};
 
     // Ordenar vendas por data (antigas primeiro)
-    const sortedVendas = [...filteredVendas].sort((a, b) => {
+    const sortedVendas = [...vendas].sort((a, b) => {
       const dateA = a.created_at?.toDate().getTime() || 0;
       const dateB = b.created_at?.toDate().getTime() || 0;
       return dateA - dateB;
@@ -374,16 +465,16 @@ const VendasBoard = () => {
       name,
       value
     }));
-  }, [filteredVendas]);
+  }, [vendas]);
 
   // Vendas para recuperação (não pagas)
   const recoveryVendas = useMemo(() => {
-    if (!filteredVendas) return [];
-    return filteredVendas.filter(venda => {
+    if (!vendas) return [];
+    return vendas.filter(venda => {
       const lowerCaseStatus = venda.status.toLowerCase();
       return lowerCaseStatus.includes('gerado') || lowerCaseStatus.includes('created') || lowerCaseStatus.includes('pending') || lowerCaseStatus.includes('waiting');
     });
-  }, [filteredVendas]);
+  }, [vendas]);
 
   const handleWhatsAppClick = (venda: Venda) => {
     if (!venda.buyer?.phone) {
@@ -472,6 +563,7 @@ const VendasBoard = () => {
           <TabsList>
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="recovery">Recuperação</TabsTrigger>
+            <TabsTrigger value="reminders">Lembretes</TabsTrigger>
           </TabsList>
 
           <div className="flex items-center gap-2">
@@ -579,61 +671,144 @@ const VendasBoard = () => {
                 </CardContent>
               </Card>
 
-              <div className="border border-neutral-800 rounded-md">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-neutral-800">
-                      <TableHead>Horário</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
-                      <TableHead className="text-center">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      <TableRow><TableCell colSpan={5} className="text-center h-24"><div className="flex justify-center items-center"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando vendas...</div></TableCell></TableRow>
-                    ) : vendas && vendas.length > 0 ? (
-                      vendas.map((venda) => (
-                        <TableRow key={venda.id} className="border-neutral-800">
-                          <TableCell className="text-muted-foreground text-xs">
-                            <TimeAgo date={venda.created_at?.toDate()} />
-                          </TableCell>
-                          <TableCell>{getStatusBadge(venda.status)}</TableCell>
-                          <TableCell className="font-medium">
-                            <div className="flex flex-col">
-                              <span className="font-bold">{venda.buyer?.name || 'Desconhecido'}</span>
-                              {venda.buyer?.email && (
-                                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                  {venda.buyer.email}
-                                  <Button variant="ghost" size="icon" className="w-5 h-5" onClick={() => copyToClipboard(venda.buyer.email, 'Email')}>
-                                    <Copy className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className={cn(
-                            "text-right font-bold text-lg",
-                            (venda.status.toLowerCase().includes('pago') || venda.status.toLowerCase().includes('paid') || venda.status.toLowerCase().includes('approved')) && 'text-green-400'
-                          )}>
-                            {formatCurrencyBRL(venda.total_amount)}
-                          </TableCell>
-                          <TableCell className="text-center flex justify-center gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleOpenDetails(venda)}>
-                              <Eye className="w-4 h-4 mr-1" /> Detalhes
-                            </Button>
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setItemToDelete(venda.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
+              {/* Analytics de Conversão por Campanha */}
+              <Card className="bg-transparent border-neutral-800">
+                <CardHeader>
+                  <CardTitle className="text-base">Conversão por Campanha/Criativo</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="border border-neutral-800 rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-neutral-800 bg-neutral-900">
+                          <TableHead>Campanha/Criativo</TableHead>
+                          <TableHead className="text-center">Gerados</TableHead>
+                          <TableHead className="text-center">Pagos</TableHead>
+                          <TableHead className="text-right">Receita</TableHead>
+                          <TableHead className="text-center">Conversão</TableHead>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Aguardando novos eventos de venda...</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(trackingAnalytics.byCampaign).length > 0 ? (
+                          Object.entries(trackingAnalytics.byCampaign)
+                            .sort(([, a], [, b]) => b.revenue - a.revenue)
+                            .map(([campaign, data]) => (
+                              <TableRow key={campaign} className="border-neutral-800">
+                                <TableCell>{campaign}</TableCell>
+                                <TableCell className="text-center">{data.generated}</TableCell>
+                                <TableCell className="text-center">{data.count}</TableCell>
+                                <TableCell className="text-right">{formatCurrencyBRL(data.revenue)}</TableCell>
+                                <TableCell className="text-center">
+                                  {data.generated > 0 ? ((data.count / data.generated) * 100).toFixed(1) : 0}%
+                                </TableCell>
+                              </TableRow>
+                            ))
+                        ) : (
+                          <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Sem dados de campanha.</TableCell></TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Filtros e Tabela */}
+              <div className="space-y-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Pesquisar por nome, email, produto..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="bg-neutral-900 border-neutral-800"
+                    />
+                  </div>
+                  <div className="w-full md:w-[200px]">
+                    <Select value={filterProduct} onValueChange={setFilterProduct}>
+                      <SelectTrigger className="bg-neutral-900 border-neutral-800">
+                        <SelectValue placeholder="Produto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os Produtos</SelectItem>
+                        {uniqueProducts.map((p: any) => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-full md:w-[200px]">
+                    <Select value={filterGateway} onValueChange={setFilterGateway}>
+                      <SelectTrigger className="bg-neutral-900 border-neutral-800">
+                        <SelectValue placeholder="Gateway" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os Gateways</SelectItem>
+                        {uniqueGateways.map((g: any) => (
+                          <SelectItem key={g} value={g}>{g}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="border border-neutral-800 rounded-md overflow-hidden">
+                  <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-neutral-900 z-10">
+                        <TableRow className="border-neutral-800 hover:bg-neutral-900">
+                          <TableHead>Horário</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                          <TableHead className="text-center">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {isLoading ? (
+                          <TableRow><TableCell colSpan={5} className="text-center h-24"><div className="flex justify-center items-center"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando vendas...</div></TableCell></TableRow>
+                        ) : vendas && vendas.length > 0 ? (
+                          vendas.map((venda) => (
+                            <TableRow key={venda.id} className="border-neutral-800">
+                              <TableCell className="text-muted-foreground text-xs">
+                                <TimeAgo date={venda.created_at?.toDate()} />
+                              </TableCell>
+                              <TableCell>{getStatusBadge(venda.status)}</TableCell>
+                              <TableCell className="font-medium">
+                                <div className="flex flex-col">
+                                  <span className="font-bold">{venda.buyer?.name || 'Desconhecido'}</span>
+                                  {venda.buyer?.email && (
+                                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                      {venda.buyer.email}
+                                      <Button variant="ghost" size="icon" className="w-5 h-5" onClick={() => copyToClipboard(venda.buyer.email, 'Email')}>
+                                        <Copy className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className={cn(
+                                "text-right font-bold text-lg",
+                                (venda.status.toLowerCase().includes('pago') || venda.status.toLowerCase().includes('paid') || venda.status.toLowerCase().includes('approved')) && 'text-green-400'
+                              )}>
+                                {formatCurrencyBRL(venda.total_amount)}
+                              </TableCell>
+                              <TableCell className="text-center flex justify-center gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleOpenDetails(venda)}>
+                                  <Eye className="w-4 h-4 mr-1" /> Detalhes
+                                </Button>
+                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setItemToDelete(venda.id)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Nenhuma venda encontrada com os filtros atuais.</TableCell></TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -915,6 +1090,66 @@ const VendasBoard = () => {
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="reminders" className="space-y-6">
+          <Card className="bg-transparent border-neutral-800">
+            <CardHeader>
+              <CardTitle>Lembretes e Tarefas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex-1 space-y-2 w-full">
+                  <Label>Título do Lembrete</Label>
+                  <Input
+                    value={reminderTitle}
+                    onChange={(e) => setReminderTitle(e.target.value)}
+                    placeholder="Ex: Ligar para cliente X"
+                    className="bg-neutral-900 border-neutral-800"
+                  />
+                </div>
+                <div className="w-full md:w-[250px] space-y-2">
+                  <Label>Data e Hora</Label>
+                  <Input
+                    type="datetime-local"
+                    value={reminderDate}
+                    onChange={(e) => setReminderDate(e.target.value)}
+                    className="bg-neutral-900 border-neutral-800"
+                  />
+                </div>
+                <Button onClick={handleAddReminder} className="w-full md:w-auto">Adicionar</Button>
+              </div>
+
+              <div className="space-y-2">
+                {reminders.map(reminder => (
+                  <div key={reminder.id} className="flex items-center justify-between p-4 bg-neutral-900 border border-neutral-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={reminder.completed}
+                        onChange={() => toggleReminder(reminder.id, reminder.completed)}
+                        className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 accent-primary"
+                      />
+                      <div className={cn("flex flex-col", reminder.completed && "opacity-50 line-through")}>
+                        <span className="font-medium">{reminder.title}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {reminder.date?.toDate().toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/20" onClick={() => deleteReminder(reminder.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+                {reminders.length === 0 && (
+                  <div className="text-center p-8 text-muted-foreground border border-dashed border-neutral-800 rounded-lg">
+                    Nenhum lembrete pendente.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
