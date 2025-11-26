@@ -13,6 +13,16 @@ import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  TooltipProps
+} from 'recharts';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -22,6 +32,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
+import { startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import DetalhesVendaModal from '@/components/DetalhesVendaModal';
 import { Venda } from '@/types/venda';
@@ -64,6 +77,7 @@ const VendasBoard = () => {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [selectedVenda, setSelectedVenda] = useState<Venda | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   // Query atualizada para ordenar por created_at (novo padrão) ou receivedAt (legado)
   // Como não dá para ordenar por dois campos diferentes facilmente sem índice composto, vamos ordenar no cliente se necessário ou assumir created_at
@@ -101,8 +115,23 @@ const VendasBoard = () => {
     }));
   }, [vendasRaw]);
 
+  // Filtrar vendas por data
+  const filteredVendas = useMemo(() => {
+    if (!vendas) return [];
+    if (!dateRange?.from) return vendas;
+
+    const from = startOfDay(dateRange.from);
+    const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+
+    return vendas.filter(venda => {
+      if (!venda.created_at) return false;
+      const date = venda.created_at.toDate();
+      return isWithinInterval(date, { start: from, end: to });
+    });
+  }, [vendas, dateRange]);
+
   const salesMetrics = useMemo(() => {
-    if (!vendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0, totalFees: 0, netRevenue: 0, arpu: 0 };
+    if (!filteredVendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0, totalFees: 0, netRevenue: 0, arpu: 0 };
 
     let paidCount = 0;
     let generatedCount = 0;
@@ -110,7 +139,7 @@ const VendasBoard = () => {
     let pendingRevenue = 0;
     let totalFees = 0;
 
-    vendas.forEach(venda => {
+    filteredVendas.forEach(venda => {
       const lowerCaseStatus = venda.status.toLowerCase();
       const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
       const isGenerated = lowerCaseStatus.includes('gerado') || lowerCaseStatus.includes('created') || lowerCaseStatus.includes('pending');
@@ -157,11 +186,11 @@ const VendasBoard = () => {
       arpu
     }
 
-  }, [vendas]);
+  }, [filteredVendas]);
 
   // Analytics por fonte, campanha, gateway, produto e horário
   const trackingAnalytics = useMemo(() => {
-    if (!vendas) return { bySource: {}, byCampaign: {}, byGateway: {}, byProduct: {}, byHour: {} };
+    if (!filteredVendas) return { bySource: {}, byCampaign: {}, byGateway: {}, byProduct: {}, byHour: {} };
 
     const bySource: Record<string, { count: number; revenue: number }> = {};
     const byCampaign: Record<string, { count: number; revenue: number }> = {};
@@ -169,7 +198,7 @@ const VendasBoard = () => {
     const byProduct: Record<string, { count: number; revenue: number }> = {};
     const byHour: Record<string, { count: number; revenue: number }> = {};
 
-    vendas.forEach(venda => {
+    filteredVendas.forEach(venda => {
       const lowerCaseStatus = venda.status.toLowerCase();
       const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
 
@@ -222,7 +251,42 @@ const VendasBoard = () => {
     });
 
     return { bySource, byCampaign, byGateway, byProduct, byHour };
-  }, [vendas]);
+  }, [filteredVendas]);
+
+  // Dados para o gráfico de evolução
+  const chartData = useMemo(() => {
+    if (!filteredVendas) return [];
+
+    const dataMap: Record<string, number> = {};
+
+    // Ordenar vendas por data (antigas primeiro)
+    const sortedVendas = [...filteredVendas].sort((a, b) => {
+      const dateA = a.created_at?.toDate().getTime() || 0;
+      const dateB = b.created_at?.toDate().getTime() || 0;
+      return dateA - dateB;
+    });
+
+    sortedVendas.forEach(venda => {
+      const lowerCaseStatus = venda.status.toLowerCase();
+      const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+
+      if (isPaid && venda.created_at) {
+        const date = venda.created_at.toDate();
+        // Formato: DD/MM HH:00
+        const key = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}h`;
+
+        if (!dataMap[key]) {
+          dataMap[key] = 0;
+        }
+        dataMap[key] += venda.total_amount;
+      }
+    });
+
+    return Object.entries(dataMap).map(([name, value]) => ({
+      name,
+      value
+    }));
+  }, [filteredVendas]);
 
   const copyToClipboard = (text: string | undefined, fieldName: string) => {
     if (!text) return;
@@ -298,10 +362,13 @@ const VendasBoard = () => {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Feed de Vendas em Tempo Real</CardTitle>
-            <Button variant="outline" size="icon" onClick={() => setIsClearAlertOpen(true)} disabled={isLoading || !vendas || vendas.length === 0}>
-              <Trash2 className="w-4 h-4" />
-              <span className="sr-only">Limpar Vendas</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+              <Button variant="outline" size="icon" onClick={() => setIsClearAlertOpen(true)} disabled={isLoading || !vendas || vendas.length === 0}>
+                <Trash2 className="w-4 h-4" />
+                <span className="sr-only">Limpar Vendas</span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -342,6 +409,59 @@ const VendasBoard = () => {
               icon={Percent}
             />
           </div>
+
+          {/* Gráfico de Evolução */}
+          <Card className="bg-transparent border-neutral-800">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                Evolução do Faturamento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#666"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={30}
+                  />
+                  <YAxis
+                    stroke="#666"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `R$ ${value}`}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                    itemStyle={{ color: '#fff' }}
+                    formatter={(value: number) => [formatCurrencyBRL(value), 'Faturamento']}
+                    labelStyle={{ color: '#999', marginBottom: '4px' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorValue)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
           <div className="border border-neutral-800 rounded-md">
             <Table>
               <TableHeader>
@@ -588,34 +708,34 @@ const VendasBoard = () => {
       <AlertDialog open={isClearAlertOpen} onOpenChange={setIsClearAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+            <AlertDialogTitle><span>Você tem certeza absoluta?</span></AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita e excluirá permanentemente **todos** os registros de vendas.
+              <span>Esta ação não pode ser desfeita e excluirá permanentemente **todos** os registros de vendas.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleClearSales} className="bg-red-600 hover:bg-red-700">Sim, Limpar Tudo</AlertDialogAction>
+            <AlertDialogCancel><span>Cancelar</span></AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearSales} className="bg-red-600 hover:bg-red-700"><span>Sim, Limpar Tudo</span></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
+      <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen: boolean) => !isOpen && setItemToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogTitle><span>Você tem certeza?</span></AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita e excluirá permanentemente este registro de venda.
+              <span>Esta ação não pode ser desfeita e excluirá permanentemente este registro de venda.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}><span>Cancelar</span></AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               if (itemToDelete) {
                 handleDeleteSale(itemToDelete);
               }
               setItemToDelete(null);
-            }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
+            }} className="bg-red-600 hover:bg-red-700"><span>Excluir</span></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
