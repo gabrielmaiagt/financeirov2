@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, PackageCheck, PackagePlus, Server, Copy, Trash2, TrendingUp, Percent, FileText, Eye } from 'lucide-react';
+import { Loader2, PackageCheck, PackagePlus, Server, Copy, Trash2, TrendingUp, Percent, FileText, Eye, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -86,22 +86,28 @@ const VendasBoard = () => {
         name: v.customerName ?? 'Desconhecido',
         email: v.customerEmail ?? '',
         phone: v.customerPhone ?? '',
-        document: ''
+        document: v.customerDocument ?? ''
       },
       created_at: v.created_at ?? v.receivedAt ?? Timestamp.now(),
-      offer: v.offer ?? { name: 'N/A', discount_price: 0, quantity: 1 },
-      payment_method: v.payment_method ?? v.gateway ?? 'N/A',
-      net_amount: v.net_amount ?? 0,
-      tracking: v.tracking ?? {}
+      offer: v.offer ?? {
+        name: v.offerName ?? 'N/A',
+        discount_price: v.offerPrice ?? 0,
+        quantity: v.offerQuantity ?? 1
+      },
+      payment_method: v.payment_method ?? v.paymentMethod ?? v.gateway ?? 'N/A',
+      net_amount: v.net_amount ?? v.netAmount ?? 0,
+      tracking: v.tracking ?? v.trackingData ?? {},
+      gateway: v.gateway ?? 'N/A'
     }));
   }, [vendasRaw]);
 
   const salesMetrics = useMemo(() => {
-    if (!vendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0 };
+    if (!vendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0 };
 
     let paidCount = 0;
     let generatedCount = 0;
     let totalRevenue = 0;
+    let pendingRevenue = 0;
 
     vendas.forEach(venda => {
       const lowerCaseStatus = venda.status.toLowerCase();
@@ -111,9 +117,9 @@ const VendasBoard = () => {
       if (isPaid) {
         paidCount++;
         totalRevenue += venda.total_amount;
-      }
-      if (isGenerated) {
+      } else if (isGenerated) {
         generatedCount++;
+        pendingRevenue += venda.total_amount;
       }
     });
 
@@ -124,7 +130,8 @@ const VendasBoard = () => {
       paidCount,
       generatedCount: totalGenerated,
       conversionRate,
-      totalRevenue
+      totalRevenue,
+      pendingRevenue
     }
 
   }, [vendas]);
@@ -210,11 +217,16 @@ const VendasBoard = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <StatCard
               title="Faturamento"
               value={formatCurrencyBRL(salesMetrics.totalRevenue)}
               icon={TrendingUp}
+            />
+            <StatCard
+              title="Fat. Pendente"
+              value={formatCurrencyBRL(salesMetrics.pendingRevenue)}
+              icon={Clock}
             />
             <StatCard
               title="PIX Gerado"

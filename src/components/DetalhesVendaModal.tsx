@@ -46,6 +46,9 @@ export default function DetalhesVendaModal({ venda, open, onClose }: Props) {
 
                             <section className="space-y-3 text-sm">
                                 <p><strong className="text-muted-foreground">Status:</strong> <span className="text-green-400">{venda.status}</span></p>
+                                {venda.gateway && (
+                                    <p><strong className="text-muted-foreground">Adquirente:</strong> <span className="text-primary">{venda.gateway}</span></p>
+                                )}
                                 <p><strong className="text-muted-foreground">Forma de pagamento:</strong> {venda.payment_method}</p>
                                 <p><strong className="text-muted-foreground">Valor total:</strong> {formatCurrencyBRL(venda.total_amount)}</p>
                                 <p><strong className="text-muted-foreground">Valor líquido:</strong> {formatCurrencyBRL(venda.net_amount)}</p>
@@ -57,12 +60,67 @@ export default function DetalhesVendaModal({ venda, open, onClose }: Props) {
                                 <div className="text-muted-foreground space-y-1">
                                     <p>{venda.buyer.name}</p>
                                     <p>{venda.buyer.email}</p>
-                                    <p>{venda.buyer.phone}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-mono text-foreground">{venda.buyer.phone}</p>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await navigator.clipboard.writeText(venda.buyer.phone);
+                                                    // You could add a toast here
+                                                } catch (err) {
+                                                    console.error('Failed to copy:', err);
+                                                }
+                                            }}
+                                            className="p-1 hover:bg-neutral-800 rounded transition-colors"
+                                            title="Copiar telefone"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                     <p>{venda.buyer.document}</p>
                                 </div>
 
                                 <h4 className="font-medium mt-4 text-foreground">Tracking</h4>
-                                <pre className="bg-neutral-800 text-neutral-300 p-3 rounded text-xs overflow-x-auto">{JSON.stringify(venda.tracking, null, 2)}</pre>
+                                {venda.tracking && Object.keys(venda.tracking).length > 0 ? (
+                                    <div className="bg-neutral-800 p-3 rounded space-y-2 text-xs">
+                                        {venda.tracking.utm_source && (
+                                            <p><span className="text-muted-foreground">UTM Source:</span> <span className="text-foreground">{venda.tracking.utm_source}</span></p>
+                                        )}
+                                        {venda.tracking.utm_medium && (
+                                            <p><span className="text-muted-foreground">UTM Medium:</span> <span className="text-foreground">{venda.tracking.utm_medium}</span></p>
+                                        )}
+                                        {venda.tracking.utm_campaign && (
+                                            <p><span className="text-muted-foreground">UTM Campaign:</span> <span className="text-foreground">{venda.tracking.utm_campaign}</span></p>
+                                        )}
+                                        {venda.tracking.utm_content && (
+                                            <p><span className="text-muted-foreground">UTM Content:</span> <span className="text-foreground">{venda.tracking.utm_content}</span></p>
+                                        )}
+                                        {venda.tracking.utm_term && (
+                                            <p><span className="text-muted-foreground">UTM Term:</span> <span className="text-foreground">{venda.tracking.utm_term}</span></p>
+                                        )}
+                                        {venda.tracking.src && (
+                                            <p><span className="text-muted-foreground">Source:</span> <span className="text-foreground">{venda.tracking.src}</span></p>
+                                        )}
+                                        {venda.tracking.sck && (
+                                            <p><span className="text-muted-foreground">SCK:</span> <span className="text-foreground">{venda.tracking.sck}</span></p>
+                                        )}
+                                        {venda.tracking.ref && (
+                                            <p><span className="text-muted-foreground">Ref:</span> <span className="text-foreground">{venda.tracking.ref}</span></p>
+                                        )}
+                                        {/* Show full JSON if there are other fields */}
+                                        {Object.keys(venda.tracking).some(key => !['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'src', 'sck', 'ref'].includes(key)) && (
+                                            <details className="mt-2">
+                                                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Ver JSON completo</summary>
+                                                <pre className="mt-2 text-neutral-300 overflow-x-auto">{JSON.stringify(venda.tracking, null, 2)}</pre>
+                                            </details>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="text-muted-foreground text-xs">Sem dados de tracking</p>
+                                )}
                             </section>
 
                             <div className="mt-6 flex justify-end">

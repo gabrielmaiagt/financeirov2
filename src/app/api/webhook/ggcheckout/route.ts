@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
       productPrice: validatedData.product?.price || null,
       productQuantity: validatedData.product?.quantity || null,
       products: validatedData.products || [],
-      trackingData,
+      tracking: trackingData,
       created_at: Timestamp.now(), // For VendasBoard compatibility
       receivedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),

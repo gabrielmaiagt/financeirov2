@@ -18,5 +18,6 @@ export interface Venda {
         document: string;
     };
     tracking: any;
+    gateway?: string; // Buckpay, Paradise, GGCheckout
     created_at: Timestamp;
 }

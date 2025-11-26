@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       offerName: saleData.offer?.name || null,
       offerPrice: saleData.offer?.discount_price || null,
       offerQuantity: saleData.offer?.quantity || null,
-      trackingData,
+      tracking: trackingData, // Changed from trackingData to tracking
       created_at: Timestamp.now(), // For VendasBoard compatibility
       receivedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
