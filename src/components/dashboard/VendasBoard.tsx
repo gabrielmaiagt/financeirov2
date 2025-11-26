@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, PackageCheck, PackagePlus, Server, Copy, Trash2, TrendingUp, Percent, FileText, Eye, Clock, Wallet, MessageCircle, Pencil, Plus } from 'lucide-react';
+import { Loader2, PackageCheck, PackagePlus, Server, Copy, Trash2, TrendingUp, Percent, FileText, Eye, Clock, Wallet, MessageCircle, Pencil, Plus, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -65,6 +65,13 @@ import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import DetalhesVendaModal from '@/components/DetalhesVendaModal';
 import { Venda } from '@/types/venda';
 import { formatCurrencyBRL } from '@/lib/formatters';
+
+// Utility function to clean campaign names by removing long ID patterns like "|123456789"
+const cleanCampaignName = (name: string): string => {
+  if (!name) return name;
+  // Remove patterns like |123456789 (pipe followed by 8+ digits)
+  return name.replace(/\|[\d]{8,}/g, '').trim();
+};
 
 // Client-side component to render relative time
 const TimeAgo = ({ date }: { date: Date | undefined }) => {
@@ -467,6 +474,95 @@ const VendasBoard = () => {
     }));
   }, [vendas]);
 
+  // Dados para gráfico de vendas por horário
+  const hourlyChartData = useMemo(() => {
+    if (!vendas) return [];
+
+    const hourlyData: Record<string, { hour: string; sales: number; revenue: number }> = {};
+
+    // Initialize all hours
+    for (let i = 0; i < 24; i++) {
+      const hour = i.toString().padStart(2, '0') + 'h';
+      hourlyData[hour] = { hour, sales: 0, revenue: 0 };
+    }
+
+    vendas.forEach(venda => {
+      const date = venda.created_at?.toDate();
+      if (date) {
+        const hour = date.getHours().toString().padStart(2, '0') + 'h';
+        hourlyData[hour].sales++;
+
+        const lowerCaseStatus = venda.status.toLowerCase();
+        const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+        if (isPaid) {
+          hourlyData[hour].revenue += venda.total_amount;
+        }
+      }
+    });
+
+    return Object.values(hourlyData).sort((a, b) => a.hour.localeCompare(b.hour));
+  }, [vendas]);
+
+  // Dados para gráfico de conversão por horário
+  const hourlyConversionData = useMemo(() => {
+    if (!vendas) return [];
+
+    const hourlyData: Record<string, { hour: string; generated: number; paid: number }> = {};
+
+    // Initialize all hours
+    for (let i = 0; i < 24; i++) {
+      const hour = i.toString().padStart(2, '0') + 'h';
+      hourlyData[hour] = { hour, generated: 0, paid: 0 };
+    }
+
+    vendas.forEach(venda => {
+      const date = venda.created_at?.toDate();
+      if (date) {
+        const hour = date.getHours().toString().padStart(2, '0') + 'h';
+        hourlyData[hour].generated++;
+
+        const lowerCaseStatus = venda.status.toLowerCase();
+        const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+        if (isPaid) {
+          hourlyData[hour].paid++;
+        }
+      }
+    });
+
+    return Object.values(hourlyData).map(d => ({
+      hour: d.hour,
+      conversion: d.generated > 0 ? ((d.paid / d.generated) * 100) : 0
+    })).sort((a, b) => a.hour.localeCompare(b.hour));
+  }, [vendas]);
+
+  // Dados para gráfico de vendas por dia da semana
+  const weekdayChartData = useMemo(() => {
+    if (!vendas) return [];
+
+    const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const weekdayData = weekdays.map((day, index) => ({
+      day,
+      sales: 0,
+      revenue: 0,
+      index
+    }));
+
+    vendas.forEach(venda => {
+      const dayIndex = venda.created_at?.toDate().getDay();
+      if (dayIndex !== undefined) {
+        weekdayData[dayIndex].sales++;
+
+        const lowerCaseStatus = venda.status.toLowerCase();
+        const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+        if (isPaid) {
+          weekdayData[dayIndex].revenue += venda.total_amount;
+        }
+      }
+    });
+
+    return weekdayData;
+  }, [vendas]);
+
   // Vendas para recuperação (não pagas)
   const recoveryVendas = useMemo(() => {
     if (!vendas) return [];
@@ -474,6 +570,71 @@ const VendasBoard = () => {
       const lowerCaseStatus = venda.status.toLowerCase();
       return lowerCaseStatus.includes('gerado') || lowerCaseStatus.includes('created') || lowerCaseStatus.includes('pending') || lowerCaseStatus.includes('waiting');
     });
+  }, [vendas]);
+
+  // Helper function to detect recovery sales
+  const isRecoveryVenda = (venda: Venda): boolean => {
+    if (venda.isRecovery === true) return true;
+
+    const utmCampaign = venda.tracking?.utm_campaign?.toLowerCase() || '';
+    const utmSource = venda.tracking?.utm_source?.toLowerCase() || '';
+
+    return utmCampaign.includes('rec') ||
+      utmSource.includes('rec') ||
+      utmCampaign.includes('recuperacao') ||
+      utmCampaign.includes('recuperação') ||
+      utmSource.includes('recuperacao') ||
+      utmSource.includes('recuperação');
+  };
+
+  // Receita de recuperação
+  const recoveryMetrics = useMemo(() => {
+    if (!vendas) return { revenue: 0, count: 0, percentage: 0 };
+
+    const recoveryVendas = vendas.filter(v => {
+      const lowerCaseStatus = v.status.toLowerCase();
+      const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+      return isPaid && isRecoveryVenda(v);
+    });
+
+    const revenue = recoveryVendas.reduce((sum, v) => sum + v.total_amount, 0);
+    const percentage = salesMetrics.totalRevenue > 0 ? (revenue / salesMetrics.totalRevenue) * 100 : 0;
+
+    return {
+      revenue,
+      count: recoveryVendas.length,
+      percentage
+    };
+  }, [vendas, salesMetrics.totalRevenue]);
+
+  // Ticket médio líquido (usando net_amount se disponível)
+  const ticketMedioLiquido = useMemo(() => {
+    if (!vendas) return 0;
+
+    const pagas = vendas.filter(v => {
+      const lowerCaseStatus = v.status.toLowerCase();
+      return lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+    });
+
+    if (pagas.length === 0) return 0;
+
+    const totalLiquido = pagas.reduce((sum, v) => {
+      // Use net_amount if available, otherwise estimate by subtracting fees
+      if (v.net_amount) return sum + v.net_amount;
+
+      const gateway = v.gateway?.toLowerCase() || '';
+      let fee = 0;
+
+      if (gateway.includes('buckpay')) {
+        fee = (v.total_amount * 0.0449) + 1.49;
+      } else if (gateway.includes('paradise')) {
+        fee = (v.total_amount * 0.015) + 1.49;
+      }
+
+      return sum + (v.total_amount - fee);
+    }, 0);
+
+    return totalLiquido / pagas.length;
   }, [vendas]);
 
   const handleWhatsAppClick = (venda: Venda) => {
@@ -617,6 +778,16 @@ const VendasBoard = () => {
                   value={`${salesMetrics.conversionRate.toFixed(1)}%`}
                   icon={Percent}
                 />
+                <StatCard
+                  title="Ticket Médio Líquido"
+                  value={formatCurrencyBRL(ticketMedioLiquido)}
+                  icon={Wallet}
+                />
+                <StatCard
+                  title="Receita Recuperação"
+                  value={formatCurrencyBRL(recoveryMetrics.revenue)}
+                  icon={RefreshCcw}
+                />
               </div>
 
               {/* Gráfico de Evolução */}
@@ -694,7 +865,7 @@ const VendasBoard = () => {
                             .sort(([, a], [, b]) => b.revenue - a.revenue)
                             .map(([campaign, data]) => (
                               <TableRow key={campaign} className="border-neutral-800">
-                                <TableCell>{campaign}</TableCell>
+                                <TableCell>{cleanCampaignName(campaign)}</TableCell>
                                 <TableCell className="text-center">{data.generated}</TableCell>
                                 <TableCell className="text-center">{data.count}</TableCell>
                                 <TableCell className="text-right">{formatCurrencyBRL(data.revenue)}</TableCell>
@@ -863,7 +1034,7 @@ const VendasBoard = () => {
                     .map(([source, data]) => (
                       <div key={source} className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className="text-sm font-medium">{source}</p>
+                          <p className="text-sm font-medium">{cleanCampaignName(source)}</p>
                           <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -899,7 +1070,7 @@ const VendasBoard = () => {
                     .map(([campaign, data]) => (
                       <div key={campaign} className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className="text-sm font-medium">{campaign}</p>
+                          <p className="text-sm font-medium">{cleanCampaignName(campaign)}</p>
                           <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
                         </div>
                         <div className="flex items-center gap-2">

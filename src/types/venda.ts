@@ -19,5 +19,6 @@ export interface Venda {
     };
     tracking: any;
     gateway?: string; // Buckpay, Paradise, GGCheckout
+    isRecovery?: boolean; // Manually marked or auto-detected from UTM
     created_at: Timestamp;
 }
