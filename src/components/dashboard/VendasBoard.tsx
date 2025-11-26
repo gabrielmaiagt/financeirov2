@@ -102,12 +102,13 @@ const VendasBoard = () => {
   }, [vendasRaw]);
 
   const salesMetrics = useMemo(() => {
-    if (!vendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0 };
+    if (!vendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0, totalFees: 0, netRevenue: 0 };
 
     let paidCount = 0;
     let generatedCount = 0;
     let totalRevenue = 0;
     let pendingRevenue = 0;
+    let totalFees = 0;
 
     vendas.forEach(venda => {
       const lowerCaseStatus = venda.status.toLowerCase();
@@ -117,6 +118,23 @@ const VendasBoard = () => {
       if (isPaid) {
         paidCount++;
         totalRevenue += venda.total_amount;
+
+        // Calculate gateway fees
+        const gateway = venda.gateway?.toLowerCase() || '';
+        let fee = 0;
+
+        if (gateway.includes('buckpay')) {
+          // Buckpay: 4.49% + R$ 1.49
+          fee = (venda.total_amount * 0.0449) + 1.49;
+        } else if (gateway.includes('paradise')) {
+          // Paradise: 1.50% + R$ 1.49
+          fee = (venda.total_amount * 0.015) + 1.49;
+        } else if (gateway.includes('ggcheckout')) {
+          // GGCheckout: Add fee structure when known
+          fee = 0; // TODO: Add GGCheckout fee structure
+        }
+
+        totalFees += fee;
       } else if (isGenerated) {
         generatedCount++;
         pendingRevenue += venda.total_amount;
@@ -125,15 +143,51 @@ const VendasBoard = () => {
 
     const totalGenerated = generatedCount + paidCount;
     const conversionRate = totalGenerated > 0 ? (paidCount / totalGenerated) * 100 : 0;
+    const netRevenue = totalRevenue - totalFees;
 
     return {
       paidCount,
       generatedCount: totalGenerated,
       conversionRate,
       totalRevenue,
-      pendingRevenue
+      pendingRevenue,
+      totalFees,
+      netRevenue
     }
 
+  }, [vendas]);
+
+  // Analytics por fonte e campanha
+  const trackingAnalytics = useMemo(() => {
+    if (!vendas) return { bySource: {}, byCampaign: {} };
+
+    const bySource: Record<string, { count: number; revenue: number }> = {};
+    const byCampaign: Record<string, { count: number; revenue: number }> = {};
+
+    vendas.forEach(venda => {
+      const lowerCaseStatus = venda.status.toLowerCase();
+      const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+
+      if (isPaid && venda.tracking) {
+        // Source (utm_source ou src)
+        const source = venda.tracking.utm_source || venda.tracking.src || 'N/A';
+        if (!bySource[source]) {
+          bySource[source] = { count: 0, revenue: 0 };
+        }
+        bySource[source].count++;
+        bySource[source].revenue += venda.total_amount;
+
+        // Campaign (utm_campaign)
+        const campaign = venda.tracking.utm_campaign || 'N/A';
+        if (!byCampaign[campaign]) {
+          byCampaign[campaign] = { count: 0, revenue: 0 };
+        }
+        byCampaign[campaign].count++;
+        byCampaign[campaign].revenue += venda.total_amount;
+      }
+    });
+
+    return { bySource, byCampaign };
   }, [vendas]);
 
   const copyToClipboard = (text: string | undefined, fieldName: string) => {
@@ -217,10 +271,15 @@ const VendasBoard = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <StatCard
               title="Faturamento"
               value={formatCurrencyBRL(salesMetrics.totalRevenue)}
+              icon={TrendingUp}
+            />
+            <StatCard
+              title="Fat. Líquido"
+              value={formatCurrencyBRL(salesMetrics.netRevenue)}
               icon={TrendingUp}
             />
             <StatCard
@@ -302,6 +361,81 @@ const VendasBoard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Analytics por Fonte e Campanha */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Vendas por Fonte */}
+        <Card className="bg-transparent border-neutral-800">
+          <CardHeader>
+            <CardTitle className="text-base">Vendas por Fonte</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(trackingAnalytics.bySource)
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, 5)
+                .map(([source, data]) => (
+                  <div key={source} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{source}</p>
+                      <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{data.count}</Badge>
+                      <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary"
+                          style={{
+                            width: `${(data.count / salesMetrics.paidCount) * 100}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {Object.keys(trackingAnalytics.bySource).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de fonte disponível</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Vendas por Campanha */}
+        <Card className="bg-transparent border-neutral-800">
+          <CardHeader>
+            <CardTitle className="text-base">Vendas por Campanha</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(trackingAnalytics.byCampaign)
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, 5)
+                .map(([campaign, data]) => (
+                  <div key={campaign} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{campaign}</p>
+                      <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{data.count}</Badge>
+                      <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary"
+                          style={{
+                            width: `${(data.count / salesMetrics.paidCount) * 100}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {Object.keys(trackingAnalytics.byCampaign).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de campanha disponível</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <AlertDialog open={isClearAlertOpen} onOpenChange={setIsClearAlertOpen}>
         <AlertDialogContent>
