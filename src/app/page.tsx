@@ -24,6 +24,7 @@ import ExpensesBoard from '@/components/dashboard/ExpensesBoard';
 import LoginsBoard from '@/components/dashboard/LoginsBoard';
 import CalendarBoard from '@/components/dashboard/CalendarBoard';
 import VendasBoard from '@/components/dashboard/VendasBoard';
+import RecuperacaoBoard from '@/components/dashboard/RecuperacaoBoard';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -168,6 +169,7 @@ export default function Home() {
               <TabsTrigger value="perfis" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Perfis</TabsTrigger>
               <TabsTrigger value="frases" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Frases</TabsTrigger>
               <TabsTrigger value="logins" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Logins</TabsTrigger>
+              <TabsTrigger value="recuperacao" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Recuperação</TabsTrigger>
             </TabsList>
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
@@ -227,6 +229,9 @@ export default function Home() {
         </TabsContent>
         <TabsContent value="logins">
           <LoginsBoard />
+        </TabsContent>
+        <TabsContent value="recuperacao">
+          <RecuperacaoBoard />
         </TabsContent>
       </Tabs>
     </div>
