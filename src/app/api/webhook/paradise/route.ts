@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         await updateDoc(webhookLogRef, {
           processingStatus: 'validation_error',
           errorMessage,
-          validationErrors: validationResult.error.errors,
+          validationErrors: JSON.parse(JSON.stringify(validationResult.error.errors)),
         });
       }
 
@@ -58,11 +58,25 @@ export async function POST(request: NextRequest) {
     const transactionId = validatedData.transaction_id;
     const transactionStatus = validatedData.status;
 
+    // Log warning if critical data is missing
+    if (transactionId === 'unknown_id' || transactionStatus === 'unknown') {
+      console.warn('Paradise webhook received with missing critical data:', validatedData);
+      if (webhookLogRef) {
+        await updateDoc(webhookLogRef, {
+          processingStatus: 'warning_missing_data',
+          message: 'Transaction ID or Status unknown',
+          validatedData
+        });
+      }
+    }
+
     // ============ CHECK FOR DUPLICATES ============
     const duplicateCheck = await checkDuplicateTransaction(firestore, transactionId, 'Paradise');
 
     const vendasRef = collection(firestore, 'vendas');
-    const saleValue = validatedData.amount ? validatedData.amount / 100 : null;
+    // Paradise usually sends amount in cents, but if it's small, it might be in BRL. 
+    // We assume cents as standard practice.
+    const saleValue = validatedData.amount ? validatedData.amount / 100 : 0;
     const trackingData = normalizeTrackingData(validatedData.tracking, 'Paradise');
 
     if (duplicateCheck.exists && duplicateCheck.docId) {

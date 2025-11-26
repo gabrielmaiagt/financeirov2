@@ -69,17 +69,27 @@ export const ParadiseTrackingSchema = z.object({
 });
 
 export const ParadiseWebhookSchema = z.object({
-    transaction_id: z.string(),
+    transaction_id: z.string().or(z.number().transform(String)).optional().nullable(),
+    id: z.string().or(z.number().transform(String)).optional().nullable(), // Fallback for transaction_id
     external_id: z.string().optional().nullable(),
-    status: z.string(),
-    amount: z.number().optional().nullable(),
+    status: z.string().optional().nullable(),
+    event: z.string().optional().nullable(), // Some gateways send 'event' instead of status
+    amount: z.preprocess((val) => Number(val), z.number()).optional().nullable(),
+    value: z.preprocess((val) => Number(val), z.number()).optional().nullable(), // Fallback for amount
     payment_method: z.string().optional().nullable(),
     customer: ParadiseCustomerSchema.optional().nullable(),
+    buyer: ParadiseCustomerSchema.optional().nullable(), // Fallback for customer
     raw_status: z.string().optional().nullable(),
     webhook_type: z.string().optional().nullable(),
     timestamp: z.string().optional().nullable(),
     tracking: ParadiseTrackingSchema.optional().nullable(),
-});
+}).transform((data) => ({
+    ...data,
+    transaction_id: data.transaction_id || data.id || 'unknown_id',
+    status: data.status || data.event || 'unknown',
+    amount: data.amount || data.value || 0,
+    customer: data.customer || data.buyer || {},
+}));
 
 export type ParadiseWebhook = z.infer<typeof ParadiseWebhookSchema>;
 
