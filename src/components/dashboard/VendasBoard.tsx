@@ -8,10 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, PackageCheck, PackagePlus, Server, Copy, Trash2, TrendingUp, Percent, FileText, Eye, Clock, Wallet } from 'lucide-react';
+import { Loader2, PackageCheck, PackagePlus, Server, Copy, Trash2, TrendingUp, Percent, FileText, Eye, Clock, Wallet, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AreaChart,
   Area,
@@ -39,6 +40,27 @@ import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import DetalhesVendaModal from '@/components/DetalhesVendaModal';
 import { Venda } from '@/types/venda';
 import { formatCurrencyBRL } from '@/lib/formatters';
+
+const RECOVERY_SCRIPTS = [
+  {
+    id: 'script-1',
+    title: 'Cobrança PIX (Amigável)',
+    text: 'Olá {nome}, tudo bem? 🌟\n\nVi aqui que você gerou um PIX para o {produto} mas ainda não compensou.\n\nAconteceu algum erro no pagamento? Posso te ajudar?',
+    category: 'WhatsApp'
+  },
+  {
+    id: 'script-2',
+    title: 'Recuperação de Cartão',
+    text: 'Oi {nome}! Notamos que sua tentativa de compra no cartão não passou. 💳\n\nÀs vezes o banco bloqueia por segurança. Tente novamente ou use outro cartão!\n\nLink: {link}',
+    category: 'WhatsApp'
+  },
+  {
+    id: 'script-3',
+    title: 'Áudio de Conversão',
+    text: 'https://exemplo.com/audio-recuperacao.mp3',
+    category: 'Áudio'
+  }
+];
 
 // Client-side component to render relative time
 const TimeAgo = ({ date }: { date: Date | undefined }) => {
@@ -288,6 +310,27 @@ const VendasBoard = () => {
     }));
   }, [filteredVendas]);
 
+  // Vendas para recuperação (não pagas)
+  const recoveryVendas = useMemo(() => {
+    if (!filteredVendas) return [];
+    return filteredVendas.filter(venda => {
+      const lowerCaseStatus = venda.status.toLowerCase();
+      return lowerCaseStatus.includes('gerado') || lowerCaseStatus.includes('created') || lowerCaseStatus.includes('pending') || lowerCaseStatus.includes('waiting');
+    });
+  }, [filteredVendas]);
+
+  const handleWhatsAppClick = (venda: Venda) => {
+    if (!venda.buyer?.phone) {
+      toast({ title: 'Erro', description: 'Telefone não disponível', variant: 'destructive' });
+      return;
+    }
+    // Limpar telefone (apenas números)
+    const phone = venda.buyer.phone.replace(/\D/g, '');
+    const message = `Olá ${venda.buyer.name}, vi que seu pedido de ${formatCurrencyBRL(venda.total_amount)} está pendente. Posso ajudar?`;
+    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
   const copyToClipboard = (text: string | undefined, fieldName: string) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -358,352 +401,436 @@ const VendasBoard = () => {
 
   return (
     <>
-      <Card className="bg-transparent border-neutral-800">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Feed de Vendas em Tempo Real</CardTitle>
-            <div className="flex items-center gap-2">
-              <DateRangePicker date={dateRange} onDateChange={setDateRange} />
-              <Button variant="outline" size="icon" onClick={() => setIsClearAlertOpen(true)} disabled={isLoading || !vendas || vendas.length === 0}>
-                <Trash2 className="w-4 h-4" />
-                <span className="sr-only">Limpar Vendas</span>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
-            <StatCard
-              title="Faturamento"
-              value={formatCurrencyBRL(salesMetrics.totalRevenue)}
-              icon={TrendingUp}
-            />
-            <StatCard
-              title="Fat. Líquido"
-              value={formatCurrencyBRL(salesMetrics.netRevenue)}
-              icon={TrendingUp}
-            />
-            <StatCard
-              title="Fat. Pendente"
-              value={formatCurrencyBRL(salesMetrics.pendingRevenue)}
-              icon={Clock}
-            />
-            <StatCard
-              title="Ticket Médio"
-              value={formatCurrencyBRL(salesMetrics.arpu)}
-              icon={Wallet}
-            />
-            <StatCard
-              title="PIX Gerado"
-              value={salesMetrics.generatedCount.toString()}
-              icon={FileText}
-            />
-            <StatCard
-              title="PIX Pago"
-              value={salesMetrics.paidCount.toString()}
-              icon={PackageCheck}
-            />
-            <StatCard
-              title="Conversão"
-              value={`${salesMetrics.conversionRate.toFixed(1)}%`}
-              icon={Percent}
-            />
-          </div>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <TabsList>
+            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="recovery">Recuperação</TabsTrigger>
+          </TabsList>
 
-          {/* Gráfico de Evolução */}
+          <div className="flex items-center gap-2">
+            <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+            <Button variant="outline" size="icon" onClick={() => setIsClearAlertOpen(true)} disabled={isLoading || !vendas || vendas.length === 0}>
+              <Trash2 className="w-4 h-4" />
+              <span className="sr-only">Limpar Vendas</span>
+            </Button>
+          </div>
+        </div>
+
+        <TabsContent value="overview" className="space-y-6">
           <Card className="bg-transparent border-neutral-800">
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                Evolução do Faturamento
-              </CardTitle>
+              <CardTitle>Feed de Vendas em Tempo Real</CardTitle>
             </CardHeader>
-            <CardContent className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    stroke="#666"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    minTickGap={30}
-                  />
-                  <YAxis
-                    stroke="#666"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `R$ ${value}`}
-                  />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
-                    formatter={(value: number) => [formatCurrencyBRL(value), 'Faturamento']}
-                    labelStyle={{ color: '#999', marginBottom: '4px' }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#8b5cf6"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorValue)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+                <StatCard
+                  title="Faturamento"
+                  value={formatCurrencyBRL(salesMetrics.totalRevenue)}
+                  icon={TrendingUp}
+                />
+                <StatCard
+                  title="Fat. Líquido"
+                  value={formatCurrencyBRL(salesMetrics.netRevenue)}
+                  icon={TrendingUp}
+                />
+                <StatCard
+                  title="Fat. Pendente"
+                  value={formatCurrencyBRL(salesMetrics.pendingRevenue)}
+                  icon={Clock}
+                />
+                <StatCard
+                  title="Ticket Médio"
+                  value={formatCurrencyBRL(salesMetrics.arpu)}
+                  icon={Wallet}
+                />
+                <StatCard
+                  title="PIX Gerado"
+                  value={salesMetrics.generatedCount.toString()}
+                  icon={FileText}
+                />
+                <StatCard
+                  title="PIX Pago"
+                  value={salesMetrics.paidCount.toString()}
+                  icon={PackageCheck}
+                />
+                <StatCard
+                  title="Conversão"
+                  value={`${salesMetrics.conversionRate.toFixed(1)}%`}
+                  icon={Percent}
+                />
+              </div>
+
+              {/* Gráfico de Evolução */}
+              <Card className="bg-transparent border-neutral-800">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                    Evolução do Faturamento
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        stroke="#666"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        minTickGap={30}
+                      />
+                      <YAxis
+                        stroke="#666"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => `R$ ${value}`}
+                      />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                        itemStyle={{ color: '#fff' }}
+                        formatter={(value: number) => [formatCurrencyBRL(value), 'Faturamento']}
+                        labelStyle={{ color: '#999', marginBottom: '4px' }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#8b5cf6"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorValue)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <div className="border border-neutral-800 rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-neutral-800">
+                      <TableHead>Horário</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-center">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow><TableCell colSpan={5} className="text-center h-24"><div className="flex justify-center items-center"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando vendas...</div></TableCell></TableRow>
+                    ) : vendas && vendas.length > 0 ? (
+                      vendas.map((venda) => (
+                        <TableRow key={venda.id} className="border-neutral-800">
+                          <TableCell className="text-muted-foreground text-xs">
+                            <TimeAgo date={venda.created_at?.toDate()} />
+                          </TableCell>
+                          <TableCell>{getStatusBadge(venda.status)}</TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                              <span className="font-bold">{venda.buyer?.name || 'Desconhecido'}</span>
+                              {venda.buyer?.email && (
+                                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                  {venda.buyer.email}
+                                  <Button variant="ghost" size="icon" className="w-5 h-5" onClick={() => copyToClipboard(venda.buyer.email, 'Email')}>
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className={cn(
+                            "text-right font-bold text-lg",
+                            (venda.status.toLowerCase().includes('pago') || venda.status.toLowerCase().includes('paid') || venda.status.toLowerCase().includes('approved')) && 'text-green-400'
+                          )}>
+                            {formatCurrencyBRL(venda.total_amount)}
+                          </TableCell>
+                          <TableCell className="text-center flex justify-center gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenDetails(venda)}>
+                              <Eye className="w-4 h-4 mr-1" /> Detalhes
+                            </Button>
+                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setItemToDelete(venda.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Aguardando novos eventos de venda...</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
 
-          <div className="border border-neutral-800 rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-neutral-800">
-                  <TableHead>Horário</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="text-center">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center h-24"><div className="flex justify-center items-center"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando vendas...</div></TableCell></TableRow>
-                ) : vendas && vendas.length > 0 ? (
-                  vendas.map((venda) => (
-                    <TableRow key={venda.id} className="border-neutral-800">
-                      <TableCell className="text-muted-foreground text-xs">
-                        <TimeAgo date={venda.created_at?.toDate()} />
-                      </TableCell>
-                      <TableCell>{getStatusBadge(venda.status)}</TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex flex-col">
-                          <span className="font-bold">{venda.buyer?.name || 'Desconhecido'}</span>
-                          {venda.buyer?.email && (
-                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                              {venda.buyer.email}
-                              <Button variant="ghost" size="icon" className="w-5 h-5" onClick={() => copyToClipboard(venda.buyer.email, 'Email')}>
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
+          {/* Analytics por Fonte, Campanha e Gateway */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Vendas por Gateway */}
+            <Card className="bg-transparent border-neutral-800">
+              <CardHeader>
+                <CardTitle className="text-base">Vendas por Gateway</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {Object.entries(trackingAnalytics.byGateway)
+                    .sort((a, b) => b[1].count - a[1].count)
+                    .map(([gateway, data]) => (
+                      <div key={gateway} className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{gateway}</p>
+                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
                         </div>
-                      </TableCell>
-                      <TableCell className={cn(
-                        "text-right font-bold text-lg",
-                        (venda.status.toLowerCase().includes('pago') || venda.status.toLowerCase().includes('paid') || venda.status.toLowerCase().includes('approved')) && 'text-green-400'
-                      )}>
-                        {formatCurrencyBRL(venda.total_amount)}
-                      </TableCell>
-                      <TableCell className="text-center flex justify-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDetails(venda)}>
-                          <Eye className="w-4 h-4 mr-1" /> Detalhes
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setItemToDelete(venda.id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Aguardando novos eventos de venda...</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{data.count}</Badge>
+                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary"
+                              style={{
+                                width: `${(data.count / salesMetrics.paidCount) * 100}%`
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  {Object.keys(trackingAnalytics.byGateway).length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de gateway disponível</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Vendas por Fonte */}
+            <Card className="bg-transparent border-neutral-800">
+              <CardHeader>
+                <CardTitle className="text-base">Vendas por Fonte</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {Object.entries(trackingAnalytics.bySource)
+                    .sort((a, b) => b[1].count - a[1].count)
+                    .slice(0, 5)
+                    .map(([source, data]) => (
+                      <div key={source} className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{source}</p>
+                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{data.count}</Badge>
+                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary"
+                              style={{
+                                width: `${(data.count / salesMetrics.paidCount) * 100}%`
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  {Object.keys(trackingAnalytics.bySource).length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de fonte disponível</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Vendas por Campanha */}
+            <Card className="bg-transparent border-neutral-800">
+              <CardHeader>
+                <CardTitle className="text-base">Vendas por Campanha</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {Object.entries(trackingAnalytics.byCampaign)
+                    .sort((a, b) => b[1].count - a[1].count)
+                    .slice(0, 5)
+                    .map(([campaign, data]) => (
+                      <div key={campaign} className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{campaign}</p>
+                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{data.count}</Badge>
+                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary"
+                              style={{
+                                width: `${(data.count / salesMetrics.paidCount) * 100}%`
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  {Object.keys(trackingAnalytics.byCampaign).length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de campanha disponível</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Analytics por Fonte, Campanha e Gateway */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Vendas por Gateway */}
-        <Card className="bg-transparent border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-base">Vendas por Gateway</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(trackingAnalytics.byGateway)
-                .sort((a, b) => b[1].count - a[1].count)
-                .map(([gateway, data]) => (
-                  <div key={gateway} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{gateway}</p>
-                      <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{data.count}</Badge>
-                      <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary"
-                          style={{
-                            width: `${(data.count / salesMetrics.paidCount) * 100}%`
-                          }}
-                        />
+          {/* Analytics por Produto e Horário */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Vendas por Produto */}
+            <Card className="bg-transparent border-neutral-800">
+              <CardHeader>
+                <CardTitle className="text-base">Vendas por Produto</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {Object.entries(trackingAnalytics.byProduct)
+                    .sort((a, b) => b[1].count - a[1].count)
+                    .slice(0, 5)
+                    .map(([product, data]) => (
+                      <div key={product} className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{product}</p>
+                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{data.count}</Badge>
+                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary"
+                              style={{
+                                width: `${(data.count / salesMetrics.paidCount) * 100}%`
+                              }}
+                            />
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              {Object.keys(trackingAnalytics.byGateway).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de gateway disponível</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                    ))}
+                  {Object.keys(trackingAnalytics.byProduct).length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de produto disponível</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Vendas por Fonte */}
-        <Card className="bg-transparent border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-base">Vendas por Fonte</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(trackingAnalytics.bySource)
-                .sort((a, b) => b[1].count - a[1].count)
-                .slice(0, 5)
-                .map(([source, data]) => (
-                  <div key={source} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{source}</p>
-                      <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{data.count}</Badge>
-                      <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary"
-                          style={{
-                            width: `${(data.count / salesMetrics.paidCount) * 100}%`
-                          }}
-                        />
+            {/* Vendas por Horário */}
+            <Card className="bg-transparent border-neutral-800">
+              <CardHeader>
+                <CardTitle className="text-base">Vendas por Horário</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {Object.entries(trackingAnalytics.byHour)
+                    .sort((a, b) => a[0].localeCompare(b[0]))
+                    .map(([hour, data]) => (
+                      <div key={hour} className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{hour}</p>
+                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{data.count}</Badge>
+                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary"
+                              style={{
+                                width: `${(data.count / salesMetrics.paidCount) * 100}%`
+                              }}
+                            />
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              {Object.keys(trackingAnalytics.bySource).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de fonte disponível</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                    ))}
+                  {Object.keys(trackingAnalytics.byHour).length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de horário disponível</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
-        {/* Vendas por Campanha */}
-        <Card className="bg-transparent border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-base">Vendas por Campanha</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(trackingAnalytics.byCampaign)
-                .sort((a, b) => b[1].count - a[1].count)
-                .slice(0, 5)
-                .map(([campaign, data]) => (
-                  <div key={campaign} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{campaign}</p>
-                      <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{data.count}</Badge>
-                      <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary"
-                          style={{
-                            width: `${(data.count / salesMetrics.paidCount) * 100}%`
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              {Object.keys(trackingAnalytics.byCampaign).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de campanha disponível</p>
-              )}
+        <TabsContent value="recovery" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Coluna da Esquerda: Lista de Pendências */}
+            <div className="lg:col-span-2 space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Clock className="w-5 h-5 text-yellow-500" />
+                Vendas Pendentes
+              </h3>
+              <div className="border border-neutral-800 rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-neutral-800">
+                      <TableHead>Data</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-center">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recoveryVendas.length > 0 ? (
+                      recoveryVendas.map((venda) => (
+                        <TableRow key={venda.id} className="border-neutral-800">
+                          <TableCell className="text-muted-foreground text-xs">
+                            <TimeAgo date={venda.created_at?.toDate()} />
+                          </TableCell>
+                          <TableCell className="font-medium">{venda.buyer?.name || 'Desconhecido'}</TableCell>
+                          <TableCell>{venda.buyer?.phone || '-'}</TableCell>
+                          <TableCell className="text-right font-bold">{formatCurrencyBRL(venda.total_amount)}</TableCell>
+                          <TableCell className="text-center flex justify-center gap-2">
+                            <Button variant="outline" size="sm" onClick={() => handleWhatsAppClick(venda)} disabled={!venda.buyer?.phone}>
+                              <MessageCircle className="w-4 h-4 mr-2 text-green-500" /> WhatsApp
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Nenhuma venda pendente para recuperação.</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Analytics por Produto e Horário */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Vendas por Produto */}
-        <Card className="bg-transparent border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-base">Vendas por Produto</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(trackingAnalytics.byProduct)
-                .sort((a, b) => b[1].count - a[1].count)
-                .slice(0, 5)
-                .map(([product, data]) => (
-                  <div key={product} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{product}</p>
-                      <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{data.count}</Badge>
-                      <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary"
-                          style={{
-                            width: `${(data.count / salesMetrics.paidCount) * 100}%`
-                          }}
-                        />
+            {/* Coluna da Direita: Scripts */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-500" />
+                Scripts de Recuperação
+              </h3>
+              <div className="grid gap-4">
+                {RECOVERY_SCRIPTS.map(script => (
+                  <Card key={script.id} className="bg-neutral-900 border-neutral-800">
+                    <CardHeader className="p-4 pb-2">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-sm font-medium">{script.title}</CardTitle>
+                        <Badge variant="outline" className="text-xs">{script.category}</Badge>
                       </div>
-                    </div>
-                  </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-2 space-y-3">
+                      <p className="text-xs text-muted-foreground whitespace-pre-wrap bg-neutral-950 p-2 rounded border border-neutral-800">
+                        {script.text}
+                      </p>
+                      <Button variant="secondary" size="sm" className="w-full h-8" onClick={() => copyToClipboard(script.text, 'Script')}>
+                        <Copy className="w-3 h-3 mr-2" /> Copiar Script
+                      </Button>
+                    </CardContent>
+                  </Card>
                 ))}
-              {Object.keys(trackingAnalytics.byProduct).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de produto disponível</p>
-              )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Vendas por Horário */}
-        <Card className="bg-transparent border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-base">Vendas por Horário</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(trackingAnalytics.byHour)
-                .sort((a, b) => a[0].localeCompare(b[0])) // Sort by hour
-                .map(([hour, data]) => (
-                  <div key={hour} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{hour}</p>
-                      <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{data.count}</Badge>
-                      <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary"
-                          style={{
-                            width: `${(data.count / salesMetrics.paidCount) * 100}%`
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              {Object.keys(trackingAnalytics.byHour).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de horário disponível</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <AlertDialog open={isClearAlertOpen} onOpenChange={setIsClearAlertOpen}>
         <AlertDialogContent>
