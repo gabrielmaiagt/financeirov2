@@ -1,14 +1,14 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, Timestamp, writeBatch, getDocs, doc } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, writeBatch, getDocs, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, PackageCheck, PackagePlus, Server, Copy, Trash2, TrendingUp, Percent, FileText, Eye, Clock, Wallet, MessageCircle } from 'lucide-react';
+import { Loader2, PackageCheck, PackagePlus, Server, Copy, Trash2, TrendingUp, Percent, FileText, Eye, Clock, Wallet, MessageCircle, Pencil, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -36,31 +36,28 @@ import {
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+
+interface RecoveryScript {
+  id: string;
+  title: string;
+  text: string;
+  category: string;
+}
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import DetalhesVendaModal from '@/components/DetalhesVendaModal';
 import { Venda } from '@/types/venda';
 import { formatCurrencyBRL } from '@/lib/formatters';
-
-const RECOVERY_SCRIPTS = [
-  {
-    id: 'script-1',
-    title: 'Cobrança PIX (Amigável)',
-    text: 'Olá {nome}, tudo bem? 🌟\n\nVi aqui que você gerou um PIX para o {produto} mas ainda não compensou.\n\nAconteceu algum erro no pagamento? Posso te ajudar?',
-    category: 'WhatsApp'
-  },
-  {
-    id: 'script-2',
-    title: 'Recuperação de Cartão',
-    text: 'Oi {nome}! Notamos que sua tentativa de compra no cartão não passou. 💳\n\nÀs vezes o banco bloqueia por segurança. Tente novamente ou use outro cartão!\n\nLink: {link}',
-    category: 'WhatsApp'
-  },
-  {
-    id: 'script-3',
-    title: 'Áudio de Conversão',
-    text: 'https://exemplo.com/audio-recuperacao.mp3',
-    category: 'Áudio'
-  }
-];
 
 // Client-side component to render relative time
 const TimeAgo = ({ date }: { date: Date | undefined }) => {
@@ -101,6 +98,11 @@ const VendasBoard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
+  // Script Management State
+  const [isScriptModalOpen, setIsScriptModalOpen] = useState(false);
+  const [editingScript, setEditingScript] = useState<RecoveryScript | null>(null);
+  const [scriptForm, setScriptForm] = useState({ title: '', text: '', category: 'WhatsApp' });
+
   // Query atualizada para ordenar por created_at (novo padrão) ou receivedAt (legado)
   // Como não dá para ordenar por dois campos diferentes facilmente sem índice composto, vamos ordenar no cliente se necessário ou assumir created_at
   const vendasQuery = useMemoFirebase(
@@ -109,6 +111,70 @@ const VendasBoard = () => {
   );
 
   const { data: vendasRaw, isLoading } = useCollection<any>(vendasQuery);
+
+  // Carregar scripts do Firestore
+  const scriptsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'scripts'), orderBy('createdAt', 'desc')) : null),
+    [firestore]
+  );
+  const { data: scriptsRaw } = useCollection<any>(scriptsQuery);
+
+  const scripts: RecoveryScript[] = useMemo(() => {
+    if (!scriptsRaw) return [];
+    return scriptsRaw.map(s => ({
+      id: s.id,
+      title: s.title,
+      text: s.text,
+      category: s.category
+    }));
+  }, [scriptsRaw]);
+
+  const handleSaveScript = async () => {
+    if (!firestore || !scriptForm.title || !scriptForm.text) return;
+
+    try {
+      if (editingScript) {
+        await updateDoc(doc(firestore, 'scripts', editingScript.id), {
+          ...scriptForm,
+          updatedAt: Timestamp.now()
+        });
+        toast({ title: 'Script atualizado!' });
+      } else {
+        await addDoc(collection(firestore, 'scripts'), {
+          ...scriptForm,
+          createdAt: Timestamp.now()
+        });
+        toast({ title: 'Script criado!' });
+      }
+      setIsScriptModalOpen(false);
+      setEditingScript(null);
+      setScriptForm({ title: '', text: '', category: 'WhatsApp' });
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Erro ao salvar script', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteScript = async (id: string) => {
+    if (!firestore) return;
+    try {
+      await deleteDoc(doc(firestore, 'scripts', id));
+      toast({ title: 'Script removido' });
+    } catch (error) {
+      toast({ title: 'Erro ao remover', variant: 'destructive' });
+    }
+  };
+
+  const openScriptModal = (script?: RecoveryScript) => {
+    if (script) {
+      setEditingScript(script);
+      setScriptForm({ title: script.title, text: script.text, category: script.category });
+    } else {
+      setEditingScript(null);
+      setScriptForm({ title: '', text: '', category: 'WhatsApp' });
+    }
+    setIsScriptModalOpen(true);
+  };
 
   // Normalizar dados (suporte a legado e novo)
   const vendas: Venda[] = useMemo(() => {
@@ -803,15 +869,30 @@ const VendasBoard = () => {
 
             {/* Coluna da Direita: Scripts */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-500" />
-                Scripts de Recuperação
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  Scripts de Recuperação
+                </h3>
+                <Button size="sm" onClick={() => openScriptModal()}>
+                  <Plus className="w-4 h-4 mr-1" /> Novo
+                </Button>
+              </div>
+
               <div className="grid gap-4">
-                {RECOVERY_SCRIPTS.map(script => (
-                  <Card key={script.id} className="bg-neutral-900 border-neutral-800">
+                {scripts.map(script => (
+                  <Card key={script.id} className="bg-neutral-900 border-neutral-800 group relative">
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openScriptModal(script)}>
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteScript(script.id)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+
                     <CardHeader className="p-4 pb-2">
-                      <div className="flex justify-between items-start">
+                      <div className="flex justify-between items-start pr-12">
                         <CardTitle className="text-sm font-medium">{script.title}</CardTitle>
                         <Badge variant="outline" className="text-xs">{script.category}</Badge>
                       </div>
@@ -826,11 +907,67 @@ const VendasBoard = () => {
                     </CardContent>
                   </Card>
                 ))}
+                {scripts.length === 0 && (
+                  <div className="text-center p-8 border border-dashed border-neutral-800 rounded-lg text-muted-foreground text-sm">
+                    Nenhum script cadastrado.
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Modal de Script */}
+      <Dialog open={isScriptModalOpen} onOpenChange={setIsScriptModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingScript ? 'Editar Script' : 'Novo Script'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Título</Label>
+              <Input
+                value={scriptForm.title}
+                onChange={e => setScriptForm({ ...scriptForm, title: e.target.value })}
+                placeholder="Ex: Cobrança PIX #1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select
+                value={scriptForm.category}
+                onValueChange={v => setScriptForm({ ...scriptForm, category: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                  <SelectItem value="Email">Email</SelectItem>
+                  <SelectItem value="SMS">SMS</SelectItem>
+                  <SelectItem value="Áudio">Áudio</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Conteúdo do Script</Label>
+              <Textarea
+                value={scriptForm.text}
+                onChange={e => setScriptForm({ ...scriptForm, text: e.target.value })}
+                placeholder="Digite o texto ou link aqui..."
+                className="h-32"
+              />
+              <p className="text-xs text-muted-foreground">Use {'{nome}'}, {'{produto}'} e {'{link}'} como variáveis.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsScriptModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveScript}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={isClearAlertOpen} onOpenChange={setIsClearAlertOpen}>
         <AlertDialogContent>
