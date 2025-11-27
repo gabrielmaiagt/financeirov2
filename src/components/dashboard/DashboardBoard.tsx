@@ -289,20 +289,6 @@ export default function DashboardBoard() {
                 />
             </div>
 
-            {/* DEBUG: Mostrar dados brutos */}
-            {filteredVendas.length > 0 && (
-                <Card className="bg-red-900/20 border-red-500">
-                    <CardHeader>
-                        <CardTitle className="text-red-400">🔍 DEBUG - Dados Brutos da Primeira Venda</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <pre className="text-xs overflow-auto max-h-96">
-                            {JSON.stringify(filteredVendas[0], null, 2)}
-                        </pre>
-                    </CardContent>
-                </Card>
-            )}
-
             <Card className="bg-transparent border-neutral-800">
                 <CardHeader>
                     <CardTitle>Performance por Campanha</CardTitle>
