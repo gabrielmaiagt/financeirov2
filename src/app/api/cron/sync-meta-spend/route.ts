@@ -51,7 +51,14 @@ export async function GET(request: NextRequest) {
         }
 
         const db = getDB();
-        const dateId = getTodayDateId();
+
+        // Get date from query param or default to today
+        const { searchParams } = new URL(request.url);
+        const queryDate = searchParams.get('date');
+        const dateId = queryDate || getTodayDateId();
+
+        console.log(`[META SYNC] Syncing data for date: ${dateId}`);
+
         let totalSpendAllAccounts = 0;
         const results = {
             date: dateId,
@@ -69,7 +76,7 @@ export async function GET(request: NextRequest) {
                 const accountUrl =
                     `https://graph.facebook.com/v19.0/${accountId}/insights` +
                     `?fields=spend,impressions,clicks` +
-                    `&date_preset=today` +
+                    `&time_range={"since":"${dateId}","until":"${dateId}"}` +
                     `&level=account` +
                     `&time_increment=1` +
                     `&access_token=${accessToken}`;
@@ -117,7 +124,7 @@ export async function GET(request: NextRequest) {
                 const campaignUrl =
                     `https://graph.facebook.com/v19.0/${accountId}/insights` +
                     `?fields=campaign_id,campaign_name,spend,impressions,clicks` +
-                    `&date_preset=today` +
+                    `&time_range={"since":"${dateId}","until":"${dateId}"}` +
                     `&level=campaign` +
                     `&time_increment=1` +
                     `&access_token=${accessToken}`;
