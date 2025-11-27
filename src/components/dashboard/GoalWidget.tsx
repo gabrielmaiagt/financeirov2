@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, Timestamp, doc, updateDoc } from 'firebase/firestore';
@@ -40,12 +39,29 @@ const GoalWidget = () => {
     );
     const { data: goals } = useCollection<Meta>(goalsQuery);
 
+    // Find the most relevant goal (e.g., one with 10k target or the first one)
+    const activeGoal = useMemo(() => {
+        if (!goals || goals.length === 0) return null;
+        // Try to find a goal with 10k target first, otherwise take the first one
+        return goals.find(g => g.targetValue === 10000) || goals[0];
+    }, [goals]);
+
     const metrics = useMemo(() => {
         if (!vendas) return { revenue: 0 };
 
         const revenue = vendas.reduce((acc: number, venda: any) => {
             const lowerCaseStatus = venda.status?.toLowerCase() || '';
             const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+
+            // Filter by gateway if goal title specifies one
+            if (activeGoal) {
+                const title = activeGoal.title.toLowerCase();
+                const gateway = venda.gateway?.toLowerCase() || '';
+
+                if (title.includes('paradise') && !gateway.includes('paradise')) return acc;
+                if (title.includes('buck') && !gateway.includes('buck')) return acc;
+                if (title.includes('gg') && !gateway.includes('gg')) return acc;
+            }
 
             if (isPaid) {
                 return acc + (venda.net_amount || venda.netAmount || venda.value || venda.total_amount || 0);
@@ -54,14 +70,7 @@ const GoalWidget = () => {
         }, 0);
 
         return { revenue };
-    }, [vendas]);
-
-    // Find the most relevant goal (e.g., one with 10k target or the first one)
-    const activeGoal = useMemo(() => {
-        if (!goals || goals.length === 0) return null;
-        // Try to find a goal with 10k target first, otherwise take the first one
-        return goals.find(g => g.targetValue === 10000) || goals[0];
-    }, [goals]);
+    }, [vendas, activeGoal]);
 
     // Sync Goal with Revenue
     useEffect(() => {
