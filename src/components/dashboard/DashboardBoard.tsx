@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { startOfDay, endOfDay, isWithinInterval, eachDayOfInterval, format } from 'date-fns';
-import { toast } from 'sonner';
 
 interface MetaSpendDaily {
     date: string;
@@ -107,7 +106,7 @@ export default function DashboardBoard() {
         };
 
         fetchCampaigns();
-    }, [firestore, dateRange, metaSpendDocs]); // Re-fetch when date changes or meta data updates
+    }, [firestore, dateRange, metaSpendDocs]);
 
     // Filtrar vendas por data
     const filteredVendas = useMemo(() => {
@@ -156,14 +155,11 @@ export default function DashboardBoard() {
 
         let totalSpend = 0;
 
-        // Se tiver filtro de conta, precisamos somar das campanhas filtradas
         if (selectedAccount !== 'all') {
             totalSpend = metaCampaigns
                 .filter(c => c.accountId === selectedAccount)
                 .reduce((acc, curr) => acc + curr.spend, 0);
         } else {
-            // Se for todas as contas, podemos usar o total diário (mais rápido) ou somar campanhas
-            // Vamos somar dos documentos diários para garantir consistência
             metaSpendDocs.forEach((doc: any) => {
                 if (days.includes(doc.date)) {
                     totalSpend += doc.total_spend || 0;
@@ -174,18 +170,15 @@ export default function DashboardBoard() {
         return { totalSpend };
     }, [metaSpendDocs, dateRange, selectedAccount, metaCampaigns]);
 
-    // Calcular Lucro e ROI
     const profit = salesMetrics.totalRevenue - metaMetrics.totalSpend;
     const roi = metaMetrics.totalSpend > 0 ? ((profit / metaMetrics.totalSpend) * 100) : 0;
 
-    // Filtrar campanhas para a tabela
     const filteredCampaigns = useMemo(() => {
         let campaigns = metaCampaigns;
         if (selectedAccount !== 'all') {
             campaigns = campaigns.filter(c => c.accountId === selectedAccount);
         }
 
-        // Agrupar campanhas por ID (somar dias diferentes)
         const grouped = new Map<string, MetaCampaign>();
 
         campaigns.forEach(c => {
@@ -202,14 +195,12 @@ export default function DashboardBoard() {
         return Array.from(grouped.values()).sort((a, b) => b.spend - a.spend);
     }, [metaCampaigns, selectedAccount]);
 
-    // Lista de contas únicas para o filtro
     const uniqueAccounts = useMemo(() => {
         const accounts = new Set<string>();
         metaCampaigns.forEach(c => accounts.add(c.accountId));
         return Array.from(accounts);
     }, [metaCampaigns]);
 
-    // Função de Sincronização Manual
     const handleSync = async () => {
         if (!dateRange?.from) return;
         setIsSyncing(true);
@@ -219,45 +210,24 @@ export default function DashboardBoard() {
             const end = dateRange.to || dateRange.from!;
             const days = eachDayOfInterval({ start, end });
 
-            toast.info(`Iniciando sincronização de ${days.length} dias...`);
+            console.log(`Iniciando sincronização de ${days.length} dias...`);
 
             for (const day of days) {
                 const dateStr = format(day, 'yyyy-MM-dd');
-                // Usar fetch para chamar a API Route
-                // Precisamos passar o header de autorização. Como estamos no client, isso é um risco de segurança se expormos a chave.
-                // O ideal seria ter uma rota intermediária ou usar server action.
-                // Para este MVP, vamos assumir que o usuário é admin e tem acesso.
-                // Mas como não temos a chave aqui, vamos chamar uma rota pública de teste ou pedir para o usuário configurar o cron.
-
-                // CORREÇÃO: Vamos chamar a rota sem chave (se tivermos removido a proteção para teste) ou 
-                // melhor: criar uma Server Action ou rota protegida por sessão do usuário.
-                // Como não temos auth complexa aqui, vou usar a rota que criamos, mas ela precisa do segredo.
-                // Vou assumir que você vai rodar isso localmente ou que vamos relaxar a segurança da rota para chamadas do mesmo domínio.
-
-                // Para resolver agora: Vou chamar a rota passando a data.
-                // A rota exige Authorization. Vamos tentar chamar sem, e se falhar, avisamos.
-                // Mas espere! O cron job externo tem a chave. O front-end não tem.
-                // Solução rápida: Criar uma rota `/api/admin/sync-meta` que verifica se o usuário está logado no Firebase Auth e então chama a lógica de sync.
-                // Por enquanto, vou deixar o botão apenas recarregar a página, pois a sincronização deve ser feita pelo Cron ou manualmente via URL com chave.
-
-                // ALTERNATIVA: Chamar a rota assumindo que o browser vai enviar cookies de sessão (se implementado)
-                // ou simplesmente avisar que a sincronização é automática.
-
-                // Vou simular a chamada para fins de demonstração, mas sabendo que vai dar 401 se não tiver o header.
-                // O jeito certo: O usuário clica, e o backend (que tem a chave) faz o trabalho.
 
                 await fetch(`/api/cron/sync-meta-spend?date=${dateStr}`, {
                     headers: {
-                        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET_FOR_CLIENT || 'sua_chave_secreta_aqui_mude_isso'}` // Isso é inseguro, mas resolve pro seu teste agora.
+                        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET_FOR_CLIENT || 'sua_chave_secreta_aqui_mude_isso'}`
                     }
                 });
             }
 
-            toast.success('Sincronização concluída!');
-            window.location.reload(); // Recarregar para pegar dados novos
+            console.log('Sincronização concluída!');
+            alert('Sincronização concluída! A página será recarregada.');
+            window.location.reload();
         } catch (error) {
             console.error(error);
-            toast.error('Erro ao sincronizar.');
+            alert('Erro ao sincronizar. Verifique o console.');
         } finally {
             setIsSyncing(false);
         }
@@ -273,7 +243,6 @@ export default function DashboardBoard() {
 
     return (
         <div className="space-y-6">
-            {/* Header com filtro de data e controles */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h1 className="text-2xl font-bold">Dashboard de Performance</h1>
                 <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
@@ -295,7 +264,6 @@ export default function DashboardBoard() {
                 </div>
             </div>
 
-            {/* Cards de métricas principais */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                     title="Faturamento"
@@ -323,7 +291,6 @@ export default function DashboardBoard() {
                 />
             </div>
 
-            {/* Tabela de campanhas */}
             <Card className="bg-transparent border-neutral-800">
                 <CardHeader>
                     <CardTitle>Performance por Campanha</CardTitle>
@@ -359,7 +326,7 @@ export default function DashboardBoard() {
                                             <TableRow key={campaign.campaignId} className="border-neutral-800">
                                                 <TableCell className="font-medium">{campaign.campaignName}</TableCell>
                                                 <TableCell className="text-right">{formatCurrencyBRL(campaign.spend)}</TableCell>
-                                                <TableCell className="text-center">-</TableCell> {/* Placeholder para vendas atribuídas */}
+                                                <TableCell className="text-center">-</TableCell>
                                                 <TableCell className="text-center">{formatCurrencyBRL(cpm)}</TableCell>
                                                 <TableCell className="text-center">{formatCurrencyBRL(cpc)}</TableCell>
                                                 <TableCell className="text-center">{ctr.toFixed(2)}%</TableCell>
