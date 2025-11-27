@@ -136,7 +136,7 @@ export default function DashboardBoard() {
 
             if (isPaid) {
                 paidCount++;
-                totalRevenue += venda.total_amount || 0;
+                totalRevenue += venda.value || 0;
             }
         });
 
