@@ -132,6 +132,8 @@ export default function DashboardBoard() {
         let totalRevenue = 0;
         let paidCount = 0;
 
+        console.log('[DEBUG] Filtered Vendas:', filteredVendas.slice(0, 3)); // Mostrar apenas 3 primeiras
+
         filteredVendas.forEach((venda: any) => {
             const lowerCaseStatus = venda.status.toLowerCase();
             const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
@@ -141,6 +143,8 @@ export default function DashboardBoard() {
                 totalRevenue += venda.total_amount;
             }
         });
+
+        console.log('[DEBUG] Sales Metrics:', { totalRevenue, paidCount });
 
         return { totalRevenue, paidCount };
     }, [filteredVendas]);
