@@ -1359,39 +1359,57 @@ const VendasBoard = () => {
                           );
                           break;
                         case 'campaign_conversion_table':
-                          className = "md:col-span-2 xl:col-span-3 h-full";
+                          className = "md:col-span-2 xl:col-span-2 h-full";
                           content = (
-                            <Card className="bg-transparent border-neutral-800 h-full">
+                            <Card className="bg-transparent border-neutral-800 h-full flex flex-col">
                               <CardHeader>
                                 <CardTitle className="text-base">Conversão por Campanha/Criativo</CardTitle>
                               </CardHeader>
-                              <CardContent>
-                                <div className="border border-neutral-800 rounded-md overflow-hidden">
+                              <CardContent className="flex-1 overflow-hidden">
+                                <div className="border border-neutral-800 rounded-md overflow-hidden max-h-[400px] overflow-y-auto">
                                   <Table>
-                                    <TableHeader>
-                                      <TableRow className="border-neutral-800 bg-neutral-900">
-                                        <TableHead>Campanha/Criativo</TableHead>
+                                    <TableHeader className="sticky top-0 bg-neutral-900 z-10">
+                                      <TableRow className="border-neutral-800">
+                                        <TableHead>Campanha</TableHead>
                                         <TableHead className="text-center">Gerados</TableHead>
                                         <TableHead className="text-center">Pagos</TableHead>
                                         <TableHead className="text-right">Receita</TableHead>
-                                        <TableHead className="text-center">Conversão</TableHead>
+                                        <TableHead className="text-center">Conv.</TableHead>
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                       {Object.entries(trackingAnalytics.byCampaign).length > 0 ? (
                                         Object.entries(trackingAnalytics.byCampaign)
                                           .sort(([, a], [, b]) => b.revenue - a.revenue)
-                                          .map(([campaign, data]) => (
-                                            <TableRow key={campaign} className="border-neutral-800">
-                                              <TableCell>{cleanCampaignName(campaign)}</TableCell>
-                                              <TableCell className="text-center">{data.generated}</TableCell>
-                                              <TableCell className="text-center">{data.count}</TableCell>
-                                              <TableCell className="text-right">{formatCurrencyBRL(data.revenue)}</TableCell>
-                                              <TableCell className="text-center">
-                                                {data.generated > 0 ? ((data.count / data.generated) * 100).toFixed(1) : 0}%
-                                              </TableCell>
-                                            </TableRow>
-                                          ))
+                                          .map(([campaign, data]) => {
+                                            const convRate = data.generated > 0 ? ((data.count / data.generated) * 100) : 0;
+                                            return (
+                                              <TableRow key={campaign} className="border-neutral-800">
+                                                <TableCell className="font-medium max-w-[200px] truncate" title={cleanCampaignName(campaign)}>
+                                                  {cleanCampaignName(campaign)}
+                                                </TableCell>
+                                                <TableCell className="text-center">{data.generated}</TableCell>
+                                                <TableCell className="text-center">
+                                                  <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                                                    {data.count}
+                                                  </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">{formatCurrencyBRL(data.revenue)}</TableCell>
+                                                <TableCell className="text-center">
+                                                  <Badge
+                                                    variant="outline"
+                                                    className={cn(
+                                                      convRate >= 50 ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                                                        convRate >= 25 ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
+                                                          "bg-red-500/10 text-red-500 border-red-500/20"
+                                                    )}
+                                                  >
+                                                    {convRate.toFixed(1)}%
+                                                  </Badge>
+                                                </TableCell>
+                                              </TableRow>
+                                            );
+                                          })
                                       ) : (
                                         <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Sem dados de campanha.</TableCell></TableRow>
                                       )}
