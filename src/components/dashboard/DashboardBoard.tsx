@@ -120,31 +120,25 @@ export default function DashboardBoard() {
             const end = endOfDay(dateRange.to || dateRange.from!);
 
             return isWithinInterval(date, { start, end });
-        }).map((v: any) => ({
-            ...v,
-            total_amount: typeof v.total_amount === 'string' ? parseFloat(v.total_amount) : (v.total_amount ?? 0),
-            status: v.status ?? 'unknown',
-        }));
+        });
     }, [vendasRaw, dateRange]);
 
-    // Calcular métricas de vendas
+    // Calcular métricas de vendas (mesma lógica do VendasBoard)
     const salesMetrics = useMemo(() => {
+        if (!filteredVendas) return { totalRevenue: 0, paidCount: 0 };
+
         let totalRevenue = 0;
         let paidCount = 0;
 
-        console.log('[DEBUG] Filtered Vendas:', filteredVendas.slice(0, 3)); // Mostrar apenas 3 primeiras
-
         filteredVendas.forEach((venda: any) => {
-            const lowerCaseStatus = venda.status.toLowerCase();
+            const lowerCaseStatus = venda.status?.toLowerCase() || '';
             const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
 
             if (isPaid) {
                 paidCount++;
-                totalRevenue += venda.total_amount;
+                totalRevenue += venda.total_amount || 0;
             }
         });
-
-        console.log('[DEBUG] Sales Metrics:', { totalRevenue, paidCount });
 
         return { totalRevenue, paidCount };
     }, [filteredVendas]);
