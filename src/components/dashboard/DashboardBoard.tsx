@@ -170,7 +170,9 @@ export default function DashboardBoard() {
     }, [metaSpendDocs, dateRange, selectedAccount, metaCampaigns]);
 
     const profit = salesMetrics.totalRevenue - metaMetrics.totalSpend;
-    const roi = metaMetrics.totalSpend > 0 ? ((profit / metaMetrics.totalSpend) * 100) : 0;
+    const roi = metaMetrics.totalSpend > 0 ? (salesMetrics.totalRevenue / metaMetrics.totalSpend) : 0;
+    const cpa = salesMetrics.paidCount > 0 ? (metaMetrics.totalSpend / salesMetrics.paidCount) : 0;
+    const margin = salesMetrics.totalRevenue > 0 ? ((profit / salesMetrics.totalRevenue) * 100) : 0;
 
     const filteredCampaigns = useMemo(() => {
         let campaigns = metaCampaigns;
@@ -320,7 +322,7 @@ export default function DashboardBoard() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 <StatCard
                     title="Faturamento"
                     value={formatCurrencyBRL(salesMetrics.totalRevenue)}
@@ -341,9 +343,21 @@ export default function DashboardBoard() {
                 />
                 <StatCard
                     title="ROI"
-                    value={`${roi.toFixed(1)}%`}
+                    value={`${roi.toFixed(2)}x`}
                     icon={Target}
                     subtitle="Retorno sobre investimento"
+                />
+                <StatCard
+                    title="CPA"
+                    value={formatCurrencyBRL(cpa)}
+                    icon={DollarSign}
+                    subtitle="Custo por aquisição"
+                />
+                <StatCard
+                    title="Margem"
+                    value={`${margin.toFixed(1)}%`}
+                    icon={TrendingUp}
+                    subtitle="Margem de lucro"
                 />
             </div>
 
