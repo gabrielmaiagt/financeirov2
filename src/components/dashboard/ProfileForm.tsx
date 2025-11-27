@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -47,7 +47,13 @@ const ProfileForm = ({ onSave, onClose, existingProfile }: ProfileFormProps) => 
       photoUrl: ''
     }
   });
-  
+
+  useEffect(() => {
+    if (existingProfile) {
+      reset(existingProfile);
+    }
+  }, [existingProfile, reset]);
+
   const photoUrl = watch('photoUrl');
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,22 +80,22 @@ const ProfileForm = ({ onSave, onClose, existingProfile }: ProfileFormProps) => 
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-4">
-          
+
           <div className="space-y-2">
             <Label>Foto do Perfil</Label>
             {photoUrl && !isUploading && (
-                <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-primary">
-                    <Image src={photoUrl} alt="Preview do Perfil" layout="fill" objectFit="cover" />
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute bottom-1 right-1 w-6 h-6 rounded-full"
-                        onClick={() => setValue('photoUrl', '', { shouldValidate: true })}
-                    >
-                        <X className="w-4 h-4" />
-                    </Button>
-                </div>
+              <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-primary">
+                <Image src={photoUrl} alt="Preview do Perfil" layout="fill" objectFit="cover" />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute bottom-1 right-1 w-6 h-6 rounded-full"
+                  onClick={() => setValue('photoUrl', '', { shouldValidate: true })}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             )}
             {isUploading && <div className="w-32 h-32 mx-auto flex items-center justify-center text-sm text-muted-foreground bg-neutral-900 rounded-full"><Loader2 className="w-8 h-8 animate-spin" /></div>}
 
@@ -97,13 +103,13 @@ const ProfileForm = ({ onSave, onClose, existingProfile }: ProfileFormProps) => 
             <Controller name="photoUrl" control={control} render={({ field }) => <Input id="photoUrl" type="hidden" {...field} value={field.value ?? ''} />} />
 
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="name">Nome</Label>
             <Controller name="name" control={control} render={({ field }) => <Input id="name" {...field} />} />
             {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="role">Cargo</Label>
             <Controller name="role" control={control} render={({ field }) => <Input id="role" {...field} />} />

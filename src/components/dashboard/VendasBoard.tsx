@@ -391,7 +391,10 @@ const VendasBoard = () => {
 
     // Filtro de Produto
     if (filterProduct !== 'all') {
-      processed = processed.filter((v: Venda) => v.offer?.name === filterProduct);
+      processed = processed.filter((v: Venda) => {
+        const productName = v.offer?.name || (v as any).offerName;
+        return productName === filterProduct;
+      });
     }
 
     // Filtro de Gateway
@@ -405,7 +408,7 @@ const VendasBoard = () => {
   // Extrair listas únicas para os selects de filtro
   const uniqueProducts = useMemo(() => {
     if (!vendasRaw) return [];
-    const products = new Set(vendasRaw.map((v: any) => v.offer?.name).filter(Boolean));
+    const products = new Set(vendasRaw.map((v: any) => v.offer?.name || v.offerName).filter(Boolean));
     return Array.from(products);
   }, [vendasRaw]);
 
