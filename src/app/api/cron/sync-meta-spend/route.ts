@@ -2,18 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 
-// Initialize Firebase Admin (if not already initialized)
-if (!getApps().length) {
-    initializeApp({
-        credential: cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        }),
-    });
-}
+// Initialize Firebase Admin (lazy initialization)
+function getDB() {
+    if (!getApps().length) {
+        if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
+            throw new Error('Missing Firebase Admin credentials');
+        }
 
-const db = getFirestore();
+        initializeApp({
+            credential: cert({
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            }),
+        });
+    }
+    return getFirestore();
+}
 
 // Helper: Get today's date in Brazil timezone (YYYY-MM-DD)
 function getTodayDateId(): string {
@@ -45,6 +50,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'No ad accounts configured' }, { status: 500 });
         }
 
+        const db = getDB();
         const dateId = getTodayDateId();
         let totalSpendAllAccounts = 0;
         const results = {
