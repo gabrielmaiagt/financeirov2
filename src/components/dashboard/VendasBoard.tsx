@@ -416,12 +416,13 @@ const VendasBoard = () => {
   }, [vendasRaw]);
 
   const salesMetrics = useMemo(() => {
-    if (!vendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0, totalFees: 0, netRevenue: 0, arpu: 0 };
+    if (!vendas) return { paidCount: 0, generatedCount: 0, conversionRate: 0, totalRevenue: 0, pendingRevenue: 0, totalFees: 0, netRevenue: 0, arpu: 0, pendingNetRevenue: 0 };
 
     let paidCount = 0;
     let generatedCount = 0;
     let totalRevenue = 0;
     let pendingRevenue = 0;
+    let pendingNetRevenue = 0;
     let totalFees = 0;
 
     vendas.forEach(venda => {
@@ -429,29 +430,25 @@ const VendasBoard = () => {
       const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
       const isGenerated = lowerCaseStatus.includes('gerado') || lowerCaseStatus.includes('created') || lowerCaseStatus.includes('pending');
 
+      // Calculate gateway fees
+      const gateway = venda.gateway?.toLowerCase() || '';
+      let fee = 0;
+      if (gateway.includes('buckpay')) {
+        fee = (venda.total_amount * 0.0449) + 1.49;
+      } else if (gateway.includes('paradise')) {
+        fee = (venda.total_amount * 0.015) + 1.49;
+      } else if (gateway.includes('ggcheckout')) {
+        fee = 0; // TODO: Add GGCheckout fee structure
+      }
+
       if (isPaid) {
         paidCount++;
         totalRevenue += venda.total_amount;
-
-        // Calculate gateway fees
-        const gateway = venda.gateway?.toLowerCase() || '';
-        let fee = 0;
-
-        if (gateway.includes('buckpay')) {
-          // Buckpay: 4.49% + R$ 1.49
-          fee = (venda.total_amount * 0.0449) + 1.49;
-        } else if (gateway.includes('paradise')) {
-          // Paradise: 1.50% + R$ 1.49
-          fee = (venda.total_amount * 0.015) + 1.49;
-        } else if (gateway.includes('ggcheckout')) {
-          // GGCheckout: Add fee structure when known
-          fee = 0; // TODO: Add GGCheckout fee structure
-        }
-
         totalFees += fee;
       } else if (isGenerated) {
         generatedCount++;
         pendingRevenue += venda.total_amount;
+        pendingNetRevenue += (venda.total_amount - fee); // Faturamento pendente líquido
       }
     });
 
@@ -466,6 +463,7 @@ const VendasBoard = () => {
       conversionRate,
       totalRevenue,
       pendingRevenue,
+      pendingNetRevenue,
       totalFees,
       netRevenue,
       arpu
@@ -477,52 +475,63 @@ const VendasBoard = () => {
   const trackingAnalytics = useMemo(() => {
     if (!vendas) return { bySource: {}, byCampaign: {}, byGateway: {}, byProduct: {}, byHour: {} };
 
-    const initMetric = () => ({ count: 0, generated: 0, revenue: 0 });
+    const initMetric = () => ({ count: 0, generated: 0, revenue: 0, netRevenue: 0 });
 
-    const bySource: Record<string, { count: number; generated: number; revenue: number }> = {};
-    const byCampaign: Record<string, { count: number; generated: number; revenue: number }> = {};
-    const byGateway: Record<string, { count: number; generated: number; revenue: number }> = {};
-    const byProduct: Record<string, { count: number; generated: number; revenue: number }> = {};
-    const byHour: Record<string, { count: number; generated: number; revenue: number }> = {};
+    const bySource: Record<string, { count: number; generated: number; revenue: number; netRevenue: number }> = {};
+    const byCampaign: Record<string, { count: number; generated: number; revenue: number; netRevenue: number }> = {};
+    const byGateway: Record<string, { count: number; generated: number; revenue: number; netRevenue: number }> = {};
+    const byProduct: Record<string, { count: number; generated: number; revenue: number; netRevenue: number }> = {};
+    const byHour: Record<string, { count: number; generated: number; revenue: number; netRevenue: number }> = {};
 
     vendas.forEach(venda => {
       const lowerCaseStatus = venda.status.toLowerCase();
       const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
       const isGenerated = true; // Consideramos toda venda como "gerada" inicialmente para fins de funil
 
+      // Calculate net amount (with fee deduction)
+      const gateway = venda.gateway?.toLowerCase() || '';
+      let fee = 0;
+      if (gateway.includes('buckpay')) {
+        fee = (venda.total_amount * 0.0449) + 1.49;
+      } else if (gateway.includes('paradise')) {
+        fee = (venda.total_amount * 0.015) + 1.49;
+      }
+      const netAmount = venda.total_amount - fee;
+
       // Helper
-      const processMetric = (dict: any, key: string, amount: number) => {
+      const processMetric = (dict: any, key: string, amount: number, net: number) => {
         if (!dict[key]) dict[key] = initMetric();
         dict[key].generated++;
         if (isPaid) {
           dict[key].count++;
           dict[key].revenue += amount;
+          dict[key].netRevenue += net;
         }
       };
 
       // Gateway
-      const gateway = venda.gateway || 'N/A';
-      processMetric(byGateway, gateway, venda.total_amount);
+      const gw = venda.gateway || 'N/A';
+      processMetric(byGateway, gw, venda.total_amount, netAmount);
 
       // Produto
       const product = venda.offer?.name || 'N/A';
-      processMetric(byProduct, product, venda.total_amount);
+      processMetric(byProduct, product, venda.total_amount, netAmount);
 
       // Horário
       const date = venda.created_at?.toDate();
       if (date) {
         const hour = date.getHours().toString().padStart(2, '0') + 'h';
-        processMetric(byHour, hour, venda.total_amount);
+        processMetric(byHour, hour, venda.total_amount, netAmount);
       }
 
       if (venda.tracking) {
         // Source
         const source = venda.tracking.utm_source || venda.tracking.src || 'N/A';
-        processMetric(bySource, source, venda.total_amount);
+        processMetric(bySource, source, venda.total_amount, netAmount);
 
         // Campaign
         const campaign = venda.tracking.utm_campaign || 'N/A';
-        processMetric(byCampaign, campaign, venda.total_amount);
+        processMetric(byCampaign, campaign, venda.total_amount, netAmount);
       }
     });
 
@@ -564,7 +573,7 @@ const VendasBoard = () => {
     }));
   }, [vendas]);
 
-  // Dados para gráfico de vendas por horário
+  // Dados para gráfico de vendas por horário (APENAS PIX PAGOS)
   const hourlyChartData = useMemo(() => {
     if (!vendas) return [];
 
@@ -577,14 +586,14 @@ const VendasBoard = () => {
     }
 
     vendas.forEach(venda => {
-      const date = venda.created_at?.toDate();
-      if (date) {
-        const hour = date.getHours().toString().padStart(2, '0') + 'h';
-        hourlyData[hour].sales++;
+      const lowerCaseStatus = venda.status.toLowerCase();
+      const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
 
-        const lowerCaseStatus = venda.status.toLowerCase();
-        const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
-        if (isPaid) {
+      if (isPaid) {
+        const date = venda.created_at?.toDate();
+        if (date) {
+          const hour = date.getHours().toString().padStart(2, '0') + 'h';
+          hourlyData[hour].sales++;
           hourlyData[hour].revenue += venda.total_amount;
         }
       }
@@ -625,7 +634,7 @@ const VendasBoard = () => {
     })).sort((a, b) => a.hour.localeCompare(b.hour));
   }, [vendas]);
 
-  // Dados para gráfico de vendas por dia da semana
+  // Dados para gráfico de vendas por dia da semana (APENAS PIX PAGOS)
   const weekdayChartData = useMemo(() => {
     if (!vendas) return [];
 
@@ -638,13 +647,13 @@ const VendasBoard = () => {
     }));
 
     vendas.forEach(venda => {
-      const dayIndex = venda.created_at?.toDate().getDay();
-      if (dayIndex !== undefined) {
-        weekdayData[dayIndex].sales++;
+      const lowerCaseStatus = venda.status.toLowerCase();
+      const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
 
-        const lowerCaseStatus = venda.status.toLowerCase();
-        const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
-        if (isPaid) {
+      if (isPaid) {
+        const dayIndex = venda.created_at?.toDate().getDay();
+        if (dayIndex !== undefined) {
+          weekdayData[dayIndex].sales++;
           weekdayData[dayIndex].revenue += venda.total_amount;
         }
       }
@@ -667,6 +676,61 @@ const VendasBoard = () => {
       product: maxProduct
     };
   }, [trackingAnalytics]);
+
+  // Lógica de leads duplicados: detectar quando um lead gera PIX do mesmo produto várias vezes
+  const uniqueLeadsAnalytics = useMemo(() => {
+    if (!vendas) return { uniqueLeadsGenerated: 0, uniqueLeadsPaid: 0, realConversion: 0, duplicates: [] };
+
+    // Map: email+produto => array de vendas
+    const leadProductMap: Record<string, Venda[]> = {};
+
+    vendas.forEach(venda => {
+      const email = venda.buyer?.email?.toLowerCase() || 'sem-email';
+      const product = venda.offer?.name || 'N/A';
+      const key = `${email}|${product}`;
+
+      if (!leadProductMap[key]) {
+        leadProductMap[key] = [];
+      }
+      leadProductMap[key].push(venda);
+    });
+
+    let uniqueLeadsGenerated = 0;
+    let uniqueLeadsPaid = 0;
+    const duplicates: { email: string; product: string; count: number; paid: number }[] = [];
+
+    Object.entries(leadProductMap).forEach(([key, sales]) => {
+      uniqueLeadsGenerated++; // Conta como 1 lead único, independente de quantas vezes gerou
+
+      const paidSales = sales.filter(v => {
+        const status = v.status.toLowerCase();
+        return status.includes('pago') || status.includes('paid') || status.includes('approved');
+      });
+
+      if (paidSales.length > 0) {
+        uniqueLeadsPaid++; // Conta como 1 conversão, mesmo que tenha pago várias vezes
+      }
+
+      if (sales.length > 1) {
+        const [email, product] = key.split('|');
+        duplicates.push({
+          email,
+          product,
+          count: sales.length,
+          paid: paidSales.length
+        });
+      }
+    });
+
+    const realConversion = uniqueLeadsGenerated > 0 ? (uniqueLeadsPaid / uniqueLeadsGenerated) * 100 : 0;
+
+    return {
+      uniqueLeadsGenerated,
+      uniqueLeadsPaid,
+      realConversion,
+      duplicates: duplicates.sort((a, b) => b.count - a.count) // Ordenar por quantidade de duplicatas
+    };
+  }, [vendas]);
 
   // Vendas para recuperação (não pagas)
   const recoveryVendas = useMemo(() => {
@@ -886,14 +950,9 @@ const VendasBoard = () => {
                   icon={TrendingUp}
                 />
                 <StatCard
-                  title="Fat. Pendente"
-                  value={formatCurrencyBRL(salesMetrics.pendingRevenue)}
+                  title="Fat. Pend. Líquido"
+                  value={formatCurrencyBRL(salesMetrics.pendingNetRevenue)}
                   icon={Clock}
-                />
-                <StatCard
-                  title="Ticket Médio"
-                  value={formatCurrencyBRL(salesMetrics.arpu)}
-                  icon={Wallet}
                 />
                 <StatCard
                   title="PIX Gerado"
@@ -909,6 +968,12 @@ const VendasBoard = () => {
                   title="Conversão"
                   value={`${salesMetrics.conversionRate.toFixed(1)}%`}
                   icon={Percent}
+                />
+                <StatCard
+                  title="Conversão Real"
+                  value={`${uniqueLeadsAnalytics.realConversion.toFixed(1)}%`}
+                  icon={Percent}
+                  subtitle={`${uniqueLeadsAnalytics.uniqueLeadsPaid}/${uniqueLeadsAnalytics.uniqueLeadsGenerated} leads únicos`}
                 />
                 <StatCard
                   title="Ticket Médio Líquido"
@@ -1006,13 +1071,13 @@ const VendasBoard = () => {
                                       <div key={gateway} className="flex items-center justify-between">
                                         <div className="flex-1">
                                           <p className="text-sm font-medium">{gateway}</p>
-                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.netRevenue)}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
                                           <Badge variant="secondary">{data.count}</Badge>
                                           <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
                                             <div
-                                              className="h-full bg-primary"
+                                              className="h-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"
                                               style={{
                                                 width: `${(data.count / maxValues.gateway) * 100}%`
                                               }}
@@ -1044,13 +1109,13 @@ const VendasBoard = () => {
                                       <div key={source} className="flex items-center justify-between">
                                         <div className="flex-1">
                                           <p className="text-sm font-medium">{cleanCampaignName(source)}</p>
-                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.netRevenue)}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
                                           <Badge variant="secondary">{data.count}</Badge>
                                           <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
                                             <div
-                                              className="h-full bg-primary"
+                                              className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-300"
                                               style={{
                                                 width: `${(data.count / maxValues.source) * 100}%`
                                               }}
@@ -1082,13 +1147,13 @@ const VendasBoard = () => {
                                       <div key={campaign} className="flex items-center justify-between">
                                         <div className="flex-1">
                                           <p className="text-sm font-medium">{cleanCampaignName(campaign)}</p>
-                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.netRevenue)}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
                                           <Badge variant="secondary">{data.count}</Badge>
                                           <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
                                             <div
-                                              className="h-full bg-primary"
+                                              className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-300"
                                               style={{
                                                 width: `${(data.count / maxValues.campaign) * 100}%`
                                               }}
@@ -1120,13 +1185,13 @@ const VendasBoard = () => {
                                       <div key={product} className="flex items-center justify-between">
                                         <div className="flex-1">
                                           <p className="text-sm font-medium">{product}</p>
-                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.netRevenue)}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
                                           <Badge variant="secondary">{data.count}</Badge>
                                           <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
                                             <div
-                                              className="h-full bg-primary"
+                                              className="h-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-300"
                                               style={{
                                                 width: `${(data.count / maxValues.product) * 100}%`
                                               }}
