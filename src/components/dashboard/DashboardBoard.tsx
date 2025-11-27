@@ -137,7 +137,7 @@ export default function DashboardBoard() {
 
             if (isPaid) {
                 paidCount++;
-                totalRevenue += venda.value || 0;
+                totalRevenue += venda.net_amount || 0;
             }
         });
 
@@ -224,7 +224,7 @@ export default function DashboardBoard() {
             const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
 
             if (isPaid) {
-                hours[hour].revenue += venda.value || 0;
+                hours[hour].revenue += venda.net_amount || 0;
                 hours[hour].salesCount++;
             }
         });

@@ -11,6 +11,7 @@ import NotificationBell from './NotificationBell';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
+import GoalWidget from './GoalWidget';
 
 const getInitials = (name?: string) => {
   if (!name) return '';
@@ -64,7 +65,9 @@ const Header = () => {
           Divisão de lucro entre Cabral, Biel e Soares
         </p>
       </div>
-      <div className="flex gap-2 w-full md:w-[196px] justify-center md:justify-end items-center order-3">
+      <div className="flex gap-4 w-full md:w-auto justify-center md:justify-end items-center order-3">
+        <GoalWidget />
+        <div className="h-8 w-px bg-neutral-800 mx-2 hidden md:block" />
         <QuoteOfTheDay />
         <NotificationBell />
         <Link href="/admin">
