@@ -1,9 +1,13 @@
 'use client';
 
 import { Dialog, Transition } from '@headlessui/react';
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { formatCurrencyBRL } from '@/lib/formatters';
 import { Venda } from '@/types/venda';
+import { Switch } from '@/components/ui/switch';
+import { useFirestore } from '@/firebase/provider';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 interface Props {
     venda?: Venda | null;
@@ -12,7 +16,35 @@ interface Props {
 }
 
 export default function DetalhesVendaModal({ venda, open, onClose }: Props) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isUpdating, setIsUpdating] = useState(false);
+
     if (!venda) return null;
+
+    const handleRecoveryToggle = async (checked: boolean) => {
+        if (!firestore || !venda) return;
+
+        setIsUpdating(true);
+        try {
+            await updateDoc(doc(firestore, 'vendas', venda.id), {
+                isRecovery: checked
+            });
+            toast({
+                title: "Sucesso",
+                description: `Venda marcada como ${checked ? 'recuperação' : 'normal'}.`,
+            });
+        } catch (error) {
+            console.error("Erro ao atualizar venda:", error);
+            toast({
+                title: "Erro",
+                description: "Falha ao atualizar status da venda.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     return (
         <Transition appear show={open} as={Fragment}>
@@ -40,9 +72,19 @@ export default function DetalhesVendaModal({ venda, open, onClose }: Props) {
                         leaveTo="scale-95 opacity-0"
                     >
                         <Dialog.Panel className="max-w-xl w-full bg-neutral-900 text-foreground rounded-xl shadow-xl p-6 overflow-y-auto border border-neutral-800">
-                            <Dialog.Title className="text-xl font-semibold mb-4 text-foreground">
-                                Detalhes da Venda – {venda.id}
-                            </Dialog.Title>
+                            <div className="flex justify-between items-start mb-4">
+                                <Dialog.Title className="text-xl font-semibold text-foreground">
+                                    Detalhes da Venda – {venda.id}
+                                </Dialog.Title>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-muted-foreground">Recuperação?</span>
+                                    <Switch
+                                        checked={venda.isRecovery || false}
+                                        onCheckedChange={handleRecoveryToggle}
+                                        disabled={isUpdating}
+                                    />
+                                </div>
+                            </div>
 
                             <section className="space-y-3 text-sm">
                                 <p><strong className="text-muted-foreground">Status:</strong> <span className="text-green-400">{venda.status}</span></p>

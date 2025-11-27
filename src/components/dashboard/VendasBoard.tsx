@@ -66,11 +66,30 @@ import DetalhesVendaModal from '@/components/DetalhesVendaModal';
 import { Venda } from '@/types/venda';
 import { formatCurrencyBRL } from '@/lib/formatters';
 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy
+} from '@dnd-kit/sortable';
+import { SortableCard } from './SortableCard';
+import { Settings2 } from 'lucide-react';
+import { Checkbox } from "@/components/ui/checkbox";
+
 // Utility function to clean campaign names by removing long ID patterns like "|123456789"
 const cleanCampaignName = (name: string): string => {
   if (!name) return name;
-  // Remove patterns like |123456789 (pipe followed by 8+ digits)
-  return name.replace(/\|[\d]{8,}/g, '').trim();
+  // Remove patterns like |123456789 (pipe followed by 8+ digits) or space + pipe + digits
+  return name.replace(/\s*\|[\d]{8,}/g, '').trim();
 };
 
 // Client-side component to render relative time
@@ -110,17 +129,88 @@ const VendasBoard = () => {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [selectedVenda, setSelectedVenda] = useState<Venda | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfDay(new Date()),
+    to: endOfDay(new Date())
+  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterProduct, setFilterProduct] = useState('all');
+  const [filterGateway, setFilterGateway] = useState('all');
+
+  // Drag and Drop State
+  const defaultItems = [
+    'gateway_sales',
+    'source_sales',
+    'campaign_sales',
+    'product_sales',
+    'hourly_sales',
+    'hourly_conversion',
+    'weekday_sales',
+    'campaign_conversion_table'
+  ];
+
+  const [items, setItems] = useState(defaultItems);
+  const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set(defaultItems));
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  useEffect(() => {
+    const savedItems = localStorage.getItem('vendas_dashboard_items');
+    if (savedItems) {
+      try {
+        const parsed = JSON.parse(savedItems);
+        // Merge with default to ensure new items appear
+        const merged = [...new Set([...parsed, ...defaultItems])];
+        setItems(merged);
+      } catch (e) {
+        console.error("Failed to parse saved items", e);
+      }
+    }
+    const savedVisible = localStorage.getItem('vendas_dashboard_visible');
+    if (savedVisible) {
+      try {
+        setVisibleItems(new Set(JSON.parse(savedVisible)));
+      } catch (e) {
+        console.error("Failed to parse saved visible items", e);
+      }
+    }
+  }, []);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setItems((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        localStorage.setItem('vendas_dashboard_items', JSON.stringify(newItems));
+        return newItems;
+      });
+    }
+  };
+
+  const toggleMetric = (id: string) => {
+    const newVisible = new Set(visibleItems);
+    if (newVisible.has(id)) {
+      newVisible.delete(id);
+    } else {
+      newVisible.add(id);
+    }
+    setVisibleItems(newVisible);
+    localStorage.setItem('vendas_dashboard_visible', JSON.stringify(Array.from(newVisible)));
+  };
 
   // Script Management State
   const [isScriptModalOpen, setIsScriptModalOpen] = useState(false);
   const [editingScript, setEditingScript] = useState<RecoveryScript | null>(null);
   const [scriptForm, setScriptForm] = useState({ title: '', text: '', category: 'WhatsApp' });
-
-  // Novos estados para filtros avançados
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterProduct, setFilterProduct] = useState('all');
-  const [filterGateway, setFilterGateway] = useState('all');
 
   // Reminder State
   const [reminderTitle, setReminderTitle] = useState('');
@@ -563,6 +653,21 @@ const VendasBoard = () => {
     return weekdayData;
   }, [vendas]);
 
+  // Calculate max values for progress bars
+  const maxValues = useMemo(() => {
+    const maxGateway = Math.max(...Object.values(trackingAnalytics.byGateway).map(d => d.count), 1);
+    const maxSource = Math.max(...Object.values(trackingAnalytics.bySource).map(d => d.count), 1);
+    const maxCampaign = Math.max(...Object.values(trackingAnalytics.byCampaign).map(d => d.count), 1);
+    const maxProduct = Math.max(...Object.values(trackingAnalytics.byProduct).map(d => d.count), 1);
+
+    return {
+      gateway: maxGateway,
+      source: maxSource,
+      campaign: maxCampaign,
+      product: maxProduct
+    };
+  }, [trackingAnalytics]);
+
   // Vendas para recuperação (não pagas)
   const recoveryVendas = useMemo(() => {
     if (!vendas) return [];
@@ -728,7 +833,34 @@ const VendasBoard = () => {
           </TabsList>
 
           <div className="flex items-center gap-2">
-            <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+            <div className="flex items-center gap-2">
+              <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+              <Button variant="outline" size="icon" onClick={() => setIsCustomizeOpen(true)} title="Personalizar Dashboard">
+                <Settings2 className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <Dialog open={isCustomizeOpen} onOpenChange={setIsCustomizeOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Personalizar Dashboard</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {defaultItems.map(id => (
+                    <div key={id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={id}
+                        checked={visibleItems.has(id)}
+                        onCheckedChange={() => toggleMetric(id)}
+                      />
+                      <Label htmlFor={id} className="capitalize">
+                        {id.replace(/_/g, ' ').replace('sales', 'vendas').replace('conversion', 'conversão').replace('table', 'tabela')}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
             <Button variant="outline" size="icon" onClick={() => setIsClearAlertOpen(true)} disabled={isLoading || !vendas || vendas.length === 0}>
               <Trash2 className="w-4 h-4" />
               <span className="sr-only">Limpar Vendas</span>
@@ -842,46 +974,380 @@ const VendasBoard = () => {
                 </CardContent>
               </Card>
 
-              {/* Analytics de Conversão por Campanha */}
-              <Card className="bg-transparent border-neutral-800">
-                <CardHeader>
-                  <CardTitle className="text-base">Conversão por Campanha/Criativo</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="border border-neutral-800 rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-neutral-800 bg-neutral-900">
-                          <TableHead>Campanha/Criativo</TableHead>
-                          <TableHead className="text-center">Gerados</TableHead>
-                          <TableHead className="text-center">Pagos</TableHead>
-                          <TableHead className="text-right">Receita</TableHead>
-                          <TableHead className="text-center">Conversão</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(trackingAnalytics.byCampaign).length > 0 ? (
-                          Object.entries(trackingAnalytics.byCampaign)
-                            .sort(([, a], [, b]) => b.revenue - a.revenue)
-                            .map(([campaign, data]) => (
-                              <TableRow key={campaign} className="border-neutral-800">
-                                <TableCell>{cleanCampaignName(campaign)}</TableCell>
-                                <TableCell className="text-center">{data.generated}</TableCell>
-                                <TableCell className="text-center">{data.count}</TableCell>
-                                <TableCell className="text-right">{formatCurrencyBRL(data.revenue)}</TableCell>
-                                <TableCell className="text-center">
-                                  {data.generated > 0 ? ((data.count / data.generated) * 100).toFixed(1) : 0}%
-                                </TableCell>
-                              </TableRow>
-                            ))
-                        ) : (
-                          <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Sem dados de campanha.</TableCell></TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+              {/* Analytics com Drag and Drop */}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={items}
+                  strategy={rectSortingStrategy}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+                    {items.map((id) => {
+                      if (!visibleItems.has(id)) return null;
+
+                      let content = null;
+                      let className = "h-full";
+
+                      switch (id) {
+                        case 'gateway_sales':
+                          content = (
+                            <Card className="bg-transparent border-neutral-800 h-full">
+                              <CardHeader>
+                                <CardTitle className="text-base">Vendas por Gateway</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  {Object.entries(trackingAnalytics.byGateway)
+                                    .sort((a, b) => b[1].count - a[1].count)
+                                    .map(([gateway, data]) => (
+                                      <div key={gateway} className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                          <p className="text-sm font-medium">{gateway}</p>
+                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="secondary">{data.count}</Badge>
+                                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full bg-primary"
+                                              style={{
+                                                width: `${(data.count / maxValues.gateway) * 100}%`
+                                              }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  {Object.keys(trackingAnalytics.byGateway).length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de gateway disponível</p>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                          break;
+                        case 'source_sales':
+                          content = (
+                            <Card className="bg-transparent border-neutral-800 h-full">
+                              <CardHeader>
+                                <CardTitle className="text-base">Vendas por Fonte</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  {Object.entries(trackingAnalytics.bySource)
+                                    .sort((a, b) => b[1].count - a[1].count)
+                                    .slice(0, 5)
+                                    .map(([source, data]) => (
+                                      <div key={source} className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                          <p className="text-sm font-medium">{cleanCampaignName(source)}</p>
+                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="secondary">{data.count}</Badge>
+                                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full bg-primary"
+                                              style={{
+                                                width: `${(data.count / maxValues.source) * 100}%`
+                                              }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  {Object.keys(trackingAnalytics.bySource).length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de fonte disponível</p>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                          break;
+                        case 'campaign_sales':
+                          content = (
+                            <Card className="bg-transparent border-neutral-800 h-full">
+                              <CardHeader>
+                                <CardTitle className="text-base">Vendas por Campanha</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  {Object.entries(trackingAnalytics.byCampaign)
+                                    .sort((a, b) => b[1].count - a[1].count)
+                                    .slice(0, 5)
+                                    .map(([campaign, data]) => (
+                                      <div key={campaign} className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                          <p className="text-sm font-medium">{cleanCampaignName(campaign)}</p>
+                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="secondary">{data.count}</Badge>
+                                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full bg-primary"
+                                              style={{
+                                                width: `${(data.count / maxValues.campaign) * 100}%`
+                                              }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  {Object.keys(trackingAnalytics.byCampaign).length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de campanha disponível</p>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                          break;
+                        case 'product_sales':
+                          content = (
+                            <Card className="bg-transparent border-neutral-800 h-full">
+                              <CardHeader>
+                                <CardTitle className="text-base">Vendas por Produto</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  {Object.entries(trackingAnalytics.byProduct)
+                                    .sort((a, b) => b[1].count - a[1].count)
+                                    .slice(0, 5)
+                                    .map(([product, data]) => (
+                                      <div key={product} className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                          <p className="text-sm font-medium">{product}</p>
+                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="secondary">{data.count}</Badge>
+                                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full bg-primary"
+                                              style={{
+                                                width: `${(data.count / maxValues.product) * 100}%`
+                                              }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  {Object.keys(trackingAnalytics.byProduct).length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de produto disponível</p>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                          break;
+                        case 'hourly_sales':
+                          content = (
+                            <Card className="bg-transparent border-neutral-800 h-full">
+                              <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-primary" />
+                                  Vendas por Horário
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <AreaChart data={hourlyChartData}>
+                                    <defs>
+                                      <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                      </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                    <XAxis
+                                      dataKey="hour"
+                                      stroke="#888"
+                                      fontSize={11}
+                                    />
+                                    <YAxis stroke="#888" fontSize={11} />
+                                    <Tooltip
+                                      contentStyle={{
+                                        backgroundColor: '#1f1f1f',
+                                        border: '1px solid #333',
+                                        borderRadius: '8px',
+                                      }}
+                                      labelStyle={{ color: '#fff' }}
+                                    />
+                                    <Area
+                                      type="monotone"
+                                      dataKey="sales"
+                                      stroke="#8b5cf6"
+                                      strokeWidth={2}
+                                      fillOpacity={1}
+                                      fill="url(#colorSales)"
+                                    />
+                                  </AreaChart>
+                                </ResponsiveContainer>
+                              </CardContent>
+                            </Card>
+                          );
+                          break;
+                        case 'hourly_conversion':
+                          content = (
+                            <Card className="bg-transparent border-neutral-800 h-full">
+                              <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                  <Percent className="w-4 h-4 text-green-500" />
+                                  Conversão Pix por Horário
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <AreaChart data={hourlyConversionData}>
+                                    <defs>
+                                      <linearGradient id="colorConversion" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                      </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                    <XAxis
+                                      dataKey="hour"
+                                      stroke="#888"
+                                      fontSize={11}
+                                    />
+                                    <YAxis
+                                      stroke="#888"
+                                      fontSize={11}
+                                      tickFormatter={(value) => `${value}%`}
+                                    />
+                                    <Tooltip
+                                      contentStyle={{
+                                        backgroundColor: '#1f1f1f',
+                                        border: '1px solid #333',
+                                        borderRadius: '8px',
+                                      }}
+                                      labelStyle={{ color: '#fff' }}
+                                      formatter={(value: number) => [`${value.toFixed(1)}%`, 'Conversão']}
+                                    />
+                                    <Area
+                                      type="monotone"
+                                      dataKey="conversion"
+                                      stroke="#10b981"
+                                      strokeWidth={2}
+                                      fillOpacity={1}
+                                      fill="url(#colorConversion)"
+                                    />
+                                  </AreaChart>
+                                </ResponsiveContainer>
+                              </CardContent>
+                            </Card>
+                          );
+                          break;
+                        case 'weekday_sales':
+                          content = (
+                            <Card className="bg-transparent border-neutral-800 h-full">
+                              <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                  <TrendingUp className="w-4 h-4 text-blue-500" />
+                                  Vendas por Dia da Semana
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <AreaChart data={weekdayChartData}>
+                                    <defs>
+                                      <linearGradient id="colorWeekday" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                      </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                    <XAxis
+                                      dataKey="day"
+                                      stroke="#888"
+                                      fontSize={11}
+                                    />
+                                    <YAxis stroke="#888" fontSize={11} />
+                                    <Tooltip
+                                      contentStyle={{
+                                        backgroundColor: '#1f1f1f',
+                                        border: '1px solid #333',
+                                        borderRadius: '8px',
+                                      }}
+                                      labelStyle={{ color: '#fff' }}
+                                      formatter={(value: number, name: string) => {
+                                        if (name === 'revenue') return [formatCurrencyBRL(value), 'Receita'];
+                                        return [value, 'Vendas'];
+                                      }}
+                                    />
+                                    <Area
+                                      type="monotone"
+                                      dataKey="sales"
+                                      stroke="#3b82f6"
+                                      strokeWidth={2}
+                                      fillOpacity={1}
+                                      fill="url(#colorWeekday)"
+                                    />
+                                  </AreaChart>
+                                </ResponsiveContainer>
+                              </CardContent>
+                            </Card>
+                          );
+                          break;
+                        case 'campaign_conversion_table':
+                          className = "md:col-span-2 xl:col-span-3 h-full";
+                          content = (
+                            <Card className="bg-transparent border-neutral-800 h-full">
+                              <CardHeader>
+                                <CardTitle className="text-base">Conversão por Campanha/Criativo</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="border border-neutral-800 rounded-md overflow-hidden">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="border-neutral-800 bg-neutral-900">
+                                        <TableHead>Campanha/Criativo</TableHead>
+                                        <TableHead className="text-center">Gerados</TableHead>
+                                        <TableHead className="text-center">Pagos</TableHead>
+                                        <TableHead className="text-right">Receita</TableHead>
+                                        <TableHead className="text-center">Conversão</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {Object.entries(trackingAnalytics.byCampaign).length > 0 ? (
+                                        Object.entries(trackingAnalytics.byCampaign)
+                                          .sort(([, a], [, b]) => b.revenue - a.revenue)
+                                          .map(([campaign, data]) => (
+                                            <TableRow key={campaign} className="border-neutral-800">
+                                              <TableCell>{cleanCampaignName(campaign)}</TableCell>
+                                              <TableCell className="text-center">{data.generated}</TableCell>
+                                              <TableCell className="text-center">{data.count}</TableCell>
+                                              <TableCell className="text-right">{formatCurrencyBRL(data.revenue)}</TableCell>
+                                              <TableCell className="text-center">
+                                                {data.generated > 0 ? ((data.count / data.generated) * 100).toFixed(1) : 0}%
+                                              </TableCell>
+                                            </TableRow>
+                                          ))
+                                      ) : (
+                                        <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Sem dados de campanha.</TableCell></TableRow>
+                                      )}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                          break;
+                      }
+
+                      return (
+                        <SortableCard key={id} id={id} className={className}>
+                          {content}
+                        </SortableCard>
+                      );
+                    })}
                   </div>
-                </CardContent>
-              </Card>
+                </SortableContext>
+              </DndContext>
 
               {/* Filtros e Tabela */}
               <div className="space-y-4">
@@ -984,189 +1450,7 @@ const VendasBoard = () => {
             </CardContent>
           </Card>
 
-          {/* Analytics por Fonte, Campanha e Gateway */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Vendas por Gateway */}
-            <Card className="bg-transparent border-neutral-800">
-              <CardHeader>
-                <CardTitle className="text-base">Vendas por Gateway</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(trackingAnalytics.byGateway)
-                    .sort((a, b) => b[1].count - a[1].count)
-                    .map(([gateway, data]) => (
-                      <div key={gateway} className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{gateway}</p>
-                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{data.count}</Badge>
-                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary"
-                              style={{
-                                width: `${(data.count / salesMetrics.paidCount) * 100}%`
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  {Object.keys(trackingAnalytics.byGateway).length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de gateway disponível</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Vendas por Fonte */}
-            <Card className="bg-transparent border-neutral-800">
-              <CardHeader>
-                <CardTitle className="text-base">Vendas por Fonte</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(trackingAnalytics.bySource)
-                    .sort((a, b) => b[1].count - a[1].count)
-                    .slice(0, 5)
-                    .map(([source, data]) => (
-                      <div key={source} className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{cleanCampaignName(source)}</p>
-                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{data.count}</Badge>
-                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary"
-                              style={{
-                                width: `${(data.count / salesMetrics.paidCount) * 100}%`
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  {Object.keys(trackingAnalytics.bySource).length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de fonte disponível</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Vendas por Campanha */}
-            <Card className="bg-transparent border-neutral-800">
-              <CardHeader>
-                <CardTitle className="text-base">Vendas por Campanha</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(trackingAnalytics.byCampaign)
-                    .sort((a, b) => b[1].count - a[1].count)
-                    .slice(0, 5)
-                    .map(([campaign, data]) => (
-                      <div key={campaign} className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{cleanCampaignName(campaign)}</p>
-                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{data.count}</Badge>
-                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary"
-                              style={{
-                                width: `${(data.count / salesMetrics.paidCount) * 100}%`
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  {Object.keys(trackingAnalytics.byCampaign).length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de campanha disponível</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Analytics por Produto e Horário */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Vendas por Produto */}
-            <Card className="bg-transparent border-neutral-800">
-              <CardHeader>
-                <CardTitle className="text-base">Vendas por Produto</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(trackingAnalytics.byProduct)
-                    .sort((a, b) => b[1].count - a[1].count)
-                    .slice(0, 5)
-                    .map(([product, data]) => (
-                      <div key={product} className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{product}</p>
-                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{data.count}</Badge>
-                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary"
-                              style={{
-                                width: `${(data.count / salesMetrics.paidCount) * 100}%`
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  {Object.keys(trackingAnalytics.byProduct).length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de produto disponível</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Vendas por Horário */}
-            <Card className="bg-transparent border-neutral-800">
-              <CardHeader>
-                <CardTitle className="text-base">Vendas por Horário</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(trackingAnalytics.byHour)
-                    .sort((a, b) => a[0].localeCompare(b[0]))
-                    .map(([hour, data]) => (
-                      <div key={hour} className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{hour}</p>
-                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.revenue)}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{data.count}</Badge>
-                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary"
-                              style={{
-                                width: `${(data.count / salesMetrics.paidCount) * 100}%`
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  {Object.keys(trackingAnalytics.byHour).length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de horário disponível</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="recovery" className="space-y-6">
