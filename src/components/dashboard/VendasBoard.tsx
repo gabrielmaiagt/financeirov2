@@ -918,7 +918,19 @@ const VendasBoard = () => {
                         onCheckedChange={() => toggleMetric(id)}
                       />
                       <Label htmlFor={id} className="capitalize">
-                        {id.replace(/_/g, ' ').replace('sales', 'vendas').replace('conversion', 'conversão').replace('table', 'tabela')}
+                        {(() => {
+                          const translations: Record<string, string> = {
+                            'gateway_sales': 'Gateway Vendas',
+                            'source_sales': 'Source Vendas',
+                            'campaign_sales': 'Campanha Vendas',
+                            'product_sales': 'Produto Vendas',
+                            'hourly_sales': 'Vendas por Hora',
+                            'hourly_conversion': 'Conversão por Hora',
+                            'weekday_sales': 'Vendas por Dia da Semana',
+                            'campaign_conversion_table': 'Tabela de Conversão por Campanha'
+                          };
+                          return translations[id] || id;
+                        })()}
                       </Label>
                     </div>
                   ))}
