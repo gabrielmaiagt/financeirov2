@@ -25,6 +25,7 @@ import LoginsBoard from '@/components/dashboard/LoginsBoard';
 import CalendarBoard from '@/components/dashboard/CalendarBoard';
 import VendasBoard from '@/components/dashboard/VendasBoard';
 import RecuperacaoBoard from '@/components/dashboard/RecuperacaoBoard';
+import DashboardBoard from '@/components/dashboard/DashboardBoard';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -152,10 +153,11 @@ export default function Home() {
       </div>
       <Header />
 
-      <Tabs defaultValue="lancamentos" className="w-full">
+      <Tabs defaultValue="dashboard" className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 no-scrollbar">
             <TabsList className="h-auto w-max justify-start flex-nowrap bg-transparent p-0 gap-2">
+              <TabsTrigger value="dashboard" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Dashboard</TabsTrigger>
               <TabsTrigger value="lancamentos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Lançamentos</TabsTrigger>
               <TabsTrigger value="vendas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Vendas</TabsTrigger>
               <TabsTrigger value="despesas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Despesas</TabsTrigger>
@@ -178,6 +180,9 @@ export default function Home() {
           </div>
         </div>
 
+        <TabsContent value="dashboard">
+          <DashboardBoard />
+        </TabsContent>
         <TabsContent value="lancamentos">
           <div className="mb-4 flex justify-end">
             <DateRangePicker date={dateRange} onDateChange={setDateRange} />
