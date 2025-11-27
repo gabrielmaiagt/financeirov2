@@ -13,7 +13,8 @@ import { formatCurrencyBRL } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { startOfDay, endOfDay, isWithinInterval, eachDayOfInterval, format } from 'date-fns';
+import { startOfDay, endOfDay, isWithinInterval, eachDayOfInterval, format, getHours } from 'date-fns';
+import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface MetaSpendDaily {
     date: string;
@@ -199,6 +200,63 @@ export default function DashboardBoard() {
         return Array.from(accounts);
     }, [metaCampaigns]);
 
+    // Calcular dados por hora para os gráficos
+    const hourlyData = useMemo(() => {
+        // Inicializar array com 24 horas
+        const hours = Array.from({ length: 24 }, (_, i) => ({
+            hour: `${i.toString().padStart(2, '0')}:00`,
+            hourNum: i,
+            revenue: 0,
+            spend: 0,
+            profit: 0,
+            salesCount: 0
+        }));
+
+        // Agrupar vendas por hora
+        filteredVendas.forEach((venda: any) => {
+            const date = venda.created_at?.toDate();
+            if (!date) return;
+
+            const hour = getHours(date);
+            const lowerCaseStatus = venda.status?.toLowerCase() || '';
+            const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+
+            if (isPaid) {
+                hours[hour].revenue += venda.value || 0;
+                hours[hour].salesCount++;
+            }
+        });
+
+        // Distribuir gasto de anúncios proporcionalmente pelas horas (simplificado)
+        const hourlySpend = metaMetrics.totalSpend / 24;
+        hours.forEach(h => {
+            h.spend = hourlySpend;
+            h.profit = h.revenue - h.spend;
+        });
+
+        return hours;
+    }, [filteredVendas, metaMetrics.totalSpend]);
+
+    // Calcular dados acumulados por hora
+    const cumulativeHourlyData = useMemo(() => {
+        let cumRevenue = 0;
+        let cumSpend = 0;
+        let cumProfit = 0;
+
+        return hourlyData.map(h => {
+            cumRevenue += h.revenue;
+            cumSpend += h.spend;
+            cumProfit += h.profit;
+
+            return {
+                hour: h.hour,
+                Faturamento: cumRevenue,
+                Investimento: cumSpend,
+                Lucro: cumProfit
+            };
+        });
+    }, [hourlyData]);
+
     const handleSync = async () => {
         if (!dateRange?.from) return;
         setIsSyncing(true);
@@ -344,6 +402,52 @@ export default function DashboardBoard() {
                             </TableBody>
                         </Table>
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* Gráfico: Lucro por Horário */}
+            <Card className="bg-transparent border-neutral-800">
+                <CardHeader>
+                    <CardTitle>Lucro por Horário</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={hourlyData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                            <XAxis dataKey="hour" stroke="#9CA3AF" />
+                            <YAxis stroke="#9CA3AF" />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
+                                formatter={(value: any) => formatCurrencyBRL(value)}
+                            />
+                            <Legend />
+                            <Bar dataKey="profit" name="Lucro" fill="#3B82F6" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+
+            {/* Gráfico: Faturamento x Investimento x Lucro (Acumulado) */}
+            <Card className="bg-transparent border-neutral-800">
+                <CardHeader>
+                    <CardTitle>Faturamento x Investimento x Lucro por Hora (Acumulado)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart data={cumulativeHourlyData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                            <XAxis dataKey="hour" stroke="#9CA3AF" />
+                            <YAxis stroke="#9CA3AF" />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
+                                formatter={(value: any) => formatCurrencyBRL(value)}
+                            />
+                            <Legend />
+                            <Area type="monotone" dataKey="Faturamento" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} />
+                            <Area type="monotone" dataKey="Investimento" stackId="2" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.6} />
+                            <Area type="monotone" dataKey="Lucro" stackId="3" stroke="#10B981" fill="#10B981" fillOpacity={0.6} />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </CardContent>
             </Card>
         </div>
