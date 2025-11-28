@@ -5,9 +5,8 @@ import { useFirestore, useCollection } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, Timestamp, doc, updateDoc } from 'firebase/firestore';
 import { startOfMonth, endOfMonth } from 'date-fns';
-import { Trophy, Info } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrencyBRL } from '@/lib/formatters';
 import type { Meta } from './GoalsBoard';
 
@@ -91,27 +90,23 @@ const GoalWidget = () => {
     if (isLoadingVendas) return null;
 
     return (
-        <div className="flex flex-col w-[200px] gap-1">
+        <div className="flex flex-col w-[240px] gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors duration-200">
             <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-1 text-blue-500 font-semibold">
-                    <Trophy className="w-4 h-4" />
-                    <span className="truncate max-w-[80px]" title={title}>{title}</span>
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger>
-                                <Info className="w-3 h-3 text-muted-foreground" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Meta: {formatCurrencyBRL(GOAL)}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                <div className="flex items-center gap-2 font-medium text-foreground">
+                    <Trophy className="w-4 h-4 text-yellow-500" />
+                    <span className="truncate max-w-[150px]" title={title}>{title}</span>
                 </div>
-                <div className="text-xs font-medium text-muted-foreground">
-                    <span className="text-foreground">{formatCurrencyBRL(currentRevenue)}</span> / {formatCurrencyBRL(GOAL)}
+                <div className="text-xs font-bold text-muted-foreground">
+                    {Math.round(progress)}%
                 </div>
             </div>
-            <Progress value={progress} className="h-2 bg-neutral-800" indicatorClassName="bg-blue-500" />
+
+            <Progress value={progress} className="h-2 bg-secondary/50" indicatorClassName="bg-gradient-to-r from-blue-600 to-cyan-400" />
+
+            <div className="flex justify-between text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                <span>{formatCurrencyBRL(currentRevenue)}</span>
+                <span>{formatCurrencyBRL(GOAL)}</span>
+            </div>
         </div>
     );
 };
