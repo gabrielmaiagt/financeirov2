@@ -64,7 +64,7 @@ const OperationsTable = ({
   const { play } = useSound();
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [editingOperation, setEditingOperation] = useState<Operacao | null>(null);
-  
+
   const profilesQuery = useMemoFirebase(
     () => (firestore ? collection(firestore, 'perfis') : null),
     [firestore]
@@ -77,25 +77,25 @@ const OperationsTable = ({
     if (!firestore) return;
 
     if (operation.faturamentoLiquido > RECORD_FATURAMENTO) {
-        // Since auth is removed, we can't tie sound to a specific user.
-        // We'll just check if a general record-breaking sound is set on any profile.
-        const recordSound = profiles?.find(p => p.sounds?.recordBroken)?.sounds?.recordBroken;
-        if(recordSound) {
-            play(recordSound);
-        }
-        const notificationsRef = collection(firestore, 'notificacoes');
-        const notificationMessage = `Novo valor: ${formatCurrency(operation.faturamentoLiquido)}`;
-        const notificationTitle = `🎉 Recorde de faturamento quebrado!`;
+      // Since auth is removed, we can't tie sound to a specific user.
+      // We'll just check if a general record-breaking sound is set on any profile.
+      const recordSound = profiles?.find(p => p.sounds?.recordBroken)?.sounds?.recordBroken;
+      if (recordSound) {
+        play(recordSound);
+      }
+      const notificationsRef = collection(firestore, 'notificacoes');
+      const notificationMessage = `Novo valor: ${formatCurrency(operation.faturamentoLiquido)}`;
+      const notificationTitle = `🎉 Recorde de faturamento quebrado!`;
 
-        addDocumentNonBlocking(notificationsRef, {
-            message: notificationMessage,
-            createdAt: Timestamp.now(),
-            read: false,
-            type: 'record_broken'
-        });
+      addDocumentNonBlocking(notificationsRef, {
+        message: notificationMessage,
+        createdAt: Timestamp.now(),
+        read: false,
+        type: 'record_broken'
+      });
 
-        // Send push notification
-        sendPushNotification(notificationTitle, notificationMessage, '/');
+      // Send push notification
+      sendPushNotification(notificationTitle, notificationMessage, '/');
     }
 
     if (editingOperation) {
@@ -105,7 +105,7 @@ const OperationsTable = ({
       const operacoesRef = collection(firestore, 'operacoesSocios');
       addDocumentNonBlocking(operacoesRef, operation);
     }
-    
+
     handleFormDialogChange(false);
   };
 
@@ -150,7 +150,7 @@ const OperationsTable = ({
   const sensitiveKeywords = ['Madames Online', 'Minha Coroa'];
   const getCellContent = (text: string) => {
     if (isBlurred && sensitiveKeywords.some(keyword => text.includes(keyword))) {
-        return <span className="sensitive-data">{text}</span>
+      return <span className="sensitive-data">{text}</span>
     }
     return text;
   }
@@ -168,18 +168,18 @@ const OperationsTable = ({
               className="w-full sm:w-[250px]"
             />
             <Button variant="outline" onClick={() => setIsAnalyticsOpen(true)}>
-                <BarChart2 className="mr-2 h-4 w-4" /> Ver Gráficos
+              <BarChart2 className="mr-2 h-4 w-4" /> Ver Gráficos
             </Button>
             <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
-                <DialogContent className="max-w-4xl p-0">
-                    <AnalyticsModal operacoes={operacoes} />
-                </DialogContent>
+              <DialogContent className="max-w-4xl p-0">
+                <AnalyticsModal operacoes={operacoes} />
+              </DialogContent>
             </Dialog>
 
-             <Dialog open={isFormOpen} onOpenChange={handleFormDialogChange}>
-                <Button onClick={handleOpenNew}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Novo Lançamento
-                </Button>
+            <Dialog open={isFormOpen} onOpenChange={handleFormDialogChange}>
+              <Button onClick={handleOpenNew}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Novo Lançamento
+              </Button>
               <DialogContent className="sm:max-w-3xl p-0 flex flex-col">
                 <DialogHeader className="p-6 pb-0">
                   <DialogTitle>{editingOperation ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle>
@@ -194,10 +194,10 @@ const OperationsTable = ({
         </div>
       </CardHeader>
       <CardContent>
-         <div className="border border-neutral-800 rounded-md max-h-[500px] overflow-y-auto relative">
-            <Table>
+        <div className="border border-neutral-800 rounded-md max-h-[500px] overflow-y-auto relative">
+          <Table>
             <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
-                <TableRow className="border-neutral-800">
+              <TableRow className="border-neutral-800">
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead className="text-right">Fat. Líquido</TableHead>
@@ -209,16 +209,16 @@ const OperationsTable = ({
                 <TableHead className="text-right">Soares</TableHead>
                 <TableHead className="text-right font-bold">Total Cabral</TableHead>
                 <TableHead className="text-center w-[50px]">Ações</TableHead>
-                </TableRow>
+              </TableRow>
             </TableHeader>
             <TableBody>
-                {isLoading ? (
+              {isLoading ? (
                 <TableRow><TableCell colSpan={11} className="text-center h-24">Carregando lançamentos...</TableCell></TableRow>
-                ) : operacoes.length === 0 ? (
+              ) : operacoes.length === 0 ? (
                 <TableRow><TableCell colSpan={11} className="text-center h-24">Nenhum lançamento encontrado para o período.</TableCell></TableRow>
-                ) : (
+              ) : (
                 operacoes.map((op) => (
-                    <TableRow key={op.id} className="hover:bg-muted/50 border-neutral-800">
+                  <TableRow key={op.id} className="table-row-animate border-neutral-800">
                     <TableCell>{op.data?.toDate ? format(op.data.toDate(), 'dd/MM/yy') : 'N/A'}</TableCell>
                     <TableCell className="font-medium max-w-[200px] truncate">{getCellContent(op.descricao)}</TableCell>
                     <TableCell className="text-right sensitive-data">{formatCurrency(op.faturamentoLiquido)}</TableCell>
@@ -230,7 +230,7 @@ const OperationsTable = ({
                     <TableCell className="text-right sensitive-data">{formatCurrency(op.valorSoares)}</TableCell>
                     <TableCell className="text-right font-bold text-blue-400 sensitive-data">{formatCurrency(op.totalCabral)}</TableCell>
                     <TableCell className="text-center">
-                       <DropdownMenu>
+                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
                             <MoreHorizontal className="w-4 h-4" />
@@ -244,47 +244,47 @@ const OperationsTable = ({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
-                    </TableRow>
+                  </TableRow>
                 ))
-                )}
+              )}
             </TableBody>
-             {operacoes.length > 0 && (
-                 <TableFooter className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-neutral-800">
-                    <TableRow>
-                        <TableCell colSpan={2} className="font-bold">Resumo do Período</TableCell>
-                        <TableCell className="text-right font-bold sensitive-data">{formatCurrency(summary.faturamentoLiquido)}</TableCell>
-                        <TableCell className="text-right font-bold sensitive-data">{formatCurrency(summary.gastoAnuncio)}</TableCell>
-                        <TableCell></TableCell>
-                        <TableCell className={cn('text-right font-bold sensitive-data', summary.lucroLiquido < 0 ? 'text-red-500' : 'text-green-500')}>{formatCurrency(summary.lucroLiquido)}</TableCell>
-                        <TableCell></TableCell>
-                        <TableCell className="text-right font-bold text-green-400 sensitive-data">{formatCurrency(summary.valorBiel)}</TableCell>
-                        <TableCell className="text-right font-bold text-yellow-400 sensitive-data">{formatCurrency(summary.valorSoares)}</TableCell>
-                        <TableCell className="text-right font-bold text-blue-400 sensitive-data">{formatCurrency(summary.totalCabral)}</TableCell>
-                        <TableCell></TableCell>
-                    </TableRow>
-                </TableFooter>
-             )}
-            </Table>
+            {operacoes.length > 0 && (
+              <TableFooter className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-neutral-800">
+                <TableRow>
+                  <TableCell colSpan={2} className="font-bold">Resumo do Período</TableCell>
+                  <TableCell className="text-right font-bold sensitive-data">{formatCurrency(summary.faturamentoLiquido)}</TableCell>
+                  <TableCell className="text-right font-bold sensitive-data">{formatCurrency(summary.gastoAnuncio)}</TableCell>
+                  <TableCell></TableCell>
+                  <TableCell className={cn('text-right font-bold sensitive-data', summary.lucroLiquido < 0 ? 'text-red-500' : 'text-green-500')}>{formatCurrency(summary.lucroLiquido)}</TableCell>
+                  <TableCell></TableCell>
+                  <TableCell className="text-right font-bold text-green-400 sensitive-data">{formatCurrency(summary.valorBiel)}</TableCell>
+                  <TableCell className="text-right font-bold text-yellow-400 sensitive-data">{formatCurrency(summary.valorSoares)}</TableCell>
+                  <TableCell className="text-right font-bold text-blue-400 sensitive-data">{formatCurrency(summary.totalCabral)}</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableFooter>
+            )}
+          </Table>
         </div>
 
         <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Essa ação não pode ser desfeita. Isso excluirá permanentemente o lançamento e removerá os dados de nossos servidores.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
-                    if (itemToDelete) {
-                        onDelete(itemToDelete);
-                    }
-                    setItemToDelete(null);
-                }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Essa ação não pode ser desfeita. Isso excluirá permanentemente o lançamento e removerá os dados de nossos servidores.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                if (itemToDelete) {
+                  onDelete(itemToDelete);
+                }
+                setItemToDelete(null);
+              }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
         </AlertDialog>
       </CardContent>
     </Card>
