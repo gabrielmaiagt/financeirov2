@@ -1,12 +1,13 @@
 'use client';
 import { useState } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, Timestamp, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc, addDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2, ExternalLink, Send, MoreHorizontal, Info } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import CreativeForm from './CreativeForm';
+import BancoCreativoForm from './BancoCreativoForm';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { format } from 'date-fns';
@@ -47,6 +48,16 @@ export interface LevaCriativos {
   roi?: number;
   lucro?: number;
   cpa?: number;
+}
+
+export interface BancoCreativo {
+  id: string;
+  nome: string;
+  copy?: string;
+  videosLinks?: string;
+  notas?: string;
+  status: 'rascunho' | 'pronto-para-editar' | 'em-edicao' | 'testando';
+  dataCriacao: Timestamp;
 }
 
 const formatCurrency = (value: number | undefined) => {
@@ -167,14 +178,22 @@ const AddValidatedCreativeForm = ({ onAdd }: { onAdd: (creative: Omit<ValidatedC
 const CreativesBoard = () => {
   const firestore = useFirestore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isBancoDialogOpen, setIsBancoDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [bancoItemToDelete, setBancoItemToDelete] = useState<string | null>(null);
 
   const criativosQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'criativos'), orderBy('dataLeva', 'desc')) : null),
     [firestore]
   );
 
+  const bancoQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'banco_criativos'), orderBy('dataCriacao', 'desc')) : null),
+    [firestore]
+  );
+
   const { data: levas, isLoading } = useCollection<LevaCriativos>(criativosQuery);
+  const { data: bancoCreativos, isLoading: isBancoLoading } = useCollection<BancoCreativo>(bancoQuery);
 
   const handleSaveLeva = (levaData: Omit<LevaCriativos, 'id' | 'dataLeva'> & { dataLeva: Date }) => {
     if (!firestore) return;
@@ -206,6 +225,28 @@ const CreativesBoard = () => {
     });
   };
 
+  const handleSaveBancoCreativo = async (data: Omit<BancoCreativo, 'id' | 'dataCriacao'>) => {
+    if (!firestore) return;
+    const bancoRef = collection(firestore, 'banco_criativos');
+    await addDoc(bancoRef, {
+      ...data,
+      dataCriacao: Timestamp.now(),
+    });
+    setIsBancoDialogOpen(false);
+  };
+
+  const handleDeleteBancoCreativo = async (id: string) => {
+    if (!firestore) return;
+    const docRef = doc(firestore, 'banco_criativos', id);
+    await deleteDoc(docRef);
+  };
+
+  const handleUpdateBancoStatus = async (id: string, newStatus: BancoCreativo['status']) => {
+    if (!firestore) return;
+    const docRef = doc(firestore, 'banco_criativos', id);
+    await updateDoc(docRef, { status: newStatus });
+  };
+
   if (isLoading) {
     return <div>Carregando levas de criativos...</div>;
   }
@@ -213,8 +254,87 @@ const CreativesBoard = () => {
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-6">
+        {/* Banco de Criativos */}
+        <Card className="border-neutral-800 bg-neutral-950/50">
+          <CardHeader className="flex-row justify-between items-center">
+            <div>
+              <CardTitle>Banco de Criativos</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">Ideias e rascunhos de criativos para editar/testar</p>
+            </div>
+            <Dialog open={isBancoDialogOpen} onOpenChange={setIsBancoDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Novo Criativo
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Adicionar Criativo ao Banco</DialogTitle>
+                  <DialogDescription>Salve ideias, copies e links para editar posteriormente.</DialogDescription>
+                </DialogHeader>
+                <BancoCreativoForm onSave={handleSaveBancoCreativo} onClose={() => setIsBancoDialogOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          <CardContent>
+            {isBancoLoading ? (
+              <p className="text-sm text-muted-foreground">Carregando...</p>
+            ) : bancoCreativos && bancoCreativos.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {bancoCreativos.map((criativo) => (
+                  <Card key={criativo.id} className="border-neutral-700 bg-neutral-900/30">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-base">{criativo.nome}</CardTitle>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setBancoItemToDelete(criativo.id)}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <select
+                        value={criativo.status}
+                        onChange={(e) => handleUpdateBancoStatus(criativo.id, e.target.value as BancoCreativo['status'])}
+                        className="text-xs bg-neutral-800 border-neutral-700 rounded px-2 py-1 mt-2"
+                      >
+                        <option value="rascunho">📝 Rascunho</option>
+                        <option value="pronto-para-editar">✅ Pronto para Editar</option>
+                        <option value="em-edicao">✂️ Em Edição</option>
+                        <option value="testando">🧪 Testando</option>
+                      </select>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-xs">
+                      {criativo.copy && (
+                        <div>
+                          <Label className="text-muted-foreground">Copy:</Label>
+                          <p className="text-foreground whitespace-pre-wrap line-clamp-3 italic">{criativo.copy}</p>
+                        </div>
+                      )}
+                      {criativo.videosLinks && (
+                        <div>
+                          <Label className="text-muted-foreground">Vídeos/Links:</Label>
+                          <p className="text-blue-400 truncate">{criativo.videosLinks}</p>
+                        </div>
+                      )}
+                      {criativo.notas && (
+                        <div>
+                          <Label className="text-muted-foreground">Notas:</Label>
+                          <p className="text-foreground line-clamp-2">{criativo.notas}</p>
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground pt-2 border-t border-neutral-700/50">
+                        {format(criativo.dataCriacao.toDate(), 'dd/MM/yyyy', { locale: ptBR })}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhum criativo no banco ainda.</p>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Leads de Criativos</h2>
+          <h2 className="text-2xl font-bold">Levas de Criativos</h2>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -333,6 +453,26 @@ const CreativesBoard = () => {
                   handleDeleteLeva(itemToDelete);
                 }
                 setItemToDelete(null);
+              }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={!!bancoItemToDelete} onOpenChange={(isOpen) => !isOpen && setBancoItemToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir criativo do banco?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Essa ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setBancoItemToDelete(null)}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                if (bancoItemToDelete) {
+                  handleDeleteBancoCreativo(bancoItemToDelete);
+                }
+                setBancoItemToDelete(null);
               }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
