@@ -45,10 +45,17 @@ const CreativeForm = ({ onSave, onClose }: CreativeFormProps) => {
   });
 
   const onSubmit = (data: FormData) => {
-    onSave({
+    // Sanitize numeric fields: convert NaN to undefined
+    const sanitizedData = {
       ...data,
-      criativosValidados: [], // Garante que a propriedade seja um array
-    });
+      faturamento: (data.faturamento !== undefined && !isNaN(data.faturamento)) ? data.faturamento : undefined,
+      roi: (data.roi !== undefined && !isNaN(data.roi)) ? data.roi : undefined,
+      lucro: (data.lucro !== undefined && !isNaN(data.lucro)) ? data.lucro : undefined,
+      cpa: (data.cpa !== undefined && !isNaN(data.cpa)) ? data.cpa : undefined,
+      criativosValidados: [] as [], // Garante que a propriedade seja um array vazio
+    };
+
+    onSave(sanitizedData);
     reset();
     onClose();
   };
