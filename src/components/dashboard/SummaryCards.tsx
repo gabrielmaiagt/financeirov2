@@ -14,16 +14,16 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-const MetricCard = ({ title, value, icon: Icon }: { title: string, value: string, icon: React.ElementType }) => (
-    <Card className="bg-neutral-900/50 border-neutral-800 w-full">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-neutral-400">{title}</CardTitle>
-            <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-            <div className="text-2xl font-bold sensitive-data">{value}</div>
-        </CardContent>
-    </Card>
+const MetricCard = ({ title, value, icon: Icon, colorClass }: { title: string, value: string, icon: React.ElementType, colorClass?: string }) => (
+  <Card className={cn("bg-neutral-900/50 border-neutral-800 w-full card-hover", colorClass)}>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium text-neutral-400">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold sensitive-data number-animate">{value}</div>
+    </CardContent>
+  </Card>
 );
 
 
@@ -56,31 +56,37 @@ const SummaryCards = ({ operacoes }: { operacoes: Operacao[] }) => {
         title="Total Faturado (Líquido)"
         value={formatCurrency(totals.faturamentoLiquido)}
         icon={DollarSign}
+        colorClass="stat-card-green"
       />
       <MetricCard
         title="Total Gasto em Anúncios"
         value={formatCurrency(totals.gastoAnuncio)}
         icon={TrendingDown}
+        colorClass="stat-card-orange"
       />
-       <MetricCard
+      <MetricCard
         title="Lucro Líquido Total"
         value={formatCurrency(totals.lucroLiquido)}
         icon={TrendingUp}
+        colorClass="stat-card-blue"
       />
-       <MetricCard
+      <MetricCard
         title="Cabral – Total a Receber"
         value={formatCurrency(totals.totalCabral)}
         icon={Briefcase}
+        colorClass="stat-card-purple"
       />
-       <MetricCard
+      <MetricCard
         title="Biel – Lucro Total"
         value={formatCurrency(totals.valorBiel)}
         icon={User}
+        colorClass="stat-card-red"
       />
-       <MetricCard
+      <MetricCard
         title="Soares – Lucro Total"
         value={formatCurrency(totals.valorSoares)}
         icon={User}
+        colorClass="stat-card-green"
       />
     </div>
   );

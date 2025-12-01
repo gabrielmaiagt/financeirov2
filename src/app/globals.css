@@ -148,25 +148,59 @@
     user-select: none;
   }
 
-  /* Theme Color Overrides - Force themed colors on hardcoded Tailwind classes */
+  /* Cartoon Theme - DRAMATIC Vibrant Colors */
   [data-theme="cartoon"] {
-    --tw-bg-opacity: 1;
-    --tw-border-opacity: 1;
+    /* Custom card color variables for multi-colored cards */
+    --card-green: 160 84% 39%;
+    /* #10b981 - Emerald */
+    --card-blue: 199 89% 48%;
+    /* #0ea5e9 - Sky Blue */
+    --card-orange: 25 95% 53%;
+    /* #f97316 - Orange */
+    --card-red: 0 84% 60%;
+    /* #ef4444 - Red */
+    --card-purple: 271 91% 65%;
+    /* #a855f7 - Purple */
   }
 
-  [data-theme="cartoon"] .bg-neutral-800,
-  [data-theme="cartoon"] .bg-neutral-900,
-  [data-theme="cartoon"] .bg-neutral-950 {
-    background-color: hsl(var(--card)) !important;
+  /* Cartoon: Apply vibrant colors to specific stat cards */
+  [data-theme="cartoon"] .stat-card-green {
+    background: linear-gradient(135deg, hsl(var(--card-green)) 0%, hsl(160 70% 30%) 100%) !important;
+    border-color: hsl(var(--card-green)) !important;
+    color: white !important;
   }
 
-  [data-theme="cartoon"] .border-neutral-700,
-  [data-theme="cartoon"] .border-neutral-800 {
-    border-color: hsl(var(--border)) !important;
+  [data-theme="cartoon"] .stat-card-blue {
+    background: linear-gradient(135deg, hsl(var(--card-blue)) 0%, hsl(199 75% 38%) 100%) !important;
+    border-color: hsl(var(--card-blue)) !important;
+    color: white !important;
   }
 
-  [data-theme="cartoon"] .text-primary {
-    color: hsl(var(--primary)) !important;
+  [data-theme="cartoon"] .stat-card-orange {
+    background: linear-gradient(135deg, hsl(var(--card-orange)) 0%, hsl(25 80% 43%) 100%) !important;
+    border-color: hsl(var(--card-orange)) !important;
+    color: white !important;
+  }
+
+  [data-theme="cartoon"] .stat-card-red {
+    background: linear-gradient(135deg, hsl(var(--card-red)) 0%, hsl(0 70% 50%) 100%) !important;
+    border-color: hsl(var(--card-red)) !important;
+    color: white !important;
+  }
+
+  [data-theme="cartoon"] .stat-card-purple {
+    background: linear-gradient(135deg, hsl(var(--card-purple)) 0%, hsl(271 76% 55%) 100%) !important;
+    border-color: hsl(var(--card-purple)) !important;
+    color: white !important;
+  }
+
+  /* Ensure text and icons are readable on colored backgrounds */
+  [data-theme="cartoon"] .stat-card-green *,
+  [data-theme="cartoon"] .stat-card-blue *,
+  [data-theme="cartoon"] .stat-card-orange *,
+  [data-theme="cartoon"] .stat-card-red *,
+  [data-theme="cartoon"] .stat-card-purple * {
+    color: white !important;
   }
 
   [data-theme="retro"] .bg-neutral-800,
@@ -212,21 +246,54 @@
     scrollbar-width: none;
   }
 
-  /* Animations from user feedback */
+  /* Rich Animations */
+
+  /* Card Hover Animation - Smooth lift and glow */
+  .card-hover {
+    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 12px 24px -8px rgba(138, 92, 246, 0.3);
+  }
+
+  /* Number Counter Animation - Numbers count up */
+  @keyframes numberCount {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .number-animate {
+    animation: numberCount 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Value Flash - Green flash when value updates */
   .value-updated {
     animation: valueFlash 400ms ease-out;
   }
 
   @keyframes valueFlash {
-    0% {
-      background-color: rgba(46, 204, 113, 0.25);
-    }
 
+    0%,
     100% {
       background-color: transparent;
     }
+
+    50% {
+      background-color: rgba(46, 204, 113, 0.25);
+    }
   }
 
+  /* Table Row Animation */
   .table-row-animate {
     transition: background 120ms ease-out, transform 120ms ease-out;
   }
@@ -248,6 +315,7 @@
     opacity: 1;
   }
 
+  /* Tab Transition - Smooth fade and slide */
   .tab-content-animate {
     animation: tabEnter 220ms cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -264,6 +332,7 @@
     }
   }
 
+  /* Skeleton Loading */
   .skeleton-shine {
     background: linear-gradient(90deg,
         #1b1b1b 0%,
@@ -283,6 +352,7 @@
     }
   }
 
+  /* Button Press */
   .btn-press {
     transition: transform 0.1s ease-out;
   }
