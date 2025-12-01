@@ -18,10 +18,6 @@ import { DialogFooter, DialogClose } from '@/components/ui/dialog';
 const formSchema = z.object({
   dataLeva: z.date({ required_error: 'A data é obrigatória.' }),
   driveLink: z.string().url({ message: 'Por favor, insira uma URL válida.' }).min(1, 'O link do Drive é obrigatório.'),
-  faturamento: z.number().optional(),
-  roi: z.number().optional(),
-  lucro: z.number().optional(),
-  cpa: z.number().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -37,25 +33,14 @@ const CreativeForm = ({ onSave, onClose }: CreativeFormProps) => {
     defaultValues: {
       dataLeva: new Date(),
       driveLink: '',
-      faturamento: undefined,
-      roi: undefined,
-      lucro: undefined,
-      cpa: undefined,
     },
   });
 
   const onSubmit = (data: FormData) => {
-    // Sanitize numeric fields: convert NaN to undefined
-    const sanitizedData = {
+    onSave({
       ...data,
-      faturamento: (data.faturamento !== undefined && !isNaN(data.faturamento)) ? data.faturamento : undefined,
-      roi: (data.roi !== undefined && !isNaN(data.roi)) ? data.roi : undefined,
-      lucro: (data.lucro !== undefined && !isNaN(data.lucro)) ? data.lucro : undefined,
-      cpa: (data.cpa !== undefined && !isNaN(data.cpa)) ? data.cpa : undefined,
-      criativosValidados: [] as [], // Garante que a propriedade seja um array vazio
-    };
-
-    onSave(sanitizedData);
+      criativosValidados: [] as [],
+    });
     reset();
     onClose();
   };
@@ -106,43 +91,6 @@ const CreativeForm = ({ onSave, onClose }: CreativeFormProps) => {
               render={({ field }) => <Input id="driveLink" placeholder="https://drive.google.com/..." {...field} />}
             />
             {errors.driveLink && <p className="text-sm text-red-500">{errors.driveLink.message}</p>}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="faturamento">Faturamento (R$)</Label>
-              <Controller
-                name="faturamento"
-                control={control}
-                render={({ field }) => <Input id="faturamento" type="number" step="0.01" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Opcional" />}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="roi">ROI</Label>
-              <Controller
-                name="roi"
-                control={control}
-                render={({ field }) => <Input id="roi" type="number" step="0.01" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Opcional" />}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="lucro">Lucro (R$)</Label>
-              <Controller
-                name="lucro"
-                control={control}
-                render={({ field }) => <Input id="lucro" type="number" step="0.01" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Opcional" />}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cpa">CPA (R$)</Label>
-              <Controller
-                name="cpa"
-                control={control}
-                render={({ field }) => <Input id="cpa" type="number" step="0.01" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Opcional" />}
-              />
-            </div>
           </div>
         </div>
       </ScrollArea>

@@ -371,19 +371,6 @@ const CreativesBoard = () => {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-grow flex flex-col space-y-4">
-                  {/* Métricas Gerais da Leva (se existirem) */}
-                  {(leva.faturamento !== undefined && leva.faturamento !== null && !isNaN(leva.faturamento)) ||
-                    (leva.roi !== undefined && leva.roi !== null && !isNaN(leva.roi)) ||
-                    (leva.lucro !== undefined && leva.lucro !== null && !isNaN(leva.lucro)) ||
-                    (leva.cpa !== undefined && leva.cpa !== null && !isNaN(leva.cpa)) ? (
-                    <div className="grid grid-cols-2 gap-4 text-xs border-b border-neutral-800 pb-4">
-                      {leva.faturamento !== undefined && leva.faturamento !== null && !isNaN(leva.faturamento) && <div><Label className="text-muted-foreground">Faturamento Total</Label><p className="font-semibold">{formatCurrency(leva.faturamento)}</p></div>}
-                      {leva.roi !== undefined && leva.roi !== null && !isNaN(leva.roi) && <div><Label className="text-muted-foreground">ROI Médio</Label><p className="font-semibold">{formatNumber(leva.roi)}</p></div>}
-                      {leva.lucro !== undefined && leva.lucro !== null && !isNaN(leva.lucro) && <div><Label className="text-muted-foreground">Lucro</Label><p className="font-semibold">{formatCurrency(leva.lucro)}</p></div>}
-                      {leva.cpa !== undefined && leva.cpa !== null && !isNaN(leva.cpa) && <div><Label className="text-muted-foreground">CPA</Label><p className="font-semibold">{formatCurrency(leva.cpa)}</p></div>}
-                    </div>
-                  ) : null}
-
                   <Label className="text-sm text-muted-foreground">Criativos Validados</Label>
                   <div className="bg-neutral-900/50 rounded-md flex-grow">
                     {Array.isArray(leva.criativosValidados) && leva.criativosValidados.length > 0 ? (
@@ -409,15 +396,15 @@ const CreativesBoard = () => {
                             )}
 
                             {/* Métricas do Criativo */}
-                            {((criativo.faturamento !== undefined && criativo.faturamento !== null && !isNaN(criativo.faturamento)) ||
-                              (criativo.roi !== undefined && criativo.roi !== null && !isNaN(criativo.roi)) ||
-                              (criativo.cpa !== undefined && criativo.cpa !== null && !isNaN(criativo.cpa)) ||
-                              (criativo.lucro !== undefined && criativo.lucro !== null && !isNaN(criativo.lucro))) && (
+                            {((criativo.faturamento !== undefined && criativo.faturamento !== null && !isNaN(criativo.faturamento) && criativo.faturamento !== 0) ||
+                              (criativo.roi !== undefined && criativo.roi !== null && !isNaN(criativo.roi) && criativo.roi !== 0) ||
+                              (criativo.cpa !== undefined && criativo.cpa !== null && !isNaN(criativo.cpa) && criativo.cpa !== 0) ||
+                              (criativo.lucro !== undefined && criativo.lucro !== null && !isNaN(criativo.lucro) && criativo.lucro !== 0)) && (
                                 <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mt-1 pt-2 border-t border-neutral-700/50">
-                                  {criativo.faturamento !== undefined && criativo.faturamento !== null && !isNaN(criativo.faturamento) && <span>Fat: <span className="text-foreground">{formatCurrency(criativo.faturamento)}</span></span>}
-                                  {criativo.roi !== undefined && criativo.roi !== null && !isNaN(criativo.roi) && <span>ROI: <span className="text-foreground">{formatNumber(criativo.roi)}</span></span>}
-                                  {criativo.cpa !== undefined && criativo.cpa !== null && !isNaN(criativo.cpa) && <span>CPA: <span className="text-foreground">{formatCurrency(criativo.cpa)}</span></span>}
-                                  {criativo.lucro !== undefined && criativo.lucro !== null && !isNaN(criativo.lucro) && <span>Lucro: <span className="text-foreground">{formatCurrency(criativo.lucro)}</span></span>}
+                                  {criativo.faturamento !== undefined && criativo.faturamento !== null && !isNaN(criativo.faturamento) && criativo.faturamento !== 0 && <span>Fat: <span className="text-foreground">{formatCurrency(criativo.faturamento)}</span></span>}
+                                  {criativo.roi !== undefined && criativo.roi !== null && !isNaN(criativo.roi) && criativo.roi !== 0 && <span>ROI: <span className="text-foreground">{formatNumber(criativo.roi)}</span></span>}
+                                  {criativo.cpa !== undefined && criativo.cpa !== null && !isNaN(criativo.cpa) && criativo.cpa !== 0 && <span>CPA: <span className="text-foreground">{formatCurrency(criativo.cpa)}</span></span>}
+                                  {criativo.lucro !== undefined && criativo.lucro !== null && !isNaN(criativo.lucro) && criativo.lucro !== 0 && <span>Lucro: <span className="text-foreground">{formatCurrency(criativo.lucro)}</span></span>}
                                 </div>
                               )}
                           </li>
