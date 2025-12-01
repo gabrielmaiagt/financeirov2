@@ -211,9 +211,19 @@ const CreativesBoard = () => {
   const handleAddValidatedCreative = async (levaId: string, creativeData: Omit<ValidatedCreative, 'id'>) => {
     if (!firestore) return;
     try {
-      console.log('Adicionando criativo valid ado:', { levaId, creativeData });
+      console.log('Adicionando criativo validado:', { levaId, creativeData });
       const levaRef = doc(firestore, 'criativos', levaId);
-      const newCreative = { id: `${Date.now()}-${creativeData.name}`, ...creativeData };
+
+      // Remove undefined values - Firestore doesn't accept them
+      const cleanedData = Object.fromEntries(
+        Object.entries(creativeData).filter(([_, value]) => value !== undefined)
+      );
+
+      const newCreative = {
+        id: `${Date.now()}-${creativeData.name}`,
+        ...cleanedData
+      };
+
       await updateDoc(levaRef, {
         criativosValidados: arrayUnion(newCreative)
       });
@@ -236,9 +246,15 @@ const CreativesBoard = () => {
     if (!firestore) return;
     try {
       console.log('Salvando criativo no banco:', data);
+
+      // Remove undefined values - Firestore doesn't accept them
+      const cleanedData = Object.fromEntries(
+        Object.entries(data).filter(([_, value]) => value !== undefined)
+      );
+
       const bancoRef = collection(firestore, 'banco_criativos');
       const docRef = await addDoc(bancoRef, {
-        ...data,
+        ...cleanedData,
         dataCriacao: Timestamp.now(),
       });
       console.log('Criativo salvo com sucesso! ID:', docRef.id);
