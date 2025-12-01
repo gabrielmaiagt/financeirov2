@@ -46,8 +46,8 @@ const CreativeForm = ({ onSave, onClose }: CreativeFormProps) => {
 
   const onSubmit = (data: FormData) => {
     onSave({
-        ...data,
-        criativosValidados: [], // Garante que a propriedade seja um array
+      ...data,
+      criativosValidados: [], // Garante que a propriedade seja um array
     });
     reset();
     onClose();
@@ -107,7 +107,7 @@ const CreativeForm = ({ onSave, onClose }: CreativeFormProps) => {
               <Controller
                 name="faturamento"
                 control={control}
-                render={({ field }) => <Input id="faturamento" type="number" step="0.01" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} placeholder="Opcional" />}
+                render={({ field }) => <Input id="faturamento" type="number" step="0.01" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Opcional" />}
               />
             </div>
             <div className="space-y-2">
@@ -115,7 +115,7 @@ const CreativeForm = ({ onSave, onClose }: CreativeFormProps) => {
               <Controller
                 name="roi"
                 control={control}
-                render={({ field }) => <Input id="roi" type="number" step="0.01" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} placeholder="Opcional" />}
+                render={({ field }) => <Input id="roi" type="number" step="0.01" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Opcional" />}
               />
             </div>
           </div>
@@ -125,7 +125,7 @@ const CreativeForm = ({ onSave, onClose }: CreativeFormProps) => {
               <Controller
                 name="lucro"
                 control={control}
-                render={({ field }) => <Input id="lucro" type="number" step="0.01" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} placeholder="Opcional" />}
+                render={({ field }) => <Input id="lucro" type="number" step="0.01" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Opcional" />}
               />
             </div>
             <div className="space-y-2">
@@ -133,7 +133,7 @@ const CreativeForm = ({ onSave, onClose }: CreativeFormProps) => {
               <Controller
                 name="cpa"
                 control={control}
-                render={({ field }) => <Input id="cpa" type="number" step="0.01" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} placeholder="Opcional" />}
+                render={({ field }) => <Input id="cpa" type="number" step="0.01" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Opcional" />}
               />
             </div>
           </div>
@@ -151,4 +151,3 @@ const CreativeForm = ({ onSave, onClose }: CreativeFormProps) => {
 
 export default CreativeForm;
 
-    

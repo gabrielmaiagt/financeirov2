@@ -24,12 +24,14 @@ import {
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export interface ValidatedCreative {
   id: string;
   name: string;
   sales: number;
+  copy?: string;
   faturamento?: number;
   roi?: number;
   lucro?: number;
@@ -82,6 +84,7 @@ const AddValidatedCreativeForm = ({ onAdd }: { onAdd: (creative: Omit<ValidatedC
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [sales, setSales] = useState<number | ''>('');
+  const [copy, setCopy] = useState('');
   const [faturamento, setFaturamento] = useState<number | ''>('');
   const [roi, setRoi] = useState<number | ''>('');
   const [lucro, setLucro] = useState<number | ''>('');
@@ -92,6 +95,7 @@ const AddValidatedCreativeForm = ({ onAdd }: { onAdd: (creative: Omit<ValidatedC
       onAdd({
         name,
         sales: Number(sales),
+        copy: copy.trim() !== '' ? copy : undefined,
         faturamento: faturamento !== '' ? Number(faturamento) : undefined,
         roi: roi !== '' ? Number(roi) : undefined,
         lucro: lucro !== '' ? Number(lucro) : undefined,
@@ -99,6 +103,7 @@ const AddValidatedCreativeForm = ({ onAdd }: { onAdd: (creative: Omit<ValidatedC
       });
       setName('');
       setSales('');
+      setCopy('');
       setFaturamento('');
       setRoi('');
       setLucro('');
@@ -127,6 +132,10 @@ const AddValidatedCreativeForm = ({ onAdd }: { onAdd: (creative: Omit<ValidatedC
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="sales" className="text-right">Vendas</Label>
             <Input id="sales" type="number" value={sales} onChange={(e) => setSales(e.target.value === '' ? '' : Number(e.target.value))} className="col-span-3" placeholder="Ex: 15" />
+          </div>
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="copy" className="text-right pt-2">Copy</Label>
+            <Textarea id="copy" value={copy} onChange={(e) => setCopy(e.target.value)} className="col-span-3" placeholder="Cole aqui o texto do criativo (opcional)" rows={4} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -243,12 +252,17 @@ const CreativesBoard = () => {
                 </CardHeader>
                 <CardContent className="flex-grow flex flex-col space-y-4">
                   {/* Métricas Gerais da Leva (se existirem) */}
-                  {(leva.faturamento !== undefined || leva.roi !== undefined) && (
+                  {(leva.faturamento !== undefined && leva.faturamento !== null && !isNaN(leva.faturamento)) ||
+                    (leva.roi !== undefined && leva.roi !== null && !isNaN(leva.roi)) ||
+                    (leva.lucro !== undefined && leva.lucro !== null && !isNaN(leva.lucro)) ||
+                    (leva.cpa !== undefined && leva.cpa !== null && !isNaN(leva.cpa)) ? (
                     <div className="grid grid-cols-2 gap-4 text-xs border-b border-neutral-800 pb-4">
-                      {leva.faturamento !== undefined && <div><Label className="text-muted-foreground">Faturamento Total</Label><p className="font-semibold">{formatCurrency(leva.faturamento)}</p></div>}
-                      {leva.roi !== undefined && <div><Label className="text-muted-foreground">ROI Médio</Label><p className="font-semibold">{formatNumber(leva.roi)}</p></div>}
+                      {leva.faturamento !== undefined && leva.faturamento !== null && !isNaN(leva.faturamento) && <div><Label className="text-muted-foreground">Faturamento Total</Label><p className="font-semibold">{formatCurrency(leva.faturamento)}</p></div>}
+                      {leva.roi !== undefined && leva.roi !== null && !isNaN(leva.roi) && <div><Label className="text-muted-foreground">ROI Médio</Label><p className="font-semibold">{formatNumber(leva.roi)}</p></div>}
+                      {leva.lucro !== undefined && leva.lucro !== null && !isNaN(leva.lucro) && <div><Label className="text-muted-foreground">Lucro</Label><p className="font-semibold">{formatCurrency(leva.lucro)}</p></div>}
+                      {leva.cpa !== undefined && leva.cpa !== null && !isNaN(leva.cpa) && <div><Label className="text-muted-foreground">CPA</Label><p className="font-semibold">{formatCurrency(leva.cpa)}</p></div>}
                     </div>
-                  )}
+                  ) : null}
 
                   <Label className="text-sm text-muted-foreground">Criativos Validados</Label>
                   <div className="bg-neutral-900/50 rounded-md flex-grow">
@@ -266,15 +280,26 @@ const CreativesBoard = () => {
                               </Button>
                             </div>
 
-                            {/* Métricas do Criativo */}
-                            {(criativo.faturamento || criativo.roi || criativo.cpa || criativo.lucro) && (
-                              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mt-1 pt-2 border-t border-neutral-700/50">
-                                {criativo.faturamento && <span>Fat: <span className="text-foreground">{formatCurrency(criativo.faturamento)}</span></span>}
-                                {criativo.roi && <span>ROI: <span className="text-foreground">{formatNumber(criativo.roi)}</span></span>}
-                                {criativo.cpa && <span>CPA: <span className="text-foreground">{formatCurrency(criativo.cpa)}</span></span>}
-                                {criativo.lucro && <span>Lucro: <span className="text-foreground">{formatCurrency(criativo.lucro)}</span></span>}
+                            {/* Copy do criativo */}
+                            {criativo.copy && (
+                              <div className="mt-2 pt-2 border-t border-neutral-700/50">
+                                <Label className="text-xs text-muted-foreground">Copy:</Label>
+                                <p className="text-xs mt-1 whitespace-pre-wrap text-muted-foreground italic">{criativo.copy}</p>
                               </div>
                             )}
+
+                            {/* Métricas do Criativo */}
+                            {((criativo.faturamento !== undefined && criativo.faturamento !== null && !isNaN(criativo.faturamento)) ||
+                              (criativo.roi !== undefined && criativo.roi !== null && !isNaN(criativo.roi)) ||
+                              (criativo.cpa !== undefined && criativo.cpa !== null && !isNaN(criativo.cpa)) ||
+                              (criativo.lucro !== undefined && criativo.lucro !== null && !isNaN(criativo.lucro))) && (
+                                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mt-1 pt-2 border-t border-neutral-700/50">
+                                  {criativo.faturamento !== undefined && criativo.faturamento !== null && !isNaN(criativo.faturamento) && <span>Fat: <span className="text-foreground">{formatCurrency(criativo.faturamento)}</span></span>}
+                                  {criativo.roi !== undefined && criativo.roi !== null && !isNaN(criativo.roi) && <span>ROI: <span className="text-foreground">{formatNumber(criativo.roi)}</span></span>}
+                                  {criativo.cpa !== undefined && criativo.cpa !== null && !isNaN(criativo.cpa) && <span>CPA: <span className="text-foreground">{formatCurrency(criativo.cpa)}</span></span>}
+                                  {criativo.lucro !== undefined && criativo.lucro !== null && !isNaN(criativo.lucro) && <span>Lucro: <span className="text-foreground">{formatCurrency(criativo.lucro)}</span></span>}
+                                </div>
+                              )}
                           </li>
                         ))}
                       </ul>
