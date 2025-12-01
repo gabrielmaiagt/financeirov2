@@ -147,6 +147,57 @@
     pointer-events: none;
     user-select: none;
   }
+
+  /* Theme Color Overrides - Force themed colors on hardcoded Tailwind classes */
+  [data-theme="cartoon"] {
+    --tw-bg-opacity: 1;
+    --tw-border-opacity: 1;
+  }
+
+  [data-theme="cartoon"] .bg-neutral-800,
+  [data-theme="cartoon"] .bg-neutral-900,
+  [data-theme="cartoon"] .bg-neutral-950 {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  [data-theme="cartoon"] .border-neutral-700,
+  [data-theme="cartoon"] .border-neutral-800 {
+    border-color: hsl(var(--border)) !important;
+  }
+
+  [data-theme="cartoon"] .text-primary {
+    color: hsl(var(--primary)) !important;
+  }
+
+  [data-theme="retro"] .bg-neutral-800,
+  [data-theme="retro"] .bg-neutral-900,
+  [data-theme="retro"] .bg-neutral-950 {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  [data-theme="retro"] .border-neutral-700,
+  [data-theme="retro"] .border-neutral-800 {
+    border-color: hsl(var(--border)) !important;
+  }
+
+  [data-theme="retro"] .text-primary {
+    color: hsl(var(--primary)) !important;
+  }
+
+  [data-theme="neon"] .bg-neutral-800,
+  [data-theme="neon"] .bg-neutral-900,
+  [data-theme="neon"] .bg-neutral-950 {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  [data-theme="neon"] .border-neutral-700,
+  [data-theme="neon"] .border-neutral-800 {
+    border-color: hsl(var(--border)) !important;
+  }
+
+  [data-theme="neon"] .text-primary {
+    color: hsl(var(--primary)) !important;
+  }
 }
 
 
