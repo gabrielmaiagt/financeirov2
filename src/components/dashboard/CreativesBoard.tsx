@@ -210,11 +210,18 @@ const CreativesBoard = () => {
 
   const handleAddValidatedCreative = async (levaId: string, creativeData: Omit<ValidatedCreative, 'id'>) => {
     if (!firestore) return;
-    const levaRef = doc(firestore, 'criativos', levaId);
-    const newCreative = { id: `${Date.now()}-${creativeData.name}`, ...creativeData };
-    await updateDoc(levaRef, {
-      criativosValidados: arrayUnion(newCreative)
-    });
+    try {
+      console.log('Adicionando criativo valid ado:', { levaId, creativeData });
+      const levaRef = doc(firestore, 'criativos', levaId);
+      const newCreative = { id: `${Date.now()}-${creativeData.name}`, ...creativeData };
+      await updateDoc(levaRef, {
+        criativosValidados: arrayUnion(newCreative)
+      });
+      console.log('Criativo validado adicionado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao adicionar criativo validado:', error);
+      alert('Erro ao adicionar criativo: ' + (error as Error).message);
+    }
   };
 
   const handleRemoveValidatedCreative = async (levaId: string, creativeToRemove: ValidatedCreative) => {
@@ -227,12 +234,19 @@ const CreativesBoard = () => {
 
   const handleSaveBancoCreativo = async (data: Omit<BancoCreativo, 'id' | 'dataCriacao'>) => {
     if (!firestore) return;
-    const bancoRef = collection(firestore, 'banco_criativos');
-    await addDoc(bancoRef, {
-      ...data,
-      dataCriacao: Timestamp.now(),
-    });
-    setIsBancoDialogOpen(false);
+    try {
+      console.log('Salvando criativo no banco:', data);
+      const bancoRef = collection(firestore, 'banco_criativos');
+      const docRef = await addDoc(bancoRef, {
+        ...data,
+        dataCriacao: Timestamp.now(),
+      });
+      console.log('Criativo salvo com sucesso! ID:', docRef.id);
+      setIsBancoDialogOpen(false);
+    } catch (error) {
+      console.error('Erro ao salvar criativo no banco:', error);
+      alert('Erro ao salvar criativo: ' + (error as Error).message);
+    }
   };
 
   const handleDeleteBancoCreativo = async (id: string) => {
