@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
 import GoalWidget from './GoalWidget';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 
 const getInitials = (name?: string) => {
   if (!name) return '';
@@ -75,6 +76,7 @@ const Header = () => {
             <Settings className="w-5 h-5" />
           </Button>
         </Link>
+        <ThemeSwitcher />
       </div>
     </header>
   );

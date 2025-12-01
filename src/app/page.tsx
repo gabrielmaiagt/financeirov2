@@ -29,7 +29,11 @@ import DashboardBoard from '@/components/dashboard/DashboardBoard';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent } from "@/components/ui/tabs";
+import { NavTabs } from "@/components/NavTabs";
+import { NavTabsList } from "@/components/NavTabsList";
+import { Sidebar } from "@/components/Sidebar";
+import { TopBar } from "@/components/TopBar";
 import { Loader2 } from 'lucide-react';
 import { PrivacyToggleButton } from '@/components/dashboard/PrivacyToggleButton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -153,92 +157,80 @@ export default function Home() {
       </div>
       <Header />
 
-      <Tabs defaultValue="lancamentos" className="w-full">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 no-scrollbar">
-            <TabsList className="h-auto w-max justify-start flex-nowrap bg-transparent p-0 gap-2">
-              <TabsTrigger value="lancamentos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Lançamentos</TabsTrigger>
-              <TabsTrigger value="vendas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Vendas</TabsTrigger>
-              <TabsTrigger value="dashboard" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Dashboard</TabsTrigger>
-              <TabsTrigger value="despesas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Despesas</TabsTrigger>
-              <TabsTrigger value="tarefas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Tarefas</TabsTrigger>
-              <TabsTrigger value="calendario" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Calendário</TabsTrigger>
-              <TabsTrigger value="criativos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Criativos</TabsTrigger>
-              <TabsTrigger value="anotacoes" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Anotações</TabsTrigger>
-              <TabsTrigger value="metas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Metas</TabsTrigger>
-              <TabsTrigger value="ofertas" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Ofertas Escaladas</TabsTrigger>
-              <TabsTrigger value="insights" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Insights</TabsTrigger>
-              <TabsTrigger value="perfis" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Perfis</TabsTrigger>
-              <TabsTrigger value="frases" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Frases</TabsTrigger>
-              <TabsTrigger value="logins" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Logins</TabsTrigger>
-              <TabsTrigger value="recuperacao" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Recuperação</TabsTrigger>
-            </TabsList>
+      <NavTabs defaultValue="lancamentos" className="w-full flex flex-col md:flex-row gap-6">
+        <Sidebar />
+
+        <div className="flex-1 w-full min-w-0">
+          <TopBar />
+
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <NavTabsList />
+            <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+              <PrivacyToggleButton />
+              {/* The date range picker is conditionally rendered based on the active tab */}
+            </div>
           </div>
-          <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-            <PrivacyToggleButton />
-            {/* The date range picker is conditionally rendered based on the active tab */}
-          </div>
+
+          <TabsContent value="dashboard">
+            <DashboardBoard />
+          </TabsContent>
+          <TabsContent value="lancamentos">
+            <div className="mb-4 flex justify-end">
+              <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+            </div>
+            <div className="flex flex-col gap-4 md:gap-8">
+              <SummaryCards operacoes={filteredOperacoes || []} />
+              <OperationsTable
+                operacoes={filteredOperacoes || []}
+                isLoading={isLoadingAllOperacoes}
+                onDelete={handleDeleteOperation}
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="vendas">
+            <VendasBoard />
+          </TabsContent>
+          <TabsContent value="despesas">
+            <ExpensesBoard />
+          </TabsContent>
+          <TabsContent value="tarefas">
+            <TasksBoard />
+          </TabsContent>
+          <TabsContent value="calendario">
+            <CalendarBoard dateRange={dateRange} />
+          </TabsContent>
+          <TabsContent value="criativos">
+            <CreativesBoard />
+          </TabsContent>
+          <TabsContent value="anotacoes">
+            <NotesBoard />
+          </TabsContent>
+          <TabsContent value="metas">
+            <GoalsBoard />
+          </TabsContent>
+          <TabsContent value="ofertas">
+            <OfertasEscaladasBoard />
+          </TabsContent>
+          <TabsContent value="insights">
+            <InsightsBoard />
+          </TabsContent>
+          <TabsContent value="perfis">
+            <ProfilesBoard installable={!!installEvent} handleInstall={handleInstallClick} />
+          </TabsContent>
+          <TabsContent value="frases">
+            <QuotesBoard />
+          </TabsContent>
+          <TabsContent value="logins">
+            <LoginsBoard />
+          </TabsContent>
+          <TabsContent value="recuperacao">
+            <RecuperacaoBoard />
+          </TabsContent>
         </div>
-
-        <TabsContent value="dashboard">
-          <DashboardBoard />
-        </TabsContent>
-        <TabsContent value="lancamentos">
-          <div className="mb-4 flex justify-end">
-            <DateRangePicker date={dateRange} onDateChange={setDateRange} />
-          </div>
-          <div className="flex flex-col gap-4 md:gap-8">
-            <SummaryCards operacoes={filteredOperacoes || []} />
-            <OperationsTable
-              operacoes={filteredOperacoes || []}
-              isLoading={isLoadingAllOperacoes}
-              onDelete={handleDeleteOperation}
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="vendas">
-          <VendasBoard />
-        </TabsContent>
-        <TabsContent value="despesas">
-          <ExpensesBoard />
-        </TabsContent>
-        <TabsContent value="tarefas">
-          <TasksBoard />
-        </TabsContent>
-        <TabsContent value="calendario">
-          <CalendarBoard dateRange={dateRange} />
-        </TabsContent>
-        <TabsContent value="criativos">
-          <CreativesBoard />
-        </TabsContent>
-        <TabsContent value="anotacoes">
-          <NotesBoard />
-        </TabsContent>
-        <TabsContent value="metas">
-          <GoalsBoard />
-        </TabsContent>
-        <TabsContent value="ofertas">
-          <OfertasEscaladasBoard />
-        </TabsContent>
-        <TabsContent value="insights">
-          <InsightsBoard />
-        </TabsContent>
-        <TabsContent value="perfis">
-          <ProfilesBoard installable={!!installEvent} handleInstall={handleInstallClick} />
-        </TabsContent>
-        <TabsContent value="frases">
-          <QuotesBoard />
-        </TabsContent>
-        <TabsContent value="logins">
-          <LoginsBoard />
-        </TabsContent>
-        <TabsContent value="recuperacao">
-          <RecuperacaoBoard />
-        </TabsContent>
-      </Tabs>
+      </NavTabs>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { FirebaseClientProvider } from "@/firebase/client-provider";
 import { SoundProvider } from "@/providers/SoundProvider";
 import Script from "next/script";
 import { PrivacyProvider } from "@/providers/PrivacyProvider";
+import { UIProvider } from "@/components/ThemeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -57,7 +58,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <FirebaseClientProvider>
           <PrivacyProvider>
-            <SoundProvider>{children}</SoundProvider>
+            <SoundProvider>
+              <UIProvider>{children}</UIProvider>
+            </SoundProvider>
           </PrivacyProvider>
         </FirebaseClientProvider>
         <Toaster />

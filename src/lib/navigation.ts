@@ -1,0 +1,35 @@
+import {
+    LayoutDashboard,
+    Receipt,
+    ShoppingCart,
+    CreditCard,
+    CheckSquare,
+    CalendarDays,
+    Palette,
+    StickyNote,
+    Target,
+    TrendingUp,
+    Lightbulb,
+    Users,
+    Quote,
+    KeyRound,
+    RotateCcw
+} from "lucide-react";
+
+export const NAV_ITEMS = [
+    { value: "lancamentos", label: "Lançamentos", icon: Receipt },
+    { value: "vendas", label: "Vendas", icon: ShoppingCart },
+    { value: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { value: "despesas", label: "Despesas", icon: CreditCard },
+    { value: "tarefas", label: "Tarefas", icon: CheckSquare },
+    { value: "calendario", label: "Calendário", icon: CalendarDays },
+    { value: "criativos", label: "Criativos", icon: Palette },
+    { value: "anotacoes", label: "Anotações", icon: StickyNote },
+    { value: "metas", label: "Metas", icon: Target },
+    { value: "ofertas", label: "Ofertas Escaladas", icon: TrendingUp },
+    { value: "insights", label: "Insights", icon: Lightbulb },
+    { value: "perfis", label: "Perfis", icon: Users },
+    { value: "frases", label: "Frases", icon: Quote },
+    { value: "logins", label: "Logins", icon: KeyRound },
+    { value: "recuperacao", label: "Recuperação", icon: RotateCcw },
+];
