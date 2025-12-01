@@ -209,7 +209,7 @@ export default function Home() {
           <TasksBoard />
         </TabsContent>
         <TabsContent value="calendario">
-          <CalendarBoard />
+          <CalendarBoard dateRange={dateRange} />
         </TabsContent>
         <TabsContent value="criativos">
           <CreativesBoard />

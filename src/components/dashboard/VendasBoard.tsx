@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, Timestamp, writeBatch, getDocs, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -259,9 +260,33 @@ const VendasBoard = () => {
     }));
   }, [remindersRaw]);
 
+  // ... (existing imports)
+
   const handleAddReminder = async () => {
     if (!firestore || !reminderTitle || !reminderDate) return;
     try {
+      // Request permissions first
+      const permStatus = await LocalNotifications.requestPermissions();
+      if (permStatus.display === 'granted') {
+        const date = new Date(reminderDate);
+
+        // Schedule notification
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title: "Lembrete Financeiro",
+              body: reminderTitle,
+              id: Math.floor(Math.random() * 100000),
+              schedule: { at: date },
+              sound: undefined,
+              attachments: undefined,
+              actionTypeId: "",
+              extra: null
+            }
+          ]
+        });
+      }
+
       await addDoc(collection(firestore, 'reminders'), {
         title: reminderTitle,
         date: Timestamp.fromDate(new Date(reminderDate)),
@@ -270,7 +295,7 @@ const VendasBoard = () => {
       });
       setReminderTitle('');
       setReminderDate('');
-      toast({ title: 'Lembrete adicionado!' });
+      toast({ title: 'Lembrete adicionado e agendado!' });
     } catch (error) {
       console.error(error);
       toast({ title: 'Erro ao adicionar lembrete', variant: 'destructive' });
@@ -475,50 +500,71 @@ const VendasBoard = () => {
   }, [vendas]);
 
   // Analytics por fonte, campanha, gateway, produto e horário
+  // Helper to extract creative group
+  const getCreativeGroup = (name: string) => {
+    const lower = name.toLowerCase();
+    // Matches "prev X", "esc X", "criativo X" where X is a number
+    const match = lower.match(/(prev|esc|criativo)\s*\d+/);
+    if (match) return match[0];
+    return name;
+  };
+
+  // ... inside VendasBoard component ...
+
   const trackingAnalytics = useMemo(() => {
-    if (!vendas) return { bySource: {}, byCampaign: {}, byGateway: {}, byProduct: {}, byHour: {} };
+    if (!vendas) return { byGateway: {}, bySource: {}, byCampaign: {}, byProduct: {}, byHour: {} };
 
-    const initMetric = () => ({ count: 0, generated: 0, revenue: 0, netRevenue: 0 });
-
+    const byGateway: Record<string, { count: number; netRevenue: number; pixGenerated: number; pixPaid: number }> = {};
     const bySource: Record<string, { count: number; generated: number; revenue: number; netRevenue: number }> = {};
     const byCampaign: Record<string, { count: number; generated: number; revenue: number; netRevenue: number }> = {};
-    const byGateway: Record<string, { count: number; generated: number; revenue: number; netRevenue: number }> = {};
-    const byProduct: Record<string, { count: number; generated: number; revenue: number; netRevenue: number }> = {};
+    const byProduct: Record<string, { count: number; netRevenue: number }> = {};
     const byHour: Record<string, { count: number; generated: number; revenue: number; netRevenue: number }> = {};
 
     vendas.forEach(venda => {
-      const lowerCaseStatus = venda.status.toLowerCase();
-      const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
-      const isGenerated = true; // Consideramos toda venda como "gerada" inicialmente para fins de funil
+      const netAmount = venda.net_amount || (venda.total_amount - (venda.total_amount * 0.0499)); // Fallback estimation
+      const isPaid = venda.status.toLowerCase().includes('pago') || venda.status.toLowerCase().includes('paid') || venda.status.toLowerCase().includes('approved');
+      const isPix = venda.payment_method?.toLowerCase().includes('pix');
 
-      // Calculate net amount (with fee deduction)
-      const gateway = venda.gateway?.toLowerCase() || '';
-      let fee = 0;
-      if (gateway.includes('buckpay')) {
-        fee = (venda.total_amount * 0.0449) + 1.49;
-      } else if (gateway.includes('paradise')) {
-        fee = (venda.total_amount * 0.015) + 1.49;
+      // Gateway
+      const gateway = venda.gateway || 'Desconhecido';
+      if (!byGateway[gateway]) byGateway[gateway] = { count: 0, netRevenue: 0, pixGenerated: 0, pixPaid: 0 };
+
+      if (isPaid) {
+        byGateway[gateway].count++;
+        byGateway[gateway].netRevenue += netAmount;
       }
-      const netAmount = venda.total_amount - fee;
 
-      // Helper
-      const processMetric = (dict: any, key: string, amount: number, net: number) => {
-        if (!dict[key]) dict[key] = initMetric();
-        dict[key].generated++;
+      if (isPix) {
+        byGateway[gateway].pixGenerated++;
+        if (isPaid) byGateway[gateway].pixPaid++;
+      }
+
+      // Helper for Source/Campaign
+      const processMetric = (record: any, key: string, amount: number, net: number) => {
+        if (!record[key]) record[key] = { count: 0, generated: 0, revenue: 0, netRevenue: 0 };
+        record[key].generated++;
         if (isPaid) {
-          dict[key].count++;
-          dict[key].revenue += amount;
-          dict[key].netRevenue += net;
+          record[key].count++;
+          record[key].revenue += amount;
+          record[key].netRevenue += net;
         }
       };
 
-      // Gateway
-      const gw = venda.gateway || 'N/A';
-      processMetric(byGateway, gw, venda.total_amount, netAmount);
+      // Source
+      const source = venda.tracking.utm_source || 'N/A';
+      processMetric(bySource, source, venda.total_amount, netAmount);
 
-      // Produto
+      // Campaign
+      const campaign = venda.tracking.utm_campaign || 'N/A';
+      processMetric(byCampaign, campaign, venda.total_amount, netAmount);
+
+      // Product
       const product = venda.offer?.name || 'N/A';
-      processMetric(byProduct, product, venda.total_amount, netAmount);
+      if (!byProduct[product]) byProduct[product] = { count: 0, netRevenue: 0 };
+      if (isPaid) {
+        byProduct[product].count++;
+        byProduct[product].netRevenue += netAmount;
+      }
 
       // Horário
       const date = venda.created_at?.toDate();
@@ -526,19 +572,9 @@ const VendasBoard = () => {
         const hour = date.getHours().toString().padStart(2, '0') + 'h';
         processMetric(byHour, hour, venda.total_amount, netAmount);
       }
-
-      if (venda.tracking) {
-        // Source
-        const source = venda.tracking.utm_source || venda.tracking.src || 'N/A';
-        processMetric(bySource, source, venda.total_amount, netAmount);
-
-        // Campaign
-        const campaign = venda.tracking.utm_campaign || 'N/A';
-        processMetric(byCampaign, campaign, venda.total_amount, netAmount);
-      }
     });
 
-    return { bySource, byCampaign, byGateway, byProduct, byHour };
+    return { byGateway, bySource, byCampaign, byProduct, byHour };
   }, [vendas]);
 
   // Dados para o gráfico de evolução
@@ -1082,25 +1118,41 @@ const VendasBoard = () => {
                                 <div className="space-y-3">
                                   {Object.entries(trackingAnalytics.byGateway)
                                     .sort((a, b) => b[1].count - a[1].count)
-                                    .map(([gateway, data]) => (
-                                      <div key={gateway} className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                          <p className="text-sm font-medium">{gateway}</p>
-                                          <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.netRevenue)}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <Badge variant="secondary">{data.count}</Badge>
-                                          <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                                            <div
-                                              className="h-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"
-                                              style={{
-                                                width: `${(data.count / maxValues.gateway) * 100}%`
-                                              }}
-                                            />
+                                    .map(([gateway, data]) => {
+                                      const pixConversion = data.pixGenerated > 0 ? (data.pixPaid / data.pixGenerated) * 100 : 0;
+                                      return (
+                                        <div key={gateway} className="flex flex-col gap-2 p-2 rounded-md hover:bg-neutral-900/50 transition-colors">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                              <p className="text-sm font-medium">{gateway}</p>
+                                              <p className="text-xs text-muted-foreground">{formatCurrencyBRL(data.netRevenue)}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Badge variant="secondary">{data.count}</Badge>
+                                              <div className="w-20 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                                                <div
+                                                  className="h-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"
+                                                  style={{
+                                                    width: `${(data.count / maxValues.gateway) * 100}%`
+                                                  }}
+                                                />
+                                              </div>
+                                            </div>
                                           </div>
+                                          {data.pixGenerated > 0 && (
+                                            <div className="flex items-center justify-between text-xs text-muted-foreground pl-2 border-l-2 border-neutral-800">
+                                              <span>Conversão PIX:</span>
+                                              <span className={cn(
+                                                "font-medium",
+                                                pixConversion >= 50 ? "text-green-400" : "text-yellow-400"
+                                              )}>
+                                                {pixConversion.toFixed(1)}% ({data.pixPaid}/{data.pixGenerated})
+                                              </span>
+                                            </div>
+                                          )}
                                         </div>
-                                      </div>
-                                    ))}
+                                      )
+                                    })}
                                   {Object.keys(trackingAnalytics.byGateway).length === 0 && (
                                     <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de gateway disponível</p>
                                   )}
@@ -1375,6 +1427,26 @@ const VendasBoard = () => {
                           break;
                         case 'campaign_conversion_table':
                           className = "md:col-span-2 xl:col-span-2 h-full";
+
+                          // Group campaigns logic
+                          const groupedCampaigns = Object.entries(trackingAnalytics.byCampaign).reduce((acc, [campaign, data]) => {
+                            const groupName = getCreativeGroup(campaign);
+                            if (!acc[groupName]) {
+                              acc[groupName] = {
+                                name: groupName,
+                                campaigns: [],
+                                total: { count: 0, generated: 0, revenue: 0 }
+                              };
+                            }
+                            acc[groupName].campaigns.push({ name: campaign, ...data });
+                            acc[groupName].total.count += data.count;
+                            acc[groupName].total.generated += data.generated;
+                            acc[groupName].total.revenue += data.revenue;
+                            return acc;
+                          }, {} as Record<string, { name: string, campaigns: any[], total: any }>);
+
+                          const sortedGroups = Object.values(groupedCampaigns).sort((a, b) => b.total.revenue - a.total.revenue);
+
                           content = (
                             <Card className="bg-transparent border-neutral-800 h-full flex flex-col">
                               <CardHeader>
@@ -1393,38 +1465,53 @@ const VendasBoard = () => {
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                      {Object.entries(trackingAnalytics.byCampaign).length > 0 ? (
-                                        Object.entries(trackingAnalytics.byCampaign)
-                                          .sort(([, a], [, b]) => b.revenue - a.revenue)
-                                          .map(([campaign, data]) => {
-                                            const convRate = data.generated > 0 ? ((data.count / data.generated) * 100) : 0;
-                                            return (
-                                              <TableRow key={campaign} className="border-neutral-800">
-                                                <TableCell className="font-medium max-w-[200px] truncate" title={cleanCampaignName(campaign)}>
-                                                  {cleanCampaignName(campaign)}
-                                                </TableCell>
-                                                <TableCell className="text-center">{data.generated}</TableCell>
+                                      {sortedGroups.length > 0 ? (
+                                        sortedGroups.map((group) => (
+                                          <>
+                                            {/* Individual Campaigns */}
+                                            {group.campaigns.sort((a, b) => b.revenue - a.revenue).map((campaign) => {
+                                              const convRate = campaign.generated > 0 ? ((campaign.count / campaign.generated) * 100) : 0;
+                                              return (
+                                                <TableRow key={campaign.name} className="border-neutral-800 hover:bg-neutral-900/50">
+                                                  <TableCell className="font-medium max-w-[200px] truncate" title={cleanCampaignName(campaign.name)}>
+                                                    {cleanCampaignName(campaign.name)}
+                                                  </TableCell>
+                                                  <TableCell className="text-center">{campaign.generated}</TableCell>
+                                                  <TableCell className="text-center">
+                                                    <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                                                      {campaign.count}
+                                                    </Badge>
+                                                  </TableCell>
+                                                  <TableCell className="text-right">{formatCurrencyBRL(campaign.revenue)}</TableCell>
+                                                  <TableCell className="text-center">
+                                                    <Badge
+                                                      variant="outline"
+                                                      className={cn(
+                                                        convRate >= 50 ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                                                          convRate >= 25 ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
+                                                            "bg-red-500/10 text-red-500 border-red-500/20"
+                                                      )}
+                                                    >
+                                                      {convRate.toFixed(1)}%
+                                                    </Badge>
+                                                  </TableCell>
+                                                </TableRow>
+                                              );
+                                            })}
+                                            {/* Group Summary (only if > 1 campaign or if explicitly grouped) */}
+                                            {group.campaigns.length > 1 && (
+                                              <TableRow className="bg-neutral-800/30 font-bold border-t border-neutral-700">
+                                                <TableCell className="text-primary">Total {group.name}</TableCell>
+                                                <TableCell className="text-center">{group.total.generated}</TableCell>
+                                                <TableCell className="text-center text-green-400">{group.total.count}</TableCell>
+                                                <TableCell className="text-right text-green-400">{formatCurrencyBRL(group.total.revenue)}</TableCell>
                                                 <TableCell className="text-center">
-                                                  <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
-                                                    {data.count}
-                                                  </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right">{formatCurrencyBRL(data.revenue)}</TableCell>
-                                                <TableCell className="text-center">
-                                                  <Badge
-                                                    variant="outline"
-                                                    className={cn(
-                                                      convRate >= 50 ? "bg-green-500/10 text-green-500 border-green-500/20" :
-                                                        convRate >= 25 ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
-                                                          "bg-red-500/10 text-red-500 border-red-500/20"
-                                                    )}
-                                                  >
-                                                    {convRate.toFixed(1)}%
-                                                  </Badge>
+                                                  {group.total.generated > 0 ? ((group.total.count / group.total.generated) * 100).toFixed(1) : '0.0'}%
                                                 </TableCell>
                                               </TableRow>
-                                            );
-                                          })
+                                            )}
+                                          </>
+                                        ))
                                       ) : (
                                         <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Sem dados de campanha.</TableCell></TableRow>
                                       )}
