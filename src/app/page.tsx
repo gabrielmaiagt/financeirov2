@@ -151,7 +151,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen w-full text-foreground p-4 md:p-8 flex flex-col gap-4 md:gap-8">
+    <div className="min-h-screen w-full text-foreground p-2 md:p-8 flex flex-col gap-4 md:gap-8">
       <div className="absolute top-0 left-0 w-full h-full bg-black -z-10">
         <div className="absolute inset-0 bg-radial-gradient(ellipse_at_center,rgba(20,20,20,1)_0%,rgba(0,0,0,1)_100%)"></div>
       </div>
@@ -175,8 +175,8 @@ export default function Home() {
             <DashboardBoard />
           </TabsContent>
           <TabsContent value="lancamentos">
-            <div className="mb-4 flex justify-end">
-              <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+            <div className="mb-4 flex justify-center md:justify-end">
+              <DateRangePicker date={dateRange} onDateChange={setDateRange} className="w-full md:w-[300px]" />
             </div>
             <div className="flex flex-col gap-4 md:gap-8">
               <SummaryCards operacoes={filteredOperacoes || []} />

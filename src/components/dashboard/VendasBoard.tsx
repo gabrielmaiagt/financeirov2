@@ -111,7 +111,7 @@ const TimeAgo = ({ date }: { date: Date | undefined }) => {
   return timeAgo || 'agora mesmo';
 };
 
-const StatCard = ({ title, value, icon: Icon }: { title: string, value: string, icon: React.ElementType }) => (
+const StatCard = ({ title, value, icon: Icon, subtitle }: { title: string, value: string, icon: React.ElementType, subtitle?: string }) => (
   <Card className="bg-neutral-900/50 border-neutral-800">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium text-neutral-400">{title}</CardTitle>
@@ -119,6 +119,7 @@ const StatCard = ({ title, value, icon: Icon }: { title: string, value: string, 
     </CardHeader>
     <CardContent>
       <div className="text-2xl font-bold">{value}</div>
+      {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
     </CardContent>
   </Card>
 );
@@ -935,9 +936,9 @@ const VendasBoard = () => {
             <TabsTrigger value="reminders">Lembretes</TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+          <div className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto">
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <DateRangePicker date={dateRange} onDateChange={setDateRange} className="flex-1 md:w-[300px] md:flex-none" />
               <Button variant="outline" size="icon" onClick={() => setIsCustomizeOpen(true)} title="Personalizar Dashboard">
                 <Settings2 className="w-4 h-4" />
               </Button>

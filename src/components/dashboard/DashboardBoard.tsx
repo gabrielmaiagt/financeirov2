@@ -305,7 +305,7 @@ export default function DashboardBoard() {
                 <h1 className="text-2xl font-bold">Dashboard de Performance</h1>
                 <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                     <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-full md:w-[180px]">
                             <SelectValue placeholder="Todas as Contas" />
                         </SelectTrigger>
                         <SelectContent>
@@ -315,7 +315,7 @@ export default function DashboardBoard() {
                             ))}
                         </SelectContent>
                     </Select>
-                    <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+                    <DateRangePicker date={dateRange} onDateChange={setDateRange} className="w-full md:w-[300px]" />
                     <Button variant="outline" size="icon" onClick={handleSync} disabled={isSyncing} title="Sincronizar Agora">
                         {isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                     </Button>

@@ -41,7 +41,7 @@ export function DateRangePicker({
   date,
   onDateChange,
 }: DateRangePickerProps) {
-  
+
   const handlePresetChange = (value: string) => {
     const now = new Date();
     switch (value) {
@@ -75,7 +75,7 @@ export function DateRangePicker({
             id="date"
             variant={'outline'}
             className={cn(
-              'w-[300px] justify-start text-left font-normal',
+              'w-full justify-start text-left font-normal',
               !date && 'text-muted-foreground'
             )}
           >
@@ -97,24 +97,24 @@ export function DateRangePicker({
         <PopoverContent className="w-auto p-0" align="start">
           <div className="flex bg-neutral-900">
             <div className="w-[180px] p-2 border-r border-neutral-800">
-                <h4 className="text-sm font-medium px-2 py-1.5">Períodos</h4>
-                <div className="flex flex-col space-y-1 mt-1">
-                    <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('today')}>Hoje</Button>
-                    <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('yesterday')}>Ontem</Button>
-                    <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('last7')}>Últimos 7 dias</Button>
-                    <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('last30')}>Últimos 30 dias</Button>
-                    <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('thisMonth')}>Este mês</Button>
-                    <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('all')}>Período completo</Button>
-                </div>
+              <h4 className="text-sm font-medium px-2 py-1.5">Períodos</h4>
+              <div className="flex flex-col space-y-1 mt-1">
+                <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('today')}>Hoje</Button>
+                <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('yesterday')}>Ontem</Button>
+                <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('last7')}>Últimos 7 dias</Button>
+                <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('last30')}>Últimos 30 dias</Button>
+                <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('thisMonth')}>Este mês</Button>
+                <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('all')}>Período completo</Button>
+              </div>
             </div>
             <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={onDateChange}
-                numberOfMonths={2}
-                locale={ptBR}
+              initialFocus
+              mode="range"
+              defaultMonth={date?.from}
+              selected={date}
+              onSelect={onDateChange}
+              numberOfMonths={2}
+              locale={ptBR}
             />
           </div>
         </PopoverContent>

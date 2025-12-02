@@ -8,11 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Task, Urgency } from './TasksBoard';
 import { Operacao } from '@/app/page';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Loader2, TrendingDown, TrendingUp } from 'lucide-react';
+import { Loader2, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 
 const urgencyColors: Record<Urgency, string> = {
   Baixa: 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30',
@@ -48,13 +50,12 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-
 const CalendarDayCell = ({ date, tasks, dailyRevenue, dailyGross }: { date: Date, tasks: Task[], dailyRevenue: number | null, dailyGross: number | null }) => {
   const highestUrgency = getHighestUrgency(tasks);
   const dayNumber = format(date, 'd');
   const hasContent = tasks.length > 0 || dailyRevenue !== null;
 
-  const PopoverContentComponent = () => (
+  const TooltipContent = () => (
     <div className="grid gap-4">
       <div className="space-y-2">
         <h4 className="font-medium leading-none">Resumo de {format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}</h4>
@@ -62,7 +63,7 @@ const CalendarDayCell = ({ date, tasks, dailyRevenue, dailyGross }: { date: Date
       {dailyGross !== null && dailyGross > 0 && (
         <div className="flex items-center justify-between p-2 rounded-md bg-neutral-800/50">
           <div className="flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-blue-400" />
+            <TrendingUp className="w-4 h-4 text-blue-400" />
             <span className="font-semibold text-blue-400">Faturamento</span>
           </div>
           <span className="font-bold text-blue-400">{formatCurrency(dailyGross)}</span>
@@ -101,18 +102,76 @@ const CalendarDayCell = ({ date, tasks, dailyRevenue, dailyGross }: { date: Date
     </div>
   );
 
+  const DialogDetailContent = () => (
+    <div className="grid gap-6 py-4">
+      <div className="grid grid-cols-2 gap-4">
+        {dailyGross !== null && (
+          <div className="flex flex-col p-4 rounded-xl bg-neutral-900/50 border border-neutral-800">
+            <span className="text-sm text-muted-foreground mb-1">Faturamento</span>
+            <span className="text-2xl font-bold text-blue-400">{formatCurrency(dailyGross)}</span>
+          </div>
+        )}
+        {dailyRevenue !== null && (
+          <div className={cn(
+            "flex flex-col p-4 rounded-xl border",
+            dailyRevenue > 0 ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20",
+            dailyRevenue === 0 && "bg-neutral-900/50 border-neutral-800"
+          )}>
+            <span className="text-sm text-muted-foreground mb-1">Lucro Líquido</span>
+            <span className={cn(
+              "text-2xl font-bold",
+              dailyRevenue > 0 && "text-green-400",
+              dailyRevenue < 0 && "text-red-400",
+              dailyRevenue === 0 && "text-neutral-400"
+            )}>{formatCurrency(dailyRevenue)}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <h4 className="font-medium flex items-center gap-2">
+          <span className="w-1 h-4 rounded-full bg-primary" />
+          Tarefas do Dia ({tasks.length})
+        </h4>
+
+        {tasks.length > 0 ? (
+          <div className="grid gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+            {tasks.map(task => (
+              <div key={task.id} className="group flex flex-col gap-2 p-3 rounded-lg bg-neutral-900/50 border border-neutral-800 hover:border-primary/50 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-medium text-sm">{task.title}</span>
+                  <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", urgencyColors[task.urgency])}>
+                    {task.urgency}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{task.assignee}</span>
+                  {task.value && <span>{formatCurrency(task.value)}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground text-sm bg-neutral-900/30 rounded-lg border border-dashed border-neutral-800">
+            Nenhuma tarefa para este dia
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   const DayContent = () => (
     <div className={cn(
-      "w-full h-full flex flex-col items-center justify-center cursor-pointer rounded-md hover:bg-accent/80 transition-colors relative",
+      "w-full h-full flex flex-col items-center justify-center cursor-pointer rounded-md hover:bg-accent/80 transition-colors relative group",
       hasContent && 'bg-accent/50',
     )}>
       {tasks.length > 0 && (
-        <span className="absolute top-1 right-1 text-[10px] bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center z-10">
+        <span className="absolute top-1 right-1 text-[10px] bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center z-10 shadow-sm">
           {tasks.length}
         </span>
       )}
       <span className={cn(
-        "flex items-center justify-center w-8 h-8 rounded-full",
+        "flex items-center justify-center w-8 h-8 rounded-full transition-transform group-hover:scale-110 duration-200",
         highestUrgency && `ring-2 ring-offset-2 ring-offset-neutral-900 ${urgencyRingColors[highestUrgency]}`
       )}>
         {dayNumber}
@@ -130,20 +189,38 @@ const CalendarDayCell = ({ date, tasks, dailyRevenue, dailyGross }: { date: Date
   );
 
   if (!hasContent) {
-    return <div className="p-1 h-full w-full flex items-center justify-center">{dayNumber}</div>;
+    return <div className="p-1 h-full w-full flex items-center justify-center text-muted-foreground/50">{dayNumber}</div>;
   }
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <DayContent />
-      </PopoverTrigger>
-      <PopoverContent className="w-80">
-        <PopoverContentComponent />
-      </PopoverContent>
-    </Popover>
+    <Dialog>
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <DialogTrigger asChild>
+            <div className="w-full h-full">
+              <DayContent />
+            </div>
+          </DialogTrigger>
+        </HoverCardTrigger>
+        <HoverCardContent className="w-80 p-0 overflow-hidden border-neutral-800">
+          <div className="p-4 bg-neutral-950">
+            <TooltipContent />
+          </div>
+        </HoverCardContent>
+      </HoverCard>
+      <DialogContent className="sm:max-w-[500px] bg-neutral-950 border-neutral-800">
+        <DialogHeader>
+          <DialogTitle className="text-xl">
+            {format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogDetailContent />
+      </DialogContent>
+    </Dialog>
   );
 };
+
+
 
 
 import { DateRange } from 'react-day-picker';
@@ -230,7 +307,7 @@ const CalendarBoard = ({ dateRange }: CalendarBoardProps) => {
             }
           }}
           modifiersClassNames={{
-            highlighted: "bg-primary/10 text-primary font-bold border-2 border-primary/20 rounded-md"
+            highlighted: "bg-primary/10 text-primary font-bold border-2 border-dashed border-primary/50 rounded-md"
           }}
           classNames={{
             months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",

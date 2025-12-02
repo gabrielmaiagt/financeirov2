@@ -41,8 +41,41 @@ const Header = () => {
   }, [profiles]);
 
   return (
-    <header className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 mb-6 relative">
-      <div className="flex gap-2 md:gap-4 w-full md:w-[196px] justify-center md:justify-start order-2 md:order-1">
+    <header className="flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6 mb-4 md:mb-6 relative">
+      {/* Mobile Top Row: Avatars + Title + Settings (Simplified) */}
+      <div className="flex md:hidden items-center justify-between w-full mb-2">
+        <div className="flex -space-x-2">
+          {isLoading ? (
+            <>
+              <Skeleton className="w-8 h-8 rounded-full border-2 border-primary" />
+              <Skeleton className="w-8 h-8 rounded-full border-2 border-primary" />
+            </>
+          ) : (
+            displayedProfiles.slice(0, 3).map((profile) => (
+              <Avatar key={profile.id} className="w-8 h-8 border-2 border-primary">
+                <AvatarImage src={profile.photoUrl} alt={profile.name} />
+                <AvatarFallback>{getInitials(profile.name)}</AvatarFallback>
+              </Avatar>
+            ))
+          )}
+        </div>
+        <div className="text-center">
+          <h1 className="text-lg font-extrabold tracking-tight text-primary drop-shadow-lg">
+            Painel Financeiro
+          </h1>
+        </div>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <Link href="/admin">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Admin">
+              <Settings className="w-4 h-4" />
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Desktop Avatars */}
+      <div className="hidden md:flex gap-2 md:gap-4 w-full md:w-[196px] justify-center md:justify-start order-2 md:order-1">
         {isLoading ? (
           <>
             <Skeleton className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-primary" />
@@ -58,7 +91,9 @@ const Header = () => {
           ))
         )}
       </div>
-      <div className="text-center flex-1 order-1 md:order-2">
+
+      {/* Desktop Title */}
+      <div className="hidden md:block text-center flex-1 order-1 md:order-2">
         <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight lg:text-5xl text-primary drop-shadow-lg">
           Painel Financeiro
         </h1>
@@ -66,17 +101,31 @@ const Header = () => {
           Divisão de lucro entre Cabral, Biel e Soares
         </p>
       </div>
-      <div className="flex gap-4 w-full md:w-auto justify-center md:justify-end items-center order-3">
-        <GoalWidget />
+
+      {/* Controls Row (Mobile & Desktop) */}
+      <div className="flex flex-wrap gap-2 w-full md:w-auto justify-center md:justify-end items-center order-3">
+        <div className="hidden md:block">
+          <GoalWidget />
+        </div>
         <div className="h-8 w-px bg-neutral-800 mx-2 hidden md:block" />
-        <QuoteOfTheDay />
-        <NotificationBell />
-        <Link href="/admin">
-          <Button variant="ghost" size="icon" title="Admin">
-            <Settings className="w-5 h-5" />
-          </Button>
-        </Link>
-        <ThemeSwitcher />
+        <div className="hidden md:block">
+          <QuoteOfTheDay />
+        </div>
+
+        {/* Desktop only controls that are moved to top row on mobile */}
+        <div className="hidden md:flex items-center gap-2">
+          <NotificationBell />
+          <Link href="/admin">
+            <Button variant="ghost" size="icon" title="Admin">
+              <Settings className="w-5 h-5" />
+            </Button>
+          </Link>
+        </div>
+
+        {/* Theme Switcher - Visible on both, full width on mobile? */}
+        <div className="w-full md:w-auto flex justify-center">
+          <ThemeSwitcher />
+        </div>
       </div>
     </header>
   );

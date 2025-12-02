@@ -194,7 +194,7 @@ const OperationsTable = ({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="border border-neutral-800 rounded-md max-h-[500px] overflow-y-auto relative">
+        <div className="border border-neutral-800 rounded-md max-h-[500px] overflow-y-auto overflow-x-auto relative">
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
               <TableRow className="border-neutral-800">
