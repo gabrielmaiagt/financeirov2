@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, Timestamp, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +38,7 @@ interface MensagemRecuperacao {
 
 const RecuperacaoBoard = () => {
     const firestore = useFirestore();
+    const { orgId } = useOrganization();
     const { toast } = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingMessage, setEditingMessage] = useState<MensagemRecuperacao | null>(null);
@@ -52,8 +54,8 @@ const RecuperacaoBoard = () => {
     const [tagsInput, setTagsInput] = useState('');
 
     const mensagensQuery = useMemoFirebase(
-        () => (firestore ? query(collection(firestore, 'recuperacao'), orderBy('criadoEm', 'desc')) : null),
-        [firestore]
+        () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'recuperacao'), orderBy('criadoEm', 'desc')) : null),
+        [firestore, orgId]
     );
 
     const { data: mensagens, isLoading } = useCollection<MensagemRecuperacao>(mensagensQuery);
@@ -77,7 +79,7 @@ const RecuperacaoBoard = () => {
         try {
             if (editingMessage) {
                 // Update existing
-                const docRef = doc(firestore, 'recuperacao', editingMessage.id);
+                const docRef = doc(firestore, 'organizations', orgId, 'recuperacao', editingMessage.id);
                 await updateDoc(docRef, {
                     tipo,
                     formato,
@@ -92,7 +94,7 @@ const RecuperacaoBoard = () => {
                 });
             } else {
                 // Create new
-                await addDoc(collection(firestore, 'recuperacao'), {
+                await addDoc(collection(firestore, 'organizations', orgId, 'recuperacao'), {
                     tipo,
                     formato,
                     titulo,
@@ -122,7 +124,7 @@ const RecuperacaoBoard = () => {
     const handleDelete = async (id: string) => {
         if (!firestore) return;
         try {
-            await deleteDoc(doc(firestore, 'recuperacao', id));
+            await deleteDoc(doc(firestore, 'organizations', orgId, 'recuperacao', id));
             toast({
                 title: "Excluído!",
                 description: "Mensagem removida com sucesso",

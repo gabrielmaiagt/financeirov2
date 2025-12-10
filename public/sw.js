@@ -1,54 +1,38 @@
 
-// This is the service worker for PWA capabilities (offline support, caching).
+// This is the service worker for PWA capabilities.
+// DISABLED FOR DEVELOPMENT - just pass through all requests
 
-const CACHE_NAME = 'painel-financeiro-cache-v1';
-const URLS_TO_CACHE = [
-  '/',
-  '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png',
-  // Add other important assets you want to cache for offline use
-];
+const CACHE_NAME = 'painel-financeiro-cache-v3';
 
-// Install event: opens the cache and adds the core assets to it.
+// Install event: skip waiting to activate immediately
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(URLS_TO_CACHE);
-      })
-  );
+  console.log('[SW] Installing and skipping wait');
+  self.skipWaiting();
 });
 
-// Activate event: cleans up old caches.
+// Activate event: claim clients and clear all caches
 self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
+  console.log('[SW] Activating and claiming clients');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
+    Promise.all([
+      clients.claim(),
+      // Clear ALL caches
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            console.log('[SW] Deleting cache:', cacheName);
             return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+          })
+        );
+      })
+    ])
   );
 });
 
-// Fetch event: serves assets from cache first.
+// Fetch event: DO NOTHING - let browser handle everything normally
+// This effectively disables the SW for development
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        // Not in cache - fetch from network
-        return fetch(event.request);
-      }
-    )
-  );
+  // Don't call event.respondWith() - this makes the SW transparent
+  // The browser will handle the request normally
+  return;
 });

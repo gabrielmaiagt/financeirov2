@@ -13,7 +13,8 @@ import {
     Users,
     Quote,
     KeyRound,
-    RotateCcw
+    RotateCcw,
+    Building2
 } from "lucide-react";
 
 export const NAV_ITEMS = [
@@ -32,4 +33,5 @@ export const NAV_ITEMS = [
     { value: "frases", label: "Frases", icon: Quote },
     { value: "logins", label: "Logins", icon: KeyRound },
     { value: "recuperacao", label: "Recuperação", icon: RotateCcw },
+    { value: "operacoes", label: "Operações", icon: Building2 },
 ];

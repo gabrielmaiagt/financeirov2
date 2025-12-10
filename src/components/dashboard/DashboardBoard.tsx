@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +55,7 @@ const StatCard = ({ title, value, icon: Icon, subtitle, trend }: any) => (
 
 export default function DashboardBoard() {
     const firestore = useFirestore();
+    const { orgId } = useOrganization();
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: new Date(),
         to: new Date(),
@@ -63,16 +65,16 @@ export default function DashboardBoard() {
 
     // Buscar vendas
     const vendasQuery = useMemoFirebase(
-        () => (firestore ? query(collection(firestore, 'vendas'), orderBy('created_at', 'desc')) : null),
-        [firestore]
+        () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'vendas'), orderBy('created_at', 'desc')) : null),
+        [firestore, orgId]
     );
 
     const { data: vendasRaw } = useCollection<any>(vendasQuery);
 
     // Buscar dados de gasto do Meta (todos os dias)
     const metaSpendQuery = useMemoFirebase(
-        () => (firestore ? query(collection(firestore, 'meta_spend_daily'), orderBy('date', 'desc')) : null),
-        [firestore]
+        () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'meta_spend_daily'), orderBy('date', 'desc')) : null),
+        [firestore, orgId]
     );
 
     const { data: metaSpendDocs } = useCollection<any>(metaSpendQuery);
@@ -94,7 +96,7 @@ export default function DashboardBoard() {
 
             for (const day of days) {
                 const dateStr = format(day, 'yyyy-MM-dd');
-                const campaignsRef = collection(firestore, 'meta_spend_daily', dateStr, 'campaigns');
+                const campaignsRef = collection(firestore, 'organizations', orgId, 'meta_spend_daily', dateStr, 'campaigns');
                 const snapshot = await getDocs(campaignsRef);
 
                 snapshot.forEach((doc) => {

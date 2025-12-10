@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { Task, Urgency } from './TasksBoard';
@@ -232,16 +233,17 @@ interface CalendarBoardProps {
 
 const CalendarBoard = ({ dateRange }: CalendarBoardProps) => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
   const [month, setMonth] = useState<Date>(new Date());
 
   const tasksQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'tarefas')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'tarefas')) : null),
+    [firestore, orgId]
   );
 
   const operacoesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'operacoesSocios')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'operacoesSocios')) : null),
+    [firestore, orgId]
   );
 
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);

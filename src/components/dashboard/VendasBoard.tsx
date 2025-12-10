@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, Timestamp, writeBatch, getDocs, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -126,6 +127,7 @@ const StatCard = ({ title, value, icon: Icon, subtitle }: { title: string, value
 
 const VendasBoard = () => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
   const { toast } = useToast();
   const [isClearAlertOpen, setIsClearAlertOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -221,16 +223,16 @@ const VendasBoard = () => {
   // Query atualizada para ordenar por created_at (novo padrão) ou receivedAt (legado)
   // Como não dá para ordenar por dois campos diferentes facilmente sem índice composto, vamos ordenar no cliente se necessário ou assumir created_at
   const vendasQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'vendas'), orderBy('created_at', 'desc')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'vendas'), orderBy('created_at', 'desc')) : null),
+    [firestore, orgId]
   );
 
   const { data: vendasRaw, isLoading } = useCollection<any>(vendasQuery);
 
   // Carregar scripts do Firestore
   const scriptsQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'scripts'), orderBy('createdAt', 'desc')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'scripts'), orderBy('createdAt', 'desc')) : null),
+    [firestore, orgId]
   );
   const { data: scriptsRaw } = useCollection<any>(scriptsQuery);
 
@@ -246,8 +248,8 @@ const VendasBoard = () => {
 
   // Lembretes Logic
   const remindersQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'reminders'), orderBy('date', 'asc')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'reminders'), orderBy('date', 'asc')) : null),
+    [firestore, orgId]
   );
   const { data: remindersRaw } = useCollection<any>(remindersQuery);
 
@@ -288,7 +290,7 @@ const VendasBoard = () => {
         });
       }
 
-      await addDoc(collection(firestore, 'reminders'), {
+      await addDoc(collection(firestore, 'organizations', orgId, 'reminders'), {
         title: reminderTitle,
         date: Timestamp.fromDate(new Date(reminderDate)),
         completed: false,
@@ -305,12 +307,12 @@ const VendasBoard = () => {
 
   const toggleReminder = async (id: string, currentStatus: boolean) => {
     if (!firestore) return;
-    await updateDoc(doc(firestore, 'reminders', id), { completed: !currentStatus });
+    await updateDoc(doc(firestore, 'organizations', orgId, 'reminders', id), { completed: !currentStatus });
   };
 
   const deleteReminder = async (id: string) => {
     if (!firestore) return;
-    await deleteDoc(doc(firestore, 'reminders', id));
+    await deleteDoc(doc(firestore, 'organizations', orgId, 'reminders', id));
   };
 
   const handleSaveScript = async () => {
@@ -318,13 +320,13 @@ const VendasBoard = () => {
 
     try {
       if (editingScript) {
-        await updateDoc(doc(firestore, 'scripts', editingScript.id), {
+        await updateDoc(doc(firestore, 'organizations', orgId, 'scripts', editingScript.id), {
           ...scriptForm,
           updatedAt: Timestamp.now()
         });
         toast({ title: 'Script atualizado!' });
       } else {
-        await addDoc(collection(firestore, 'scripts'), {
+        await addDoc(collection(firestore, 'organizations', orgId, 'scripts'), {
           ...scriptForm,
           createdAt: Timestamp.now()
         });
@@ -888,7 +890,7 @@ const VendasBoard = () => {
     }
 
     try {
-      const vendasRef = collection(firestore, 'vendas');
+      const vendasRef = collection(firestore, 'organizations', orgId, 'vendas');
       const querySnapshot = await getDocs(vendasRef);
 
       if (querySnapshot.empty) {

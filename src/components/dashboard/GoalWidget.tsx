@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { collection, query, where, Timestamp, doc, updateDoc } from 'firebase/firestore';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { Trophy } from 'lucide-react';
@@ -12,6 +13,7 @@ import type { Meta } from './GoalsBoard';
 
 const GoalWidget = () => {
     const firestore = useFirestore();
+    const { orgId } = useOrganization();
     const now = new Date();
     const start = startOfMonth(now);
     const end = endOfMonth(now);
@@ -19,22 +21,22 @@ const GoalWidget = () => {
     // Fetch Sales
     const vendasQuery = useMemoFirebase(
         () => {
-            if (!firestore) return null;
+            if (!firestore || !orgId) return null;
             return query(
-                collection(firestore, 'vendas'),
+                collection(firestore, 'organizations', orgId, 'vendas'),
                 where('created_at', '>=', Timestamp.fromDate(start)),
                 where('created_at', '<=', Timestamp.fromDate(end))
             );
         },
-        [firestore]
+        [firestore, orgId]
     );
 
     const { data: vendas, isLoading: isLoadingVendas } = useCollection(vendasQuery);
 
     // Fetch Active Goals
     const goalsQuery = useMemoFirebase(
-        () => (firestore ? query(collection(firestore, 'metas'), where('completed', '==', false)) : null),
-        [firestore]
+        () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'metas'), where('completed', '==', false)) : null),
+        [firestore, orgId]
     );
     const { data: goals } = useCollection<Meta>(goalsQuery);
 
@@ -77,7 +79,7 @@ const GoalWidget = () => {
 
         // Only update if the difference is significant (to avoid loops with floating point)
         if (Math.abs(activeGoal.currentValue - metrics.revenue) > 0.1) {
-            const goalRef = doc(firestore, 'metas', activeGoal.id);
+            const goalRef = doc(firestore, 'organizations', orgId, 'metas', activeGoal.id);
             updateDoc(goalRef, { currentValue: metrics.revenue });
         }
     }, [firestore, activeGoal, metrics.revenue]);

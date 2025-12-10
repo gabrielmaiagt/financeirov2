@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Award } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
@@ -40,6 +41,7 @@ export interface Meta {
 
 const GoalsBoard = () => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
   const { play } = useSound();
   const [isGoalDialogOpen, setIsGoalDialogOpen] = useState(false);
   const [isPhotosDialogOpen, setIsPhotosDialogOpen] = useState(false);
@@ -50,13 +52,13 @@ const GoalsBoard = () => {
 
 
   const goalsQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'metas'), orderBy('title')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'metas'), orderBy('title')) : null),
+    [firestore, orgId]
   );
-  
+
   const profilesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'perfis')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'perfis')) : null),
+    [firestore, orgId]
   );
 
   const { data: goals, isLoading } = useCollection<Meta>(goalsQuery);
@@ -65,48 +67,48 @@ const GoalsBoard = () => {
   const handleSaveGoal = (goalData: Omit<Meta, 'id'>) => {
     if (!firestore) return;
     if (editingGoal) {
-      const goalRef = doc(firestore, 'metas', editingGoal.id);
+      const goalRef = doc(firestore, 'organizations', orgId, 'metas', editingGoal.id);
       updateDoc(goalRef, goalData);
     } else {
-      const goalsRef = collection(firestore, 'metas');
+      const goalsRef = collection(firestore, 'organizations', orgId, 'metas');
       addDocumentNonBlocking(goalsRef, goalData);
     }
     handleGoalDialogChange(false);
   };
-  
+
   const handleDeleteGoal = (id: string) => {
     if (!firestore) return;
-    deleteDocumentNonBlocking(doc(firestore, 'metas', id));
+    deleteDocumentNonBlocking(doc(firestore, 'organizations', orgId, 'metas', id));
   };
-  
+
   const handleUpdateGoalValue = async (id: string, newCurrentValue: number) => {
-      if (!firestore) return;
-      const goalRef = doc(firestore, 'metas', id);
-      const goal = goals?.find(g => g.id === id);
-      if (goal) {
-          const wasCompleted = goal.completed;
-          const isNowCompleted = newCurrentValue >= goal.targetValue;
-          if (!wasCompleted && isNowCompleted) {
-            setShowConfetti(true);
-            const goalSound = profiles?.find(p => p.sounds?.goalCompleted)?.sounds?.goalCompleted;
-            if(goalSound) {
-                play(goalSound);
-            }
-             const notificationsRef = collection(firestore, 'notificacoes');
-             const notificationMessage = `A meta "${goal.title}" foi alcançada!`;
-             const notificationTitle = '🏆 Meta Alcançada!';
-              addDocumentNonBlocking(notificationsRef, {
-                message: notificationMessage,
-                createdAt: Timestamp.now(),
-                read: false,
-                type: 'goal_completed'
-              });
-              
-              // Send push notification
-              sendPushNotification(notificationTitle, notificationMessage, '/metas');
-          }
-          await updateDoc(goalRef, { currentValue: newCurrentValue, completed: isNowCompleted });
+    if (!firestore) return;
+    const goalRef = doc(firestore, 'organizations', orgId, 'metas', id);
+    const goal = goals?.find(g => g.id === id);
+    if (goal) {
+      const wasCompleted = goal.completed;
+      const isNowCompleted = newCurrentValue >= goal.targetValue;
+      if (!wasCompleted && isNowCompleted) {
+        setShowConfetti(true);
+        const goalSound = profiles?.find(p => p.sounds?.goalCompleted)?.sounds?.goalCompleted;
+        if (goalSound) {
+          play(goalSound);
+        }
+        const notificationsRef = collection(firestore, 'organizations', orgId, 'notificacoes');
+        const notificationMessage = `A meta "${goal.title}" foi alcançada!`;
+        const notificationTitle = '🏆 Meta Alcançada!';
+        addDocumentNonBlocking(notificationsRef, {
+          message: notificationMessage,
+          createdAt: Timestamp.now(),
+          read: false,
+          type: 'goal_completed'
+        });
+
+        // Send push notification
+        sendPushNotification(notificationTitle, notificationMessage, '/metas');
       }
+      await updateDoc(goalRef, { currentValue: newCurrentValue, completed: isNowCompleted });
+    }
   };
 
   const handleEdit = (goal: Meta) => {
@@ -170,10 +172,10 @@ const GoalsBoard = () => {
                 {editingGoal ? 'Ajuste os detalhes da sua meta.' : 'Defina um objetivo, seu valor alvo e acompanhe seu progresso.'}
               </DialogDescription>
             </DialogHeader>
-            <GoalForm 
-              onSave={handleSaveGoal} 
+            <GoalForm
+              onSave={handleSaveGoal}
               onClose={() => handleGoalDialogChange(false)}
-              existingGoal={editingGoal} 
+              existingGoal={editingGoal}
             />
           </DialogContent>
         </Dialog>
@@ -182,19 +184,19 @@ const GoalsBoard = () => {
       <div>
         <h3 className="text-xl font-semibold mb-4">Metas Atuais</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-            {activeGoals.length > 0 ? (
-                activeGoals.map((goal) => (
-                    <GoalCard 
-                        key={goal.id} 
-                        goal={goal} 
-                        onUpdateValue={handleUpdateGoalValue} 
-                        onDelete={() => setItemToDelete(goal.id)}
-                        onEdit={() => handleEdit(goal)}
-                    />
-                ))
-            ) : (
-                <p className="text-muted-foreground col-span-full">Nenhuma meta ativa no momento. Que tal adicionar uma?</p>
-            )}
+          {activeGoals.length > 0 ? (
+            activeGoals.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                onUpdateValue={handleUpdateGoalValue}
+                onDelete={() => setItemToDelete(goal.id)}
+                onEdit={() => handleEdit(goal)}
+              />
+            ))
+          ) : (
+            <p className="text-muted-foreground col-span-full">Nenhuma meta ativa no momento. Que tal adicionar uma?</p>
+          )}
         </div>
       </div>
 
@@ -202,59 +204,59 @@ const GoalsBoard = () => {
 
       <div>
         <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Award className="text-yellow-400" />
-            Conquistas
+          <Award className="text-yellow-400" />
+          Conquistas
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
-            {achievements.length > 0 ? (
-                achievements.map((achievement) => (
-                    <AchievementCard 
-                        key={achievement.id} 
-                        achievement={achievement}
-                        onAddPhotos={() => handleAddPhotos(achievement)}
-                    />
-                ))
-            ) : (
-                <p className="text-muted-foreground col-span-full">Nenhuma conquista registrada ainda. Continue progredindo!</p>
-            )}
+          {achievements.length > 0 ? (
+            achievements.map((achievement) => (
+              <AchievementCard
+                key={achievement.id}
+                achievement={achievement}
+                onAddPhotos={() => handleAddPhotos(achievement)}
+              />
+            ))
+          ) : (
+            <p className="text-muted-foreground col-span-full">Nenhuma conquista registrada ainda. Continue progredindo!</p>
+          )}
         </div>
       </div>
 
-       <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Essa ação não pode ser desfeita e excluirá permanentemente esta meta.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
-                    if (itemToDelete) {
-                        handleDeleteGoal(itemToDelete);
-                    }
-                    setItemToDelete(null);
-                }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+      <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita e excluirá permanentemente esta meta.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (itemToDelete) {
+                handleDeleteGoal(itemToDelete);
+              }
+              setItemToDelete(null);
+            }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        <Dialog open={isPhotosDialogOpen} onOpenChange={handlePhotosDialogChange}>
-          <DialogContent className="sm:max-w-2xl p-0 flex flex-col">
-            <DialogHeader className="p-6 pb-0">
-              <DialogTitle>Fotos da Conquista: {goalForPhotos?.title}</DialogTitle>
-              <DialogDescription>
-                Adicione até 3 fotos para celebrar esta meta alcançada. Uma para cada sócio!
-              </DialogDescription>
-            </DialogHeader>
-            <AchievementPhotosForm
-              onSave={handleSavePhotos}
-              onClose={() => handlePhotosDialogChange(false)}
-              existingImageUrls={goalForPhotos?.proofImageUrls || []}
-            />
-          </DialogContent>
-        </Dialog>
+      <Dialog open={isPhotosDialogOpen} onOpenChange={handlePhotosDialogChange}>
+        <DialogContent className="sm:max-w-2xl p-0 flex flex-col">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle>Fotos da Conquista: {goalForPhotos?.title}</DialogTitle>
+            <DialogDescription>
+              Adicione até 3 fotos para celebrar esta meta alcançada. Uma para cada sócio!
+            </DialogDescription>
+          </DialogHeader>
+          <AchievementPhotosForm
+            onSave={handleSavePhotos}
+            onClose={() => handlePhotosDialogChange(false)}
+            existingImageUrls={goalForPhotos?.proofImageUrls || []}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

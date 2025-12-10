@@ -17,38 +17,43 @@ export function initializeFirebase(): FirebaseAdminServices {
     if (getApps().length === 0) {
         let app: App;
 
-        // Try Firebase App Hosting automatic credentials first (production)
-        try {
-            console.log("Attempting to initialize Admin SDK with App Hosting credentials...");
-            app = initializeApp();
-            console.log("✅ Admin SDK initialized successfully with App Hosting credentials");
-        } catch (appHostingError) {
-            console.warn("App Hosting initialization failed. Trying local credentials...", appHostingError);
+        // 1. Try local environment variables first (Development/Manual Configuration)
+        // This is prioritized to ensure local dev works correctly even if gcloud creds are present
+        const serviceAccount = {
+            projectId: process.env.FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        };
 
-            // Fallback to local environment variables (development)
-            const serviceAccount = {
-                projectId: process.env.FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-            };
+        const hasLocalCredentials = serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey;
 
-            const hasCredentials = serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey;
-
-            if (!hasCredentials) {
-                const error = new Error("Firebase Admin SDK failed to initialize. No App Hosting credentials and no local env vars found.");
-                console.error(error.message);
-                throw error;
-            }
-
+        if (hasLocalCredentials) {
             try {
+                console.log("Attempting to initialize Admin SDK with local credentials...");
                 app = initializeApp({
-                    credential: cert(serviceAccount as any)
+                    credential: cert(serviceAccount as any),
+                    projectId: serviceAccount.projectId // Explicitly set projectId
                 });
                 console.log("✅ Admin SDK initialized successfully with local credentials");
+                return {
+                    app,
+                    firestore: getFirestore(app),
+                    messaging: getMessaging(app),
+                };
             } catch (localError) {
-                console.error("Failed to initialize with local credentials:", localError);
-                throw new Error("Firebase Admin SDK initialization failed with both App Hosting and local credentials.");
+                console.error("Failed to initialize with provided local credentials:", localError);
+                // If local creds fail but were provided, we probably shouldn't fallback silently, but let's try default as last resort
             }
+        }
+
+        // 2. Fallback to Firebase App Hosting / Google Cloud Default Credentials
+        try {
+            console.log("Attempting to initialize Admin SDK with App Hosting/Default credentials...");
+            app = initializeApp();
+            console.log("✅ Admin SDK initialized successfully with App Hosting/Default credentials");
+        } catch (appHostingError) {
+            console.error("Firebase Admin SDK initialization failed completely.", appHostingError);
+            throw new Error("Firebase Admin SDK initialization failed. Check your credentials.");
         }
 
         return {

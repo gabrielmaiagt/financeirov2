@@ -3,7 +3,7 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, User } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 
 interface FirebaseProviderProps {
@@ -43,7 +43,7 @@ export interface FirebaseServicesAndUser {
 }
 
 // Return type for useUser() - specific to user auth state
-export interface UserHookResult { 
+export interface UserHookResult {
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -117,7 +117,7 @@ export const useFirebase = (): FirebaseServicesAndUser => {
 /** Hook to access Firebase Auth instance. */
 export const useAuth = (): Auth | null => {
   const context = useContext(FirebaseContext);
-   if (context === undefined) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within a FirebaseProvider.');
   }
   return context.auth;
@@ -126,7 +126,7 @@ export const useAuth = (): Auth | null => {
 /** Hook to access Firestore instance. */
 export const useFirestore = (): Firestore | null => {
   const context = useContext(FirebaseContext);
-   if (context === undefined) {
+  if (context === undefined) {
     throw new Error('useFirestore must be used within a FirebaseProvider.');
   }
   return context.firestore;
@@ -135,22 +135,22 @@ export const useFirestore = (): Firestore | null => {
 /** Hook to access Firebase App instance. */
 export const useFirebaseApp = (): FirebaseApp | null => {
   const context = useContext(FirebaseContext);
-   if (context === undefined) {
+  if (context === undefined) {
     throw new Error('useFirebaseApp must be used within a FirebaseProvider.');
   }
   return context.firebaseApp;
 };
 
-type MemoFirebase <T> = T & {__memo?: boolean};
+type MemoFirebase<T> = T & { __memo?: boolean };
 
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
   const memoized = useMemo(factory, deps);
-  
-  if(typeof memoized !== 'object' || memoized === null) return memoized;
-  if(memoized) {
+
+  if (typeof memoized !== 'object' || memoized === null) return memoized;
+  if (memoized) {
     (memoized as MemoFirebase<T>).__memo = true;
   }
-  
+
   return memoized;
 }
 
@@ -161,7 +161,7 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
  */
 export const useUser = (): UserHookResult => {
   const context = useContext(FirebaseContext);
-   if (context === undefined) {
+  if (context === undefined) {
     throw new Error('useUser must be used within a FirebaseProvider.');
   }
   return { user: context.user, isUserLoading: context.isUserLoading, userError: context.userError };

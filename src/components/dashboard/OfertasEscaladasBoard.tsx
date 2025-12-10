@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, Timestamp, doc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
@@ -22,28 +23,29 @@ import OfertaEscaladaCard, { OfertaEscalada } from './OfertaEscaladaCard';
 
 const OfertasEscaladasBoard = () => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const ofertasQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'ofertasEscaladas'), orderBy('createdAt', 'desc')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'ofertasEscaladas'), orderBy('createdAt', 'desc')) : null),
+    [firestore, orgId]
   );
 
   const { data: ofertas, isLoading } = useCollection<OfertaEscalada>(ofertasQuery);
 
   const handleSaveOferta = (ofertaData: Omit<OfertaEscalada, 'id'>) => {
     if (!firestore) return;
-    const ofertasRef = collection(firestore, 'ofertasEscaladas');
+    const ofertasRef = collection(firestore, 'organizations', orgId, 'ofertasEscaladas');
     addDocumentNonBlocking(ofertasRef, ofertaData);
     setIsDialogOpen(false);
   };
-  
+
   const handleDeleteOferta = (id: string) => {
     if (!firestore) return;
-    deleteDocumentNonBlocking(doc(firestore, 'ofertasEscaladas', id));
+    deleteDocumentNonBlocking(doc(firestore, 'organizations', orgId, 'ofertasEscaladas', id));
   };
-  
+
   if (isLoading) {
     return <div>Carregando ofertas...</div>;
   }
@@ -72,33 +74,33 @@ const OfertasEscaladasBoard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
         {ofertas && ofertas.length > 0 ? (
-            ofertas.map((oferta) => (
-                <OfertaEscaladaCard key={oferta.id} oferta={oferta} onDelete={() => setItemToDelete(oferta.id)} />
-            ))
+          ofertas.map((oferta) => (
+            <OfertaEscaladaCard key={oferta.id} oferta={oferta} onDelete={() => setItemToDelete(oferta.id)} />
+          ))
         ) : (
-            <p className="text-muted-foreground col-span-full">Nenhuma oferta escalada registrada.</p>
+          <p className="text-muted-foreground col-span-full">Nenhuma oferta escalada registrada.</p>
         )}
       </div>
 
       <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Essa ação não pode ser desfeita e excluirá permanentemente esta oferta.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
-                    if (itemToDelete) {
-                        handleDeleteOferta(itemToDelete);
-                    }
-                    setItemToDelete(null);
-                }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita e excluirá permanentemente esta oferta.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (itemToDelete) {
+                handleDeleteOferta(itemToDelete);
+              }
+              setItemToDelete(null);
+            }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

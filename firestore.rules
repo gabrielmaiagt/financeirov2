@@ -7,5 +7,9 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if true;
     }
+    
+    match /organizations/{document=**} {
+      allow read, write: if true;
+    }
   }
 }

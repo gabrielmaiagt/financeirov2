@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { collection } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserProfile } from './ProfileCard';
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
 import GoalWidget from './GoalWidget';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
+import { OperationSelector } from '@/components/OperationSelector';
 
 const getInitials = (name?: string) => {
   if (!name) return '';
@@ -21,9 +23,10 @@ const getInitials = (name?: string) => {
 
 const Header = () => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
   const profilesQuery = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'perfis') : null),
-    [firestore]
+    () => (firestore && orgId ? collection(firestore, 'organizations', orgId, 'perfis') : null),
+    [firestore, orgId]
   );
   const { data: profiles, isLoading } = useCollection<UserProfile>(profilesQuery);
 
@@ -125,6 +128,11 @@ const Header = () => {
         {/* Theme Switcher - Visible on both, full width on mobile? */}
         <div className="w-full md:w-auto flex justify-center">
           <ThemeSwitcher />
+        </div>
+
+        {/* Operation Selector - Desktop only */}
+        <div className="hidden md:block">
+          <OperationSelector />
         </div>
       </div>
     </header>

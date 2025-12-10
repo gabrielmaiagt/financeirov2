@@ -8,6 +8,9 @@ import { SoundProvider } from "@/providers/SoundProvider";
 import Script from "next/script";
 import { PrivacyProvider } from "@/providers/PrivacyProvider";
 import { UIProvider } from "@/components/ThemeProvider";
+import { OrganizationProvider } from "@/contexts/OrganizationContext";
+import { OperationProvider } from "@/contexts/OperationContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -55,13 +58,21 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192x192.png"></link>
         <meta name="theme-color" content="#26224A" />
       </head>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <FirebaseClientProvider>
-          <PrivacyProvider>
+          <UIProvider>
             <SoundProvider>
-              <UIProvider>{children}</UIProvider>
+              <PrivacyProvider>
+                <OrganizationProvider>
+                  <AuthProvider>
+                    <OperationProvider>
+                      {children}
+                    </OperationProvider>
+                  </AuthProvider>
+                </OrganizationProvider>
+              </PrivacyProvider>
             </SoundProvider>
-          </PrivacyProvider>
+          </UIProvider>
         </FirebaseClientProvider>
         <Toaster />
         <Script id="service-worker-registration">

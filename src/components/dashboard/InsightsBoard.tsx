@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
@@ -22,13 +23,14 @@ import {
 
 const InsightsBoard = () => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInsight, setEditingInsight] = useState<Insight | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const insightsQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'insights'), orderBy('createdAt', 'desc')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'insights'), orderBy('createdAt', 'desc')) : null),
+    [firestore, orgId]
   );
 
   const { data: insights, isLoading } = useCollection<Insight>(insightsQuery);
@@ -38,24 +40,24 @@ const InsightsBoard = () => {
 
     if (editingInsight) {
       // Update existing insight
-      const insightRef = doc(firestore, 'insights', editingInsight.id);
+      const insightRef = doc(firestore, 'organizations', orgId, 'insights', editingInsight.id);
       const dataToUpdate = { ...insightData, updatedAt: Timestamp.now() };
       updateDoc(insightRef, dataToUpdate);
     } else {
       // Add new insight
-      const insightsRef = collection(firestore, 'insights');
+      const insightsRef = collection(firestore, 'organizations', orgId, 'insights');
       addDocumentNonBlocking(insightsRef, insightData);
     }
 
     setIsDialogOpen(false);
     setEditingInsight(null);
   };
-  
+
   const handleDeleteInsight = (id: string) => {
     if (!firestore) return;
-    deleteDocumentNonBlocking(doc(firestore, 'insights', id));
+    deleteDocumentNonBlocking(doc(firestore, 'organizations', orgId, 'insights', id));
   };
-  
+
   const handleEdit = (insight: Insight) => {
     setEditingInsight(insight);
     setIsDialogOpen(true);
@@ -94,10 +96,10 @@ const InsightsBoard = () => {
                 Capture uma ideia, um aprendizado ou anexe uma imagem.
               </DialogDescription>
             </DialogHeader>
-            <InsightForm 
-              onSave={handleSaveInsight} 
+            <InsightForm
+              onSave={handleSaveInsight}
               onClose={() => handleDialogChange(false)}
-              existingInsight={editingInsight} 
+              existingInsight={editingInsight}
             />
           </DialogContent>
         </Dialog>
@@ -105,38 +107,38 @@ const InsightsBoard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
         {insights && insights.length > 0 ? (
-            insights.map((insight) => (
-                <InsightCard 
-                  key={insight.id} 
-                  insight={insight} 
-                  onEdit={() => handleEdit(insight)}
-                  onDelete={() => setItemToDelete(insight.id)} 
-                />
-            ))
+          insights.map((insight) => (
+            <InsightCard
+              key={insight.id}
+              insight={insight}
+              onEdit={() => handleEdit(insight)}
+              onDelete={() => setItemToDelete(insight.id)}
+            />
+          ))
         ) : (
-            <p className="text-muted-foreground col-span-full">Nenhum insight encontrado. Que tal adicionar um?</p>
+          <p className="text-muted-foreground col-span-full">Nenhum insight encontrado. Que tal adicionar um?</p>
         )}
       </div>
 
-       <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Essa ação não pode ser desfeita e excluirá permanentemente este insight.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
-                    if (itemToDelete) {
-                        handleDeleteInsight(itemToDelete);
-                    }
-                    setItemToDelete(null);
-                }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+      <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita e excluirá permanentemente este insight.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (itemToDelete) {
+                handleDeleteInsight(itemToDelete);
+              }
+              setItemToDelete(null);
+            }} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

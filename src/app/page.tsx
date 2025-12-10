@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { collection, query, orderBy, Timestamp, where } from 'firebase/firestore';
 import { useFirestore, useCollection } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { doc } from 'firebase/firestore';
 import { DateRange as DayPickerDateRange } from 'react-day-picker';
@@ -26,6 +27,7 @@ import CalendarBoard from '@/components/dashboard/CalendarBoard';
 import VendasBoard from '@/components/dashboard/VendasBoard';
 import RecuperacaoBoard from '@/components/dashboard/RecuperacaoBoard';
 import DashboardBoard from '@/components/dashboard/DashboardBoard';
+import OperationsBoard from '@/components/dashboard/OperationsBoard';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,9 +40,11 @@ import { Loader2 } from 'lucide-react';
 import { PrivacyToggleButton } from '@/components/dashboard/PrivacyToggleButton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { UserProfile as ProfileType } from '@/components/dashboard/ProfileCard';
+import { InitOrg } from '@/components/InitOrg';
 
 export interface Operacao {
   id?: string;
+  operationId?: string; // Reference to the operation this transaction belongs to
   data: Timestamp;
   descricao: string;
   faturamentoLiquido: number;
@@ -106,10 +110,11 @@ export default function Home() {
 
 
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
 
   const operacoesRef = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'operacoesSocios') : null),
-    [firestore]
+    () => (firestore && orgId ? collection(firestore, 'organizations', orgId, 'operacoesSocios') : null),
+    [firestore, orgId]
   );
 
   const allOperacoesQuery = useMemoFirebase(() => {
@@ -145,8 +150,8 @@ export default function Home() {
   }, [allOperacoes, dateRange, searchTerm]);
 
   const handleDeleteOperation = (id: string) => {
-    if (!firestore) return;
-    const docRef = doc(firestore, 'operacoesSocios', id);
+    if (!firestore || !orgId) return;
+    const docRef = doc(firestore, 'organizations', orgId, 'operacoesSocios', id);
     deleteDocumentNonBlocking(docRef);
   };
 
@@ -156,6 +161,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-radial-gradient(ellipse_at_center,rgba(20,20,20,1)_0%,rgba(0,0,0,1)_100%)"></div>
       </div>
       <Header />
+      <InitOrg />
 
       <NavTabs defaultValue="lancamentos" className="w-full flex flex-col md:flex-row gap-6">
         <Sidebar />
@@ -228,6 +234,9 @@ export default function Home() {
           </TabsContent>
           <TabsContent value="recuperacao">
             <RecuperacaoBoard />
+          </TabsContent>
+          <TabsContent value="operacoes">
+            <OperationsBoard />
           </TabsContent>
         </div>
       </NavTabs>

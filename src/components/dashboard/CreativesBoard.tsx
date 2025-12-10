@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, Timestamp, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc, addDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2, ExternalLink, Send, MoreHorizontal, Info } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -177,19 +178,20 @@ const AddValidatedCreativeForm = ({ onAdd }: { onAdd: (creative: Omit<ValidatedC
 
 const CreativesBoard = () => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBancoDialogOpen, setIsBancoDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [bancoItemToDelete, setBancoItemToDelete] = useState<string | null>(null);
 
   const criativosQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'criativos'), orderBy('dataLeva', 'desc')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'criativos'), orderBy('dataLeva', 'desc')) : null),
+    [firestore, orgId]
   );
 
   const bancoQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'banco_criativos'), orderBy('dataCriacao', 'desc')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'banco_criativos'), orderBy('dataCriacao', 'desc')) : null),
+    [firestore, orgId]
   );
 
   const { data: levas, isLoading } = useCollection<LevaCriativos>(criativosQuery);
@@ -197,14 +199,14 @@ const CreativesBoard = () => {
 
   const handleSaveLeva = (levaData: Omit<LevaCriativos, 'id' | 'dataLeva'> & { dataLeva: Date }) => {
     if (!firestore) return;
-    const criativosRef = collection(firestore, 'criativos');
+    const criativosRef = collection(firestore, 'organizations', orgId, 'criativos');
     addDocumentNonBlocking(criativosRef, { ...levaData, dataLeva: Timestamp.fromDate(levaData.dataLeva), criativosValidados: [] });
     setIsDialogOpen(false);
   };
 
   const handleDeleteLeva = async (id: string) => {
     if (!firestore) return;
-    const docRef = doc(firestore, 'criativos', id);
+    const docRef = doc(firestore, 'organizations', orgId, 'criativos', id);
     await deleteDoc(docRef);
   };
 
@@ -252,7 +254,7 @@ const CreativesBoard = () => {
         Object.entries(data).filter(([_, value]) => value !== undefined)
       );
 
-      const bancoRef = collection(firestore, 'banco_criativos');
+      const bancoRef = collection(firestore, 'organizations', orgId, 'banco_criativos');
       const docRef = await addDoc(bancoRef, {
         ...cleanedData,
         dataCriacao: Timestamp.now(),

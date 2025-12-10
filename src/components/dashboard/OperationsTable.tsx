@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import OperationForm from './OperationForm';
+import { OperationForm } from './OperationForm';
 import AnalyticsModal from './AnalyticsModal';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, doc, Timestamp } from 'firebase/firestore';
@@ -33,6 +33,11 @@ import { useMemoFirebase } from '@/firebase/provider';
 import { cn } from '@/lib/utils';
 import { usePrivacy } from '@/providers/PrivacyProvider';
 import { sendPushNotification } from '@/lib/client-utils';
+import { useOrgCollection } from '@/hooks/useFirestoreOrg';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { useOperation } from '@/contexts/OperationContext';
+import { query, where, orderBy } from 'firebase/firestore';
+
 
 interface OperationsTableProps {
   operacoes: Operacao[];
@@ -60,21 +65,53 @@ const OperationsTable = ({
 }: OperationsTableProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const { selectedOperationId } = useOperation();
+  const { orgId } = useOrganization();
+
   const firestore = useFirestore();
   const { play } = useSound();
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [editingOperation, setEditingOperation] = useState<Operacao | null>(null);
 
   const profilesQuery = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'perfis') : null),
-    [firestore]
+    () => (firestore && orgId ? collection(firestore, 'organizations', orgId, 'perfis') : null),
+    [firestore, orgId]
   );
   const { data: profiles } = useCollection<UserProfile>(profilesQuery);
   const { isBlurred } = usePrivacy();
 
+  // Use organization-scoped collection for financial transactions
+  // This migrates from root 'operacoesSocios' to 'organizations/{orgId}/operacoesSocios'
+  const operacoesRef = useOrgCollection<Operacao>('operacoesSocios');
 
-  const handleSaveOperation = (operation: Omit<Operacao, 'id'>) => {
-    if (!firestore) return;
+  // Query with organization scope
+  const operacoesQuery = useMemoFirebase(
+    () => {
+      if (!operacoesRef) return null;
+
+      // If an operation is selected in the header, filter by it
+      if (selectedOperationId) {
+        return query(
+          operacoesRef,
+          where('operationId', '==', selectedOperationId),
+          orderBy('data', 'desc')
+        );
+      }
+
+      // Otherwise show all for the organization
+      return query(operacoesRef, orderBy('data', 'desc'));
+    },
+    [operacoesRef, selectedOperationId]
+  );
+
+  const { data: operacoesData, isLoading: isLoadingData } = useCollection<Operacao>(operacoesQuery);
+
+  // Use local data if available, otherwise fall back to props (for backward compatibility during migration)
+  const displayOperacoes = operacoesData || operacoes;
+  const displayLoading = isLoadingData || isLoading;
+
+  const handleSaveOperation = async (operation: Omit<Operacao, 'id'>) => {
+    if (!firestore || !operacoesRef) return;
 
     if (operation.faturamentoLiquido > RECORD_FATURAMENTO) {
       // Since auth is removed, we can't tie sound to a specific user.
@@ -83,7 +120,7 @@ const OperationsTable = ({
       if (recordSound) {
         play(recordSound);
       }
-      const notificationsRef = collection(firestore, 'notificacoes');
+      const notificationsRef = collection(firestore, 'organizations', orgId, 'notificacoes');
       const notificationMessage = `Novo valor: ${formatCurrency(operation.faturamentoLiquido)}`;
       const notificationTitle = `🎉 Recorde de faturamento quebrado!`;
 
@@ -98,15 +135,21 @@ const OperationsTable = ({
       sendPushNotification(notificationTitle, notificationMessage, '/');
     }
 
-    if (editingOperation) {
-      const docRef = doc(firestore, 'operacoesSocios', editingOperation.id!);
-      updateDocumentNonBlocking(docRef, operation);
-    } else {
-      const operacoesRef = collection(firestore, 'operacoesSocios');
-      addDocumentNonBlocking(operacoesRef, operation);
-    }
+    try {
+      if (editingOperation) {
+        // Update existing in org collection
+        const docRef = doc(operacoesRef, editingOperation.id);
+        await updateDocumentNonBlocking(docRef, operation);
+      } else {
+        // Add new to org collection
+        await addDocumentNonBlocking(operacoesRef, operation);
+      }
 
-    handleFormDialogChange(false);
+      handleFormDialogChange(false);
+    } catch (error) {
+      console.error("Error saving operation:", error);
+      alert("Erro ao salvar lançamento. Tente novamente.");
+    }
   };
 
   const handleEdit = (op: Operacao) => {
@@ -127,7 +170,7 @@ const OperationsTable = ({
   }
 
 
-  const summary = operacoes.reduce(
+  const summary = displayOperacoes.reduce(
     (acc, op) => {
       acc.faturamentoLiquido += op.faturamentoLiquido;
       acc.gastoAnuncio += op.gastoAnuncio;
@@ -172,7 +215,7 @@ const OperationsTable = ({
             </Button>
             <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
               <DialogContent className="max-w-4xl p-0">
-                <AnalyticsModal operacoes={operacoes} />
+                <AnalyticsModal operacoes={displayOperacoes} />
               </DialogContent>
             </Dialog>
 
@@ -212,12 +255,20 @@ const OperationsTable = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={11} className="text-center h-24">Carregando lançamentos...</TableCell></TableRow>
-              ) : operacoes.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="text-center h-24">Nenhum lançamento encontrado para o período.</TableCell></TableRow>
+              {displayLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Carregando lançamentos...
+                  </TableCell>
+                </TableRow>
+              ) : displayOperacoes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Nenhum lançamento encontrado {selectedOperationId ? 'para esta operação' : ''}.
+                  </TableCell>
+                </TableRow>
               ) : (
-                operacoes.map((op) => (
+                displayOperacoes.map((op) => (
                   <TableRow key={op.id} className="table-row-animate border-neutral-800">
                     <TableCell>{op.data?.toDate ? format(op.data.toDate(), 'dd/MM/yy') : 'N/A'}</TableCell>
                     <TableCell className="font-medium max-w-[200px] truncate">{getCellContent(op.descricao)}</TableCell>
