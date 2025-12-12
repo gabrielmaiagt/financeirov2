@@ -11,7 +11,8 @@ import QuoteOfTheDay from './QuoteOfTheDay';
 import NotificationBell from './NotificationBell';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Settings } from 'lucide-react';
+import { Settings, Users, Palette, LayoutDashboard, ShieldAlert } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import GoalWidget from './GoalWidget';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { OperationSelector } from '@/components/OperationSelector';
@@ -118,11 +119,46 @@ const Header = () => {
         {/* Desktop only controls that are moved to top row on mobile */}
         <div className="hidden md:flex items-center gap-2">
           <NotificationBell />
-          <Link href="/admin">
-            <Button variant="ghost" size="icon" title="Admin">
-              <Settings className="w-5 h-5" />
-            </Button>
-          </Link>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" title="Menu Administrativo">
+                <Settings className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-neutral-900 border-neutral-800">
+              <DropdownMenuLabel>Administração</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/admin" className="flex items-center cursor-pointer">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  <span>Painel Admin</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/team" className="flex items-center cursor-pointer">
+                  <Users className="mr-2 h-4 w-4" />
+                  <span>Gerenciar Equipe</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="flex items-center cursor-pointer">
+                  <Palette className="mr-2 h-4 w-4" />
+                  <span>Personalização</span>
+                </Link>
+              </DropdownMenuItem>
+
+              {/* Hidden/Subtle Super Admin Link if needed, maybe separated */}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/admin/super" className="flex items-center cursor-pointer text-muted-foreground hover:text-foreground">
+                  <ShieldAlert className="mr-2 h-4 w-4" />
+                  <span>Super Admin</span>
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
         </div>
 
         {/* Theme Switcher - Visible on both, full width on mobile? */}
