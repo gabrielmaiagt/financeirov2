@@ -23,22 +23,30 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
             const hostname = window.location.hostname;
             const parts = hostname.split('.');
 
-            // Logic:
-            // localhost (1 part) -> interno-fluxo
-            // www.domain.com (3 parts, starts with www) -> interno-fluxo (or landing page later)
-            // slug.localhost (2 parts) -> slug
-            // slug.domain.com (3 parts) -> slug
+            // Subdomain to OrgId mapping (for custom domains or aliases)
+            // Add your subdomain mappings here
+            const subdomainMappings: Record<string, string> = {
+                'financeiro': 'interno-fluxo', // financeiro.fluxodeoferta.site -> interno-fluxo
+                // Add more mappings as needed:
+                // 'cliente1': 'org-cliente1',
+                // 'empresa': 'org-empresa',
+            };
+
+            let detectedOrgId: string;
 
             if (hostname === 'localhost' || hostname.startsWith('192.168.') || hostname.startsWith('127.0.0.1')) {
                 // Dev environment root
-                setOrgId('interno-fluxo');
+                detectedOrgId = 'interno-fluxo';
             } else if (parts.length > 1 && parts[0] !== 'www') {
-                // Subdomain detected
-                setOrgId(parts[0]);
+                // Subdomain detected - check if there's a mapping
+                const subdomain = parts[0];
+                detectedOrgId = subdomainMappings[subdomain] || subdomain;
             } else {
-                // Production root (e.g. app.com) -> Default to interno-fluxo for now, or handle as landing
-                setOrgId('interno-fluxo');
+                // Production root (e.g. app.com) -> Default org
+                detectedOrgId = 'interno-fluxo';
             }
+
+            setOrgId(detectedOrgId);
         }
     }, []);
 
