@@ -141,6 +141,87 @@ export const GGCheckoutWebhookSchema = z.object({
 
 export type GGCheckoutWebhook = z.infer<typeof GGCheckoutWebhookSchema>;
 
+// ============ FRENDZ SCHEMAS ============
+// Based on frendz.com.br API documentation
+// Webhook payload sent to postback_url when transaction status changes
+
+export const FrendzCustomerSchema = z.object({
+    name: z.string().optional().nullable(),
+    email: z.string().optional().nullable(),
+    phone_number: z.string().optional().nullable(),
+    document: z.string().optional().nullable(),
+    street_name: z.string().optional().nullable(),
+    number: z.string().optional().nullable(),
+    complement: z.string().optional().nullable(),
+    neighborhood: z.string().optional().nullable(),
+    city: z.string().optional().nullable(),
+    state: z.string().optional().nullable(),
+    zip_code: z.string().optional().nullable(),
+});
+
+export const FrendzCartItemSchema = z.object({
+    product_hash: z.string().optional().nullable(),
+    product_id: z.number().optional().nullable(),
+    offer_id: z.number().optional().nullable(),
+    title: z.string().optional().nullable(),
+    cover: z.string().optional().nullable(),
+    price: z.number().optional().nullable(), // in centavos
+    quantity: z.number().optional().nullable(),
+    operation_type: z.number().optional().nullable(), // 1=main, 2=orderbump, 3=upsell
+    tangible: z.boolean().optional().nullable(),
+});
+
+export const FrendzTrackingSchema = z.object({
+    src: z.string().optional().nullable(),
+    utm_source: z.string().optional().nullable(),
+    utm_medium: z.string().optional().nullable(),
+    utm_campaign: z.string().optional().nullable(),
+    utm_term: z.string().optional().nullable(),
+    utm_content: z.string().optional().nullable(),
+});
+
+export const FrendzWebhookSchema = z.object({
+    // Transaction identification
+    hash: z.string().optional().nullable(),
+    transaction_id: z.string().or(z.number().transform(String)).optional().nullable(),
+    id: z.string().or(z.number().transform(String)).optional().nullable(),
+
+    // Status
+    status: z.string().optional().nullable(),
+    event: z.string().optional().nullable(),
+
+    // Amount in centavos
+    amount: z.preprocess((val) => Number(val), z.number()).optional().nullable(),
+
+    // Payment info
+    payment_method: z.string().optional().nullable(), // pix, credit_card, billet
+    installments: z.number().optional().nullable(),
+
+    // Customer info
+    customer: FrendzCustomerSchema.optional().nullable(),
+
+    // Cart/Products
+    cart: z.array(FrendzCartItemSchema).optional().nullable(),
+
+    // Offer info
+    offer_hash: z.string().optional().nullable(),
+
+    // Tracking
+    tracking: FrendzTrackingSchema.optional().nullable(),
+
+    // Timestamps
+    created_at: z.string().optional().nullable(),
+    updated_at: z.string().optional().nullable(),
+    paid_at: z.string().optional().nullable(),
+}).transform((data) => ({
+    ...data,
+    transaction_id: data.hash || data.transaction_id || data.id || 'unknown_id',
+    status: data.status || data.event || 'unknown',
+    amount: data.amount || 0,
+}));
+
+export type FrendzWebhook = z.infer<typeof FrendzWebhookSchema>;
+
 // ============ UTILITY FUNCTIONS ============
 
 /**
@@ -148,7 +229,7 @@ export type GGCheckoutWebhook = z.infer<typeof GGCheckoutWebhookSchema>;
  */
 export function normalizeTrackingData(
     tracking: any,
-    gateway: 'Buckpay' | 'Paradise' | 'GGCheckout'
+    gateway: 'Buckpay' | 'Paradise' | 'GGCheckout' | 'Frendz'
 ): Record<string, any> {
     if (!tracking) return {};
 
@@ -179,7 +260,23 @@ export function normalizeTrackingData(
     }
 
     // GGCheckout - tracking is already flat in the payload root
-    return tracking;
+    if (gateway === 'GGCheckout') {
+        return tracking;
+    }
+
+    // Frendz
+    if (gateway === 'Frendz') {
+        return {
+            utm_source: tracking?.utm_source || null,
+            utm_medium: tracking?.utm_medium || null,
+            utm_campaign: tracking?.utm_campaign || null,
+            utm_content: tracking?.utm_content || null,
+            utm_term: tracking?.utm_term || null,
+            src: tracking?.src || null,
+        };
+    }
+
+    return {};
 }
 
 /**
