@@ -58,7 +58,7 @@ export default function AdminPage() {
         }
     };
 
-    return (
+
     return (
         <div className="flex flex-col items-center min-h-screen bg-background text-foreground p-4 md:p-8">
             <div className="absolute top-0 left-0 w-full h-full bg-black -z-10">
