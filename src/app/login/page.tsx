@@ -14,7 +14,7 @@ import Link from 'next/link';
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [orgId, setOrgId] = useState('interno-fluxo'); // Default org
+    // OrgId removed
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
@@ -26,7 +26,7 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            const result = await login(email, password, orgId);
+            const result = await login(email, password);
 
             if (result.success) {
                 router.push('/');
@@ -54,19 +54,7 @@ export default function LoginPage() {
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
-
-                        <div className="space-y-2">
-                            <Label htmlFor="orgId">Organização</Label>
-                            <Input
-                                id="orgId"
-                                type="text"
-                                placeholder="ID da organização"
-                                value={orgId}
-                                onChange={(e) => setOrgId(e.target.value)}
-                                required
-                                className="bg-neutral-800 border-neutral-700"
-                            />
-                        </div>
+                        {/* OrgId input removed */}
 
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>

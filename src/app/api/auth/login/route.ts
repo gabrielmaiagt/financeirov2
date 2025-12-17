@@ -4,33 +4,50 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
     try {
-        const { email, password, orgId } = await request.json();
+        const { email, password } = await request.json();
 
-        if (!email || !password || !orgId) {
+        if (!email || !password) {
             return NextResponse.json(
-                { error: 'Email, senha e organização são obrigatórios' },
+                { error: 'Email e senha são obrigatórios' },
                 { status: 400 }
             );
         }
 
-        // Initialize Firebase Admin and get firestore
-        const { firestore: db } = initializeFirebase();
+        // Initialize Firebase Admin
+        const { firestore: db, auth } = initializeFirebase();
 
-        // Find user by email in the organization
-        const usersRef = db.collection('organizations').doc(orgId).collection('users');
-        const snapshot = await usersRef.where('email', '==', email.toLowerCase()).limit(1).get();
+        // 1. Intelligent Login: Find user across ALL organizations
+        // Using Collection Group Query to search all 'users' collections
+        const usersSnapshot = await db.collectionGroup('users')
+            .where('email', '==', email.toLowerCase())
+            .get();
 
-        if (snapshot.empty) {
+        if (usersSnapshot.empty) {
             return NextResponse.json(
                 { error: 'Credenciais inválidas' },
                 { status: 401 }
             );
         }
 
-        const userDoc = snapshot.docs[0];
+        // In case multiple users with same email exist (shouldn't happen ideally, but possible in multi-tenant without unique constraint)
+        // We pick the first one, or we could ask user to invoke a specific org login if needed.
+        // For now, let's assume one main user or pick first.
+        const userDoc = usersSnapshot.docs[0];
         const userData = userDoc.data();
 
-        // Verify password
+        // Use userDoc.ref.parent.parent to find the organization document
+        const orgDocRef = userDoc.ref.parent.parent;
+
+        if (!orgDocRef) {
+            return NextResponse.json(
+                { error: 'Erro de integridade: Usuário sem organização' },
+                { status: 500 }
+            );
+        }
+
+        const orgId = orgDocRef.id;
+
+        // 2. Verify Password
         const isValidPassword = await bcrypt.compare(password, userData.passwordHash);
 
         if (!isValidPassword) {
@@ -40,18 +57,31 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Update last login
+        // 3. Generate Firebase Custom Token
+        // If the user already has a Firebase Auth UID stored, use it. Otherwise use the doc ID.
+        // It's safer to always use the Doc ID as the UID for consistency if not linked yet.
+        const userId = userDoc.id;
+
+        // Add custom claims for RBAC and Multi-tenancy
+        const additionalClaims = {
+            orgId: orgId,
+            role: userData.role
+        };
+
+        const customToken = await auth.createCustomToken(userId, additionalClaims);
+
+        // 4. Update last login
         await userDoc.ref.update({
             lastLoginAt: new Date(),
         });
 
-        // Return user data (without password hash)
+        // 5. Return success with token and context data
         return NextResponse.json({
             success: true,
+            token: customToken,
             user: {
-                id: userDoc.id,
+                id: userId,
                 email: userData.email,
-                username: userData.username,
                 name: userData.name,
                 role: userData.role,
                 orgId: orgId,

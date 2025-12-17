@@ -4,11 +4,13 @@
 import { initializeApp, getApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getMessaging, Messaging } from 'firebase-admin/messaging';
+import { getAuth, Auth } from 'firebase-admin/auth';
 
 interface FirebaseAdminServices {
     app: App;
     firestore: Firestore;
     messaging: Messaging;
+    auth: Auth;
 }
 
 // This function initializes the Firebase Admin SDK if it hasn't been already.
@@ -39,6 +41,7 @@ export function initializeFirebase(): FirebaseAdminServices {
                     app,
                     firestore: getFirestore(app),
                     messaging: getMessaging(app),
+                    auth: getAuth(app),
                 };
             } catch (localError) {
                 console.error("Failed to initialize with provided local credentials:", localError);
@@ -60,6 +63,7 @@ export function initializeFirebase(): FirebaseAdminServices {
             app,
             firestore: getFirestore(app),
             messaging: getMessaging(app),
+            auth: getAuth(app),
         };
     } else {
         const app = getApp();
@@ -67,6 +71,7 @@ export function initializeFirebase(): FirebaseAdminServices {
             app,
             firestore: getFirestore(app),
             messaging: getMessaging(app),
+            auth: getAuth(app),
         };
     }
 }
