@@ -37,15 +37,14 @@ export async function POST(request: NextRequest) {
         }
 
         if (usersSnapshot.empty) {
+            console.log(`Login failed: User with email ${email} not found in any organization.`);
             return NextResponse.json(
-                { error: 'Credenciais inválidas' },
+                { error: 'Usuário não encontrado (Debug: Verifique o email ou se o usuário foi criado)' },
                 { status: 401 }
             );
         }
 
-        // In case multiple users with same email exist (shouldn't happen ideally, but possible in multi-tenant without unique constraint)
-        // We pick the first one, or we could ask user to invoke a specific org login if needed.
-        // For now, let's assume one main user or pick first.
+        // ... existing code ...
         const userDoc = usersSnapshot.docs[0];
         const userData = userDoc.data();
 
@@ -58,11 +57,21 @@ export async function POST(request: NextRequest) {
         }
 
         // 2. Verify Password
+        // Check if passwordHash exists
+        if (!userData.passwordHash) {
+            console.error(`Login failed: User ${email} has no password hash set.`);
+            return NextResponse.json(
+                { error: 'Erro de cadastro: Senha não definida para este usuário.' },
+                { status: 401 }
+            );
+        }
+
         const isValidPassword = await bcrypt.compare(password, userData.passwordHash);
 
         if (!isValidPassword) {
+            console.log(`Login failed: Invalid password for user ${email}`);
             return NextResponse.json(
-                { error: 'Credenciais inválidas' },
+                { error: 'Senha incorreta (Debug: Verifique se a senha está correta)' },
                 { status: 401 }
             );
         }

@@ -37,18 +37,21 @@ export async function POST(request: NextRequest) {
       const errorMessage = `Invalid webhook payload: ${validationResult.error.message}`;
       console.error('Buckpay webhook validation failed:', validationResult.error);
 
+      // Serialize Zod errors to plain objects for Firestore
+      const serializableErrors = JSON.parse(JSON.stringify(validationResult.error.errors));
+
       if (webhookLogRef) {
         await updateDoc(webhookLogRef, {
           processingStatus: 'validation_error',
           errorMessage,
-          validationErrors: validationResult.error.errors,
+          validationErrors: serializableErrors,
         });
       }
 
       return NextResponse.json(
         {
           message: 'Invalid payload structure',
-          errors: validationResult.error.errors,
+          errors: serializableErrors,
         },
         { status: 400 }
       );

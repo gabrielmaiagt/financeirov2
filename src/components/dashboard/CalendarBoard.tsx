@@ -326,7 +326,9 @@ const CalendarBoard = ({ dateRange }: CalendarBoardProps) => {
             day_outside: "text-muted-foreground opacity-50",
           }}
           components={{
-            Day: ({ date }) => {
+            Day: (props: any) => {
+              const { day } = props;
+              const date = day.date;
               const dayKey = format(date, 'yyyy-MM-dd');
               const dailyTasks = tasksByDay[dayKey] || [];
               const financials = financialsByDay[dayKey] || null;

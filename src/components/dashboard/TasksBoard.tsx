@@ -33,6 +33,8 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 
 
+import { useOrganization } from '@/contexts/OrganizationContext';
+
 export type Urgency = 'Baixa' | 'Média' | 'Alta' | 'Crítica';
 export type TaskStatus = 'A Fazer' | 'Em Progresso' | 'Concluído';
 export type Assignee = 'Cabral' | 'Biel' | 'Soares' | 'Geral';
@@ -47,6 +49,7 @@ export interface Task {
   dueDate?: string;
   order: number;
   oculta?: boolean;
+  value?: number;
 }
 
 const columnOrder: TaskStatus[] = ['A Fazer', 'Em Progresso', 'Concluído'];
@@ -93,6 +96,7 @@ const HiddenTasksModal = ({ open, onOpenChange, tasks, onRestore, profilesByName
 
 const TasksBoard = () => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
   const { play } = useSound();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
@@ -179,7 +183,7 @@ const TasksBoard = () => {
   };
 
   const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
-    if (!firestore || !tasks) return;
+    if (!firestore || !tasks || !orgId) return;
 
     const taskToMove = tasks.find(t => t.id === taskId);
     if (!taskToMove) return;
