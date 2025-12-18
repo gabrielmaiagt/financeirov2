@@ -1,45 +1,67 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { initializeFirebase } from '@/firebase/server-admin';
+import bcrypt from 'bcryptjs';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
     try {
-        console.log("🔍 Testing Admin SDK initialization...");
-        const adminServices = initializeFirebase();
+        const searchParams = request.nextUrl.searchParams;
+        const email = searchParams.get('email');
+        const newPass = searchParams.get('pass');
 
-        console.log("✅ Admin SDK initialized successfully");
-        console.log("📊 Checking Firestore access...");
+        if (!email || !newPass) {
+            return NextResponse.json({ error: 'Use ?email=x&pass=y' }, { status: 400 });
+        }
 
-        const firestore = adminServices.firestore;
-        const perfisSnapshot = await firestore.collection('perfis').limit(1).get();
+        const { firestore: db } = initializeFirebase();
 
-        console.log("✅ Firestore access successful");
-        console.log(`📱 Found ${perfisSnapshot.size} profile(s) in first query`);
+        // 1. Find user
+        console.log(`Searching for ${email}...`);
 
-        // Count total tokens
-        const allProfiles = await firestore.collection('perfis').get();
-        let totalTokens = 0;
-        allProfiles.forEach((doc: any) => {
-            const data = doc.data();
-            if (data.fcmTokens && Array.isArray(data.fcmTokens)) {
-                totalTokens += data.fcmTokens.length;
-            }
+        // Try Collection Group first
+        let usersSnapshot = await db.collectionGroup('users')
+            .where('email', '==', email.toLowerCase())
+            .limit(1)
+            .get();
+
+        // Fallback to specific org if empty
+        if (usersSnapshot.empty) {
+            console.log("Not found in CG, checking interno-fluxo...");
+            usersSnapshot = await db.collection('organizations')
+                .doc('interno-fluxo')
+                .collection('users')
+                .where('email', '==', email.toLowerCase())
+                .limit(1)
+                .get();
+        }
+
+        if (usersSnapshot.empty) {
+            return NextResponse.json({ error: 'User not found anywhere' }, { status: 404 });
+        }
+
+        const userDoc = usersSnapshot.docs[0];
+
+        // 2. Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(newPass, salt);
+
+        // 3. Update
+        await userDoc.ref.update({
+            passwordHash: passwordHash,
+            updatedAt: new Date()
         });
 
         return NextResponse.json({
             success: true,
-            adminSdkInitialized: true,
-            firestoreAccess: true,
-            totalProfiles: allProfiles.size,
-            totalFcmTokens: totalTokens,
-            messagingAvailable: !!adminServices.messaging
+            userPath: userDoc.ref.path,
+            message: `Password updated to '${newPass}'`
         });
 
     } catch (error: any) {
-        console.error("❌ Admin SDK test failed:", error);
         return NextResponse.json({
-            success: false,
-            error: error.message,
-            stack: error.stack
+            status: 'error',
+            message: error.message
         }, { status: 500 });
     }
 }
