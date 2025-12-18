@@ -25,19 +25,17 @@ import { OperationForm } from './OperationForm';
 import AnalyticsModal from './AnalyticsModal';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, doc, Timestamp } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useCollection } from '@/firebase';
 import { useSound } from '@/hooks/use-sound';
 import { UserProfile } from './ProfileCard';
-import { useCollection } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { cn } from '@/lib/utils';
 import { usePrivacy } from '@/providers/PrivacyProvider';
 import { sendPushNotification } from '@/lib/client-utils';
-import { useOrgCollection } from '@/hooks/useFirestoreOrg';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useOperation } from '@/contexts/OperationContext';
 import { query, where, orderBy } from 'firebase/firestore';
-
+import { useOrgCollection } from '@/hooks/useFirestoreOrg';
 
 interface OperationsTableProps {
   operacoes: Operacao[];
@@ -72,50 +70,20 @@ const OperationsTable = ({
   const { play } = useSound();
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [editingOperation, setEditingOperation] = useState<Operacao | null>(null);
+  const { isBlurred } = usePrivacy();
 
   const profilesQuery = useMemoFirebase(
     () => (firestore && orgId ? collection(firestore, 'organizations', orgId, 'perfis') : null),
     [firestore, orgId]
   );
   const { data: profiles } = useCollection<UserProfile>(profilesQuery);
-  const { isBlurred } = usePrivacy();
-
-  // Use organization-scoped collection for financial transactions
-  // This migrates from root 'operacoesSocios' to 'organizations/{orgId}/operacoesSocios'
-  const operacoesRef = useOrgCollection<Operacao>('operacoesSocios');
-
-  // Query with organization scope
-  const operacoesQuery = useMemoFirebase(
-    () => {
-      if (!operacoesRef) return null;
-
-      // If an operation is selected in the header, filter by it
-      if (selectedOperationId) {
-        return query(
-          operacoesRef,
-          where('operationId', '==', selectedOperationId),
-          orderBy('data', 'desc')
-        );
-      }
-
-      // Otherwise show all for the organization
-      return query(operacoesRef, orderBy('data', 'desc'));
-    },
-    [operacoesRef, selectedOperationId]
-  );
-
-  const { data: operacoesData, isLoading: isLoadingData } = useCollection<Operacao>(operacoesQuery);
-
-  // Use local data if available, otherwise fall back to props (for backward compatibility during migration)
-  const displayOperacoes = operacoesData || operacoes;
-  const displayLoading = isLoadingData || isLoading;
+  
+  const operacoesRef = useOrgCollection('operacoesSocios');
 
   const handleSaveOperation = async (operation: Omit<Operacao, 'id'>) => {
     if (!firestore || !operacoesRef) return;
 
     if (operation.faturamentoLiquido > RECORD_FATURAMENTO) {
-      // Since auth is removed, we can't tie sound to a specific user.
-      // We'll just check if a general record-breaking sound is set on any profile.
       const recordSound = profiles?.find(p => p.sounds?.recordBroken)?.sounds?.recordBroken;
       if (recordSound) {
         play(recordSound);
@@ -131,20 +99,16 @@ const OperationsTable = ({
         type: 'record_broken'
       });
 
-      // Send push notification
       sendPushNotification(notificationTitle, notificationMessage, '/');
     }
 
     try {
       if (editingOperation) {
-        // Update existing in org collection
         const docRef = doc(operacoesRef, editingOperation.id);
         await updateDocumentNonBlocking(docRef, operation);
       } else {
-        // Add new to org collection
         await addDocumentNonBlocking(operacoesRef, operation);
       }
-
       handleFormDialogChange(false);
     } catch (error) {
       console.error("Error saving operation:", error);
@@ -170,7 +134,7 @@ const OperationsTable = ({
   }
 
 
-  const summary = displayOperacoes.reduce(
+  const summary = operacoes.reduce(
     (acc, op) => {
       acc.faturamentoLiquido += op.faturamentoLiquido;
       acc.gastoAnuncio += op.gastoAnuncio;
@@ -215,7 +179,7 @@ const OperationsTable = ({
             </Button>
             <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
               <DialogContent className="max-w-4xl p-0">
-                <AnalyticsModal operacoes={displayOperacoes} />
+                <AnalyticsModal operacoes={operacoes} />
               </DialogContent>
             </Dialog>
 
@@ -255,20 +219,20 @@ const OperationsTable = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {displayLoading ? (
+              {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Carregando lançamentos...
                   </TableCell>
                 </TableRow>
-              ) : displayOperacoes.length === 0 ? (
+              ) : operacoes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhum lançamento encontrado {selectedOperationId ? 'para esta operação' : ''}.
                   </TableCell>
                 </TableRow>
               ) : (
-                displayOperacoes.map((op) => (
+                operacoes.map((op) => (
                   <TableRow key={op.id} className="table-row-animate border-neutral-800">
                     <TableCell>{op.data?.toDate ? format(op.data.toDate(), 'dd/MM/yy') : 'N/A'}</TableCell>
                     <TableCell className="font-medium max-w-[200px] truncate">{getCellContent(op.descricao)}</TableCell>
