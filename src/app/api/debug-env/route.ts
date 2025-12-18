@@ -23,13 +23,34 @@ export async function GET(request: NextRequest) {
             tokenStatus = `Failed: ${tokenError.message}`;
         }
 
+        // Test 4: Check if user exists (Debug Logic)
+        let userQueryStatus = 'Not tested';
+        let foundUserPath = 'None';
+        try {
+            const usersSnapshot = await firestore.collectionGroup('users')
+                .where('email', '==', 'gabrielmaiasantos0012@gmail.com')
+                .limit(1)
+                .get();
+
+            if (usersSnapshot.empty) {
+                userQueryStatus = 'Query executed but NO user found';
+            } else {
+                userQueryStatus = `Found ${usersSnapshot.size} user(s)`;
+                foundUserPath = usersSnapshot.docs[0].ref.path;
+            }
+        } catch (queryError: any) {
+            userQueryStatus = `Query Failed: ${queryError.message}`;
+        }
+
         return NextResponse.json({
             status: 'ok',
             firebase: {
-                appOptions: app.options, // Safe to expose options (projectId etc)
+                appOptions: app.options,
                 firestore: firestoreStatus,
                 auth: authStatus,
-                tokenMinting: tokenStatus
+                tokenMinting: tokenStatus,
+                userQuery: userQueryStatus,
+                foundUserPath
             },
             env: {
                 projectId: process.env.FIREBASE_PROJECT_ID,

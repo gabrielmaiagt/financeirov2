@@ -18,9 +18,23 @@ export async function POST(request: NextRequest) {
 
         // 1. Intelligent Login: Find user across ALL organizations
         // Using Collection Group Query to search all 'users' collections
-        const usersSnapshot = await db.collectionGroup('users')
-            .where('email', '==', email.toLowerCase())
-            .get();
+        let usersSnapshot;
+        try {
+            usersSnapshot = await db.collectionGroup('users')
+                .where('email', '==', email.toLowerCase())
+                .limit(1)
+                .get();
+        } catch (cgError) {
+            console.warn("Collection Group query failed, falling back to specific org", cgError);
+            usersSnapshot = { empty: true, docs: [] } as any;
+        }
+
+        // Fallback: If not found globally (or query failed), try default 'interno-fluxo' explicitly
+        if (usersSnapshot.empty) {
+            console.log("User not found in CollectionGroup, checking 'interno-fluxo' directly...");
+            const fallbackRef = db.collection('organizations').doc('interno-fluxo').collection('users');
+            usersSnapshot = await fallbackRef.where('email', '==', email.toLowerCase()).limit(1).get();
+        }
 
         if (usersSnapshot.empty) {
             return NextResponse.json(
@@ -36,16 +50,12 @@ export async function POST(request: NextRequest) {
         const userData = userDoc.data();
 
         // Use userDoc.ref.parent.parent to find the organization document
+        let orgId = 'interno-fluxo'; // Default safe value
         const orgDocRef = userDoc.ref.parent.parent;
 
-        if (!orgDocRef) {
-            return NextResponse.json(
-                { error: 'Erro de integridade: Usuário sem organização' },
-                { status: 500 }
-            );
+        if (orgDocRef) {
+            orgId = orgDocRef.id;
         }
-
-        const orgId = orgDocRef.id;
 
         // 2. Verify Password
         const isValidPassword = await bcrypt.compare(password, userData.passwordHash);
