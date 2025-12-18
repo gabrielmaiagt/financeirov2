@@ -11,6 +11,7 @@ import { UIProvider } from "@/components/ThemeProvider";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { OperationProvider } from "@/contexts/OperationContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -66,7 +67,9 @@ export default function RootLayout({
                 <OrganizationProvider>
                   <AuthProvider>
                     <OperationProvider>
-                      {children}
+                      <ProtectedRoute>
+                        {children}
+                      </ProtectedRoute>
                     </OperationProvider>
                   </AuthProvider>
                 </OrganizationProvider>
