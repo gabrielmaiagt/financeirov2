@@ -22,6 +22,12 @@ export function DataMigration() {
     const [isRunning, setIsRunning] = useState(false);
     const [results, setResults] = useState<MigrationResult[]>([]);
 
+    const collectionsToMigrate = [
+        'tarefas', 'perfis', 'vendas', 'scripts', 'reminders', 'recuperacao', 
+        'frases', 'ofertasEscaladas', 'notificacoes', 'anotacoes', 'logins', 
+        'insights', 'metas', 'despesas', 'operacoesSocios', 'criativos', 'banco_criativos'
+    ];
+
     const migrateCollection = async (fromPath: string, toPath: string): Promise<MigrationResult> => {
         if (!firestore) throw new Error('Firestore not initialized');
 
@@ -66,30 +72,10 @@ export function DataMigration() {
         setIsRunning(true);
         setResults([]);
 
-        const collectionsToMigrate = [
-            { from: 'tarefas', to: `organizations/${ORG_ID}/tarefas` },
-            { from: 'perfis', to: `organizations/${ORG_ID}/perfis` },
-            { from: 'vendas', to: `organizations/${ORG_ID}/vendas` },
-            { from: 'scripts', to: `organizations/${ORG_ID}/scripts` },
-            { from: 'reminders', to: `organizations/${ORG_ID}/reminders` },
-            { from: 'recuperacao', to: `organizations/${ORG_ID}/recuperacao` },
-            { from: 'frases', to: `organizations/${ORG_ID}/frases` },
-            { from: 'ofertasEscaladas', to: `organizations/${ORG_ID}/ofertasEscaladas` },
-            { from: 'notificacoes', to: `organizations/${ORG_ID}/notificacoes` },
-            { from: 'anotacoes', to: `organizations/${ORG_ID}/anotacoes` },
-            { from: 'logins', to: `organizations/${ORG_ID}/logins` },
-            { from: 'insights', to: `organizations/${ORG_ID}/insights` },
-            { from: 'metas', to: `organizations/${ORG_ID}/metas` },
-            { from: 'despesas', to: `organizations/${ORG_ID}/despesas` },
-            { from: 'operacoesSocios', to: `organizations/${ORG_ID}/operacoesSocios` },
-            { from: 'criativos', to: `organizations/${ORG_ID}/criativos` },
-            { from: 'banco_criativos', to: `organizations/${ORG_ID}/banco_criativos` },
-        ];
-
         const migrationResults: MigrationResult[] = [];
 
-        for (const { from, to } of collectionsToMigrate) {
-            const result = await migrateCollection(from, to);
+        for (const collectionName of collectionsToMigrate) {
+            const result = await migrateCollection(collectionName, `organizations/${ORG_ID}/${collectionName}`);
             migrationResults.push(result);
             setResults([...migrationResults]);
         }

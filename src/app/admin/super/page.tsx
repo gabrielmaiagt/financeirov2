@@ -3,6 +3,7 @@
 import { OrgList } from '@/components/admin/OrgList';
 import { CreateOrgForm } from '@/components/admin/CreateOrgForm';
 import { Separator } from '@/components/ui/separator';
+import { DataMigration } from '@/components/DataMigration';
 
 export default function SuperAdminPage() {
     return (
@@ -22,6 +23,10 @@ export default function SuperAdminPage() {
                     <OrgList />
                 </div>
             </div>
+
+            <Separator />
+            
+            <DataMigration />
         </div>
     );
 }
