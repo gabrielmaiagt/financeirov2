@@ -9,11 +9,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, KeyRound, CheckCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useFirebase } from '@/firebase';
+import { confirmPasswordReset } from 'firebase/auth';
 
 function ResetPasswordForm() {
     const searchParams = useSearchParams();
-    const token = searchParams.get('token');
-    const orgId = searchParams.get('orgId') || 'interno-fluxo';
+    const token = searchParams.get('oobCode'); // Firebase uses 'oobCode' for the token
 
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,6 +22,7 @@ function ResetPasswordForm() {
     const [success, setSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
+    const { auth } = useFirebase();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,26 +37,34 @@ function ResetPasswordForm() {
             setError('A senha deve ter pelo menos 6 caracteres');
             return;
         }
+        
+        if (!auth || !token) {
+            setError('Link inválido ou serviço de autenticação indisponível.');
+            return;
+        }
 
         setIsLoading(true);
 
         try {
-            const response = await fetch('/api/auth/reset-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token, newPassword: password, orgId }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setError(data.error || 'Erro ao redefinir senha');
-            } else {
-                setSuccess(true);
-                setTimeout(() => router.push('/login'), 3000);
+            await confirmPasswordReset(auth, token, password);
+            setSuccess(true);
+            setTimeout(() => router.push('/login'), 3000);
+        } catch (err: any) {
+             switch (err.code) {
+                case 'auth/expired-action-code':
+                    setError('O link de recuperação expirou. Por favor, solicite um novo.');
+                    break;
+                case 'auth/invalid-action-code':
+                    setError('O link de recuperação é inválido. Pode já ter sido usado.');
+                    break;
+                case 'auth/weak-password':
+                    setError('A senha é muito fraca. Tente uma mais forte.');
+                    break;
+                default:
+                    setError('Erro ao redefinir a senha. Tente novamente.');
+                    break;
             }
-        } catch (err) {
-            setError('Erro de conexão');
+            console.error(err);
         } finally {
             setIsLoading(false);
         }

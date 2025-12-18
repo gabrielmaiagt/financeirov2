@@ -12,8 +12,8 @@ import { Loader2, LogIn } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState('cabral@example.com');
+    const [password, setPassword] = useState('123456');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
@@ -25,7 +25,6 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            // The login function now only requires email and password
             const result = await login(email, password);
 
             if (result.success) {

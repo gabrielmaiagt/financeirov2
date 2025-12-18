@@ -8,39 +8,45 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useFirebase } from '@/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
-    const [orgId, setOrgId] = useState('interno-fluxo');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const { auth } = useFirebase();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
 
+        if (!auth) {
+            setError('Serviço de autenticação não está disponível.');
+            setIsLoading(false);
+            return;
+        }
+
         try {
-            const response = await fetch('/api/auth/forgot-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, orgId }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setError(data.error || 'Erro ao processar solicitação');
-            } else {
-                setSuccess(true);
-                // In development, show the reset token
-                if (data._dev_token) {
-                    console.log('Dev reset link:', `/reset-password?token=${data._dev_token}&orgId=${orgId}`);
-                }
+            await sendPasswordResetEmail(auth, email);
+            setSuccess(true);
+        } catch (err: any) {
+            switch(err.code) {
+                case 'auth/invalid-email':
+                    setError('O email fornecido é inválido.');
+                    break;
+                case 'auth/user-not-found':
+                    // For security, we don't reveal if the user exists.
+                    // The success message will handle this.
+                    setSuccess(true);
+                    break;
+                default:
+                    setError('Erro ao enviar email de recuperação. Tente novamente mais tarde.');
+                    break;
             }
-        } catch (err) {
-            setError('Erro de conexão');
+            console.error(err);
         } finally {
             setIsLoading(false);
         }
@@ -86,20 +92,6 @@ export default function ForgotPasswordPage() {
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
-
-                        <div className="space-y-2">
-                            <Label htmlFor="orgId">Organização</Label>
-                            <Input
-                                id="orgId"
-                                type="text"
-                                placeholder="ID da organização"
-                                value={orgId}
-                                onChange={(e) => setOrgId(e.target.value)}
-                                required
-                                className="bg-neutral-800 border-neutral-700"
-                            />
-                        </div>
-
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
                             <Input
