@@ -64,15 +64,15 @@ export default function RootLayout({
           <UIProvider>
             <SoundProvider>
               <PrivacyProvider>
-                <OrganizationProvider>
-                  <AuthProvider>
+                <AuthProvider>
+                  <OrganizationProvider>
                     <OperationProvider>
                       <ProtectedRoute>
                         {children}
                       </ProtectedRoute>
                     </OperationProvider>
-                  </AuthProvider>
-                </OrganizationProvider>
+                  </OrganizationProvider>
+                </AuthProvider>
               </PrivacyProvider>
             </SoundProvider>
           </UIProvider>

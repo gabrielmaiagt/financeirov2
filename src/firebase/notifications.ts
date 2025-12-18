@@ -6,11 +6,11 @@ import { PushNotifications } from '@capacitor/push-notifications';
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
 
-async function saveTokenToProfile(token: string) {
+async function saveTokenToProfile(token: string, orgId: string) {
     const firestore = getFirestore();
 
     try {
-        const profilesRef = collection(firestore, 'perfis');
+        const profilesRef = collection(firestore, 'organizations', orgId, 'perfis');
         const profilesSnapshot = await getDocs(profilesRef);
 
         if (profilesSnapshot.empty) {
@@ -20,21 +20,21 @@ async function saveTokenToProfile(token: string) {
 
         const batch = writeBatch(firestore);
         profilesSnapshot.forEach(profileDoc => {
-            const profileRef = doc(firestore, 'perfis', profileDoc.id);
+            const profileRef = doc(firestore, 'organizations', orgId, 'perfis', profileDoc.id);
             batch.update(profileRef, {
                 fcmTokens: arrayUnion(token)
             });
         });
 
         await batch.commit();
-        console.log(`FCM Token added to all profiles.`);
+        console.log(`FCM Token added to all profiles in org ${orgId}.`);
 
     } catch (error: any) {
         console.error(`Error saving FCM token to profiles:`, error);
     }
 }
 
-export async function requestNotificationPermission(): Promise<boolean> {
+export async function requestNotificationPermission(orgId: string): Promise<boolean> {
     console.log('Requesting notification permission...');
 
     // Native Platform (Android/iOS)
@@ -51,7 +51,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
                 // Listen for registration to get token
                 PushNotifications.addListener('registration', async (token) => {
                     console.log('Native FCM Token:', token.value);
-                    await saveTokenToProfile(token.value);
+                    await saveTokenToProfile(token.value, orgId);
                 });
 
                 PushNotifications.addListener('registrationError', (error) => {
@@ -91,7 +91,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 
                 if (currentToken) {
                     console.log('Web FCM Token:', currentToken);
-                    await saveTokenToProfile(currentToken);
+                    await saveTokenToProfile(currentToken, orgId);
                     return true;
                 } else {
                     console.log('No registration token available.');

@@ -6,7 +6,9 @@ import { useFirebase } from '@/firebase';
 
 // This will now represent the Firebase User object directly, with custom claims.
 export interface AuthUser extends User {
-    // Custom claims can be accessed via getIdTokenResult()
+    // Custom claims or added properties
+    orgId?: string;
+    role?: string;
 }
 
 interface AuthContextType {
@@ -30,13 +32,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!auth) return;
 
         const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-            setUser(authUser as AuthUser);
-
             if (authUser) {
-                // Check for admin custom claim
+                // Check for custom claims
                 const idTokenResult = await authUser.getIdTokenResult();
-                setIsAdmin(!!idTokenResult.claims.admin);
+                const claims = idTokenResult.claims;
+
+                const extendedUser = authUser as AuthUser;
+                extendedUser.orgId = claims.orgId as string;
+                extendedUser.role = claims.role as string;
+
+                setUser(extendedUser);
+                setIsAdmin(!!claims.admin);
             } else {
+                setUser(null);
                 setIsAdmin(false);
             }
             setIsLoading(false);

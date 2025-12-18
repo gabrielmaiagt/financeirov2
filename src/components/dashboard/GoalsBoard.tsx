@@ -141,8 +141,8 @@ const GoalsBoard = () => {
   }
 
   const handleSavePhotos = (imageUrls: string[]) => {
-    if (!firestore || !goalForPhotos) return;
-    const goalRef = doc(firestore, 'metas', goalForPhotos.id);
+    if (!firestore || !goalForPhotos || !orgId) return;
+    const goalRef = doc(firestore, 'organizations', orgId, 'metas', goalForPhotos.id);
     updateDoc(goalRef, { proofImageUrls: imageUrls });
     handlePhotosDialogChange(false);
   }

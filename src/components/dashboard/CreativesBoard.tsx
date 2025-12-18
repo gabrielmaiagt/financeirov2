@@ -214,7 +214,7 @@ const CreativesBoard = () => {
     if (!firestore) return;
     try {
       console.log('Adicionando criativo validado:', { levaId, creativeData });
-      const levaRef = doc(firestore, 'criativos', levaId);
+      const levaRef = doc(firestore, 'organizations', orgId, 'criativos', levaId);
 
       // Remove undefined values - Firestore doesn't accept them
       const cleanedData = Object.fromEntries(
@@ -237,8 +237,8 @@ const CreativesBoard = () => {
   };
 
   const handleRemoveValidatedCreative = async (levaId: string, creativeToRemove: ValidatedCreative) => {
-    if (!firestore) return;
-    const levaRef = doc(firestore, 'criativos', levaId);
+    if (!firestore || !orgId) return;
+    const levaRef = doc(firestore, 'organizations', orgId, 'criativos', levaId);
     await updateDoc(levaRef, {
       criativosValidados: arrayRemove(creativeToRemove)
     });
@@ -268,14 +268,14 @@ const CreativesBoard = () => {
   };
 
   const handleDeleteBancoCreativo = async (id: string) => {
-    if (!firestore) return;
-    const docRef = doc(firestore, 'banco_criativos', id);
+    if (!firestore || !orgId) return;
+    const docRef = doc(firestore, 'organizations', orgId, 'banco_criativos', id);
     await deleteDoc(docRef);
   };
 
   const handleUpdateBancoStatus = async (id: string, newStatus: BancoCreativo['status']) => {
-    if (!firestore) return;
-    const docRef = doc(firestore, 'banco_criativos', id);
+    if (!firestore || !orgId) return;
+    const docRef = doc(firestore, 'organizations', orgId, 'banco_criativos', id);
     await updateDoc(docRef, { status: newStatus });
   };
 

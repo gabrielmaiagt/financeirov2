@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import ExpenseForm from './ExpenseForm';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import {
   AlertDialog,
@@ -32,34 +33,35 @@ export interface Despesa {
 }
 
 const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
 };
 
 const ExpensesBoard = () => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const expensesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'despesas'), orderBy('data', 'desc')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'despesas'), orderBy('data', 'desc')) : null),
+    [firestore, orgId]
   );
 
   const { data: expenses, isLoading } = useCollection<Despesa>(expensesQuery);
 
   const handleSaveExpense = (expenseData: Omit<Despesa, 'id'>) => {
-    if (!firestore) return;
-    const expensesRef = collection(firestore, 'despesas');
+    if (!firestore || !orgId) return;
+    const expensesRef = collection(firestore, 'organizations', orgId, 'despesas');
     addDocumentNonBlocking(expensesRef, expenseData);
     setIsDialogOpen(false);
   };
-  
+
   const handleDeleteExpense = (id: string) => {
-    if (!firestore) return;
-    deleteDocumentNonBlocking(doc(firestore, 'despesas', id));
+    if (!firestore || !orgId) return;
+    deleteDocumentNonBlocking(doc(firestore, 'organizations', orgId, 'despesas', id));
   };
 
   const totalExpenses = expenses?.reduce((acc, expense) => acc + expense.valor, 0) || 0;
@@ -82,7 +84,7 @@ const ExpensesBoard = () => {
                   Registre um novo gasto da operação.
                 </DialogDescription>
               </DialogHeader>
-              <ExpenseForm onSave={handleSaveExpense} onClose={() => setIsDialogOpen(false)} />
+              <ExpenseForm onSave={handleSaveExpense as any} onClose={() => setIsDialogOpen(false)} />
             </DialogContent>
           </Dialog>
         </div>

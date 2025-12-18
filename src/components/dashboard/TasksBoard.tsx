@@ -170,7 +170,7 @@ const TasksBoard = () => {
     if (!firestore) return;
 
     if (editingTask) {
-      const taskRef = doc(firestore, 'tarefas', editingTask.id);
+      const taskRef = doc(firestore, 'organizations', orgId, 'tarefas', editingTask.id);
       updateDoc(taskRef, { ...editingTask, ...taskData });
     } else {
       if (!tasksCollection) return;
@@ -210,24 +210,24 @@ const TasksBoard = () => {
     const tasksInNewColumn = tasks.filter(t => t.status === newStatus && t.assignee === taskToMove.assignee);
     const maxOrder = tasksInNewColumn.reduce((max, t) => Math.max(max, t.order || 0), -1);
 
-    const taskRef = doc(firestore, 'tarefas', taskId);
+    const taskRef = doc(firestore, 'organizations', orgId, 'tarefas', taskId);
     updateDoc(taskRef, { status: newStatus, order: maxOrder + 1 });
   };
 
   const handleDeleteTask = (taskId: string) => {
-    if (!firestore) return;
-    deleteDocumentNonBlocking(doc(firestore, 'tarefas', taskId));
+    if (!firestore || !orgId) return;
+    deleteDocumentNonBlocking(doc(firestore, 'organizations', orgId, 'tarefas', taskId));
   };
 
   const handleHideTask = async (taskId: string) => {
-    if (!firestore) return;
-    const taskRef = doc(firestore, 'tarefas', taskId);
+    if (!firestore || !orgId) return;
+    const taskRef = doc(firestore, 'organizations', orgId, 'tarefas', taskId);
     await updateDoc(taskRef, { oculta: true });
   }
 
   const handleRestoreTask = async (taskId: string) => {
-    if (!firestore) return;
-    const taskRef = doc(firestore, 'tarefas', taskId);
+    if (!firestore || !orgId) return;
+    const taskRef = doc(firestore, 'organizations', orgId, 'tarefas', taskId);
     await updateDoc(taskRef, { oculta: false });
   }
 
@@ -305,7 +305,7 @@ const TasksBoard = () => {
 
     const batch = writeBatch(firestore);
     reorderedItems.forEach((task, index) => {
-      const taskRef = doc(firestore, 'tarefas', task.id);
+      const taskRef = doc(firestore, 'organizations', orgId, 'tarefas', task.id);
       batch.update(taskRef, { order: index });
     });
 

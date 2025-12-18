@@ -15,6 +15,7 @@ import WebhookDocumentation from '@/components/admin/WebhookDocumentation';
 import WebhookLinksCard from '@/components/admin/WebhookLinksCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from '@/components/ui/separator';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export default function AdminPage() {
     const [title, setTitle] = useState('🔔 Notificação de Teste');
@@ -22,6 +23,7 @@ export default function AdminPage() {
     const [link, setLink] = useState('/');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
+    const { orgId } = useOrganization();
 
     const handleSendNotification = async () => {
         setIsLoading(true);
@@ -31,7 +33,7 @@ export default function AdminPage() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ title, message, link }),
+                body: JSON.stringify({ title, message, link, orgId }),
             });
 
             const result = await response.json();

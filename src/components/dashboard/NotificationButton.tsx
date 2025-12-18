@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Bell, BellOff } from 'lucide-react';
 import { requestNotificationPermission } from '@/firebase/notifications';
 import { useToast } from '@/hooks/use-toast';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 const NotificationButton = () => {
     const { toast } = useToast();
+    const { orgId } = useOrganization();
     const [permission, setPermission] = useState<NotificationPermission | 'unsupported' | 'loading'>('loading');
 
     useEffect(() => {
@@ -18,14 +20,15 @@ const NotificationButton = () => {
     }, []);
 
     const handleRequestPermission = async () => {
-        const success = await requestNotificationPermission();
+        if (!orgId) return;
+        const success = await requestNotificationPermission(orgId);
         if (success) {
             toast({
                 title: "Sucesso!",
                 description: "As notificações foram ativadas neste dispositivo.",
             });
         } else {
-             toast({
+            toast({
                 variant: "destructive",
                 title: "Falha ao Ativar Notificações",
                 description: "Você precisa permitir as notificações nas configurações do seu navegador ou o serviço pode estar indisponível.",
@@ -40,7 +43,7 @@ const NotificationButton = () => {
     if (permission === 'loading') {
         return <Button variant="outline" disabled>Verificando...</Button>;
     }
-    
+
     if (permission === 'unsupported') {
         return <Button variant="outline" disabled title="Notificações não suportadas neste navegador"><BellOff className="mr-2 h-4 w-4" /> Não Suportado</Button>;
     }
@@ -48,7 +51,7 @@ const NotificationButton = () => {
     if (permission === 'granted') {
         return <Button variant="outline" disabled><Bell className="mr-2 h-4 w-4" /> Notificações Ativas</Button>;
     }
-    
+
     return (
         <Button variant="outline" onClick={handleRequestPermission}>
             <Bell className="mr-2 h-4 w-4" /> Ativar Notificações

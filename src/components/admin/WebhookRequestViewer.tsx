@@ -2,6 +2,7 @@
 
 import { useFirestore, useCollection } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,10 +21,11 @@ export interface WebhookRequest {
 
 const WebhookRequestViewer = () => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
 
   const webhookRequestsQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'webhookRequests'), orderBy('receivedAt', 'desc')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'webhook_logs'), orderBy('receivedAt', 'desc')) : null),
+    [firestore, orgId]
   );
 
   const { data: webhookRequests, isLoading } = useCollection<WebhookRequest>(webhookRequestsQuery);
@@ -66,29 +68,29 @@ const WebhookRequestViewer = () => {
               {webhookRequests.map((req) => (
                 <AccordionItem value={req.id} key={req.id} className="border-b-0">
                   <AccordionTrigger className="grid grid-cols-[150px_120px_100px_1fr] items-center text-left p-4 hover:bg-muted/50 hover:no-underline">
-                      <TimeAgo timestamp={req.receivedAt} />
-                      <Badge variant="outline" className="whitespace-nowrap w-fit">
-                          <GitPullRequestArrow className="w-3 h-3 mr-1" /> {req.source}
-                      </Badge>
-                      <span>{getStatusBadge(req.processingStatus)}</span>
-                      <span className="font-mono text-sm truncate">
-                        {req.body?.event || req.body?.status || `Requisição de ${req.source}`}
-                      </span>
+                    <TimeAgo timestamp={req.receivedAt} />
+                    <Badge variant="outline" className="whitespace-nowrap w-fit">
+                      <GitPullRequestArrow className="w-3 h-3 mr-1" /> {req.source}
+                    </Badge>
+                    <span>{getStatusBadge(req.processingStatus)}</span>
+                    <span className="font-mono text-sm truncate">
+                      {req.body?.event || req.body?.status || `Requisição de ${req.source}`}
+                    </span>
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="p-4 pt-0 bg-muted/20">
                       <div className="p-4 bg-neutral-900 rounded-md space-y-4">
                         <div>
-                            <h4 className="text-xs font-semibold text-muted-foreground">Headers</h4>
-                            <pre className="mt-1 text-xs whitespace-pre-wrap bg-black p-2 rounded-md font-mono">
-                                <code>{JSON.stringify(req.headers, null, 2)}</code>
-                            </pre>
+                          <h4 className="text-xs font-semibold text-muted-foreground">Headers</h4>
+                          <pre className="mt-1 text-xs whitespace-pre-wrap bg-black p-2 rounded-md font-mono">
+                            <code>{JSON.stringify(req.headers, null, 2)}</code>
+                          </pre>
                         </div>
                         <div>
-                            <h4 className="text-xs font-semibold text-muted-foreground">Body</h4>
-                            <pre className="mt-1 text-xs whitespace-pre-wrap bg-black p-2 rounded-md font-mono">
-                                <code>{JSON.stringify(req.body, null, 2)}</code>
-                            </pre>
+                          <h4 className="text-xs font-semibold text-muted-foreground">Body</h4>
+                          <pre className="mt-1 text-xs whitespace-pre-wrap bg-black p-2 rounded-md font-mono">
+                            <code>{JSON.stringify(req.body, null, 2)}</code>
+                          </pre>
                         </div>
                       </div>
                     </div>

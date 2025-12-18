@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Fragment } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, Timestamp, writeBatch, getDocs, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
@@ -344,7 +344,7 @@ const VendasBoard = () => {
   const handleDeleteScript = async (id: string) => {
     if (!firestore) return;
     try {
-      await deleteDoc(doc(firestore, 'scripts', id));
+      await deleteDoc(doc(firestore, 'organizations', orgId, 'scripts', id));
       toast({ title: 'Script removido' });
     } catch (error) {
       toast({ title: 'Erro ao remover', variant: 'destructive' });
@@ -470,6 +470,8 @@ const VendasBoard = () => {
         fee = (venda.total_amount * 0.015) + 1.49;
       } else if (gateway.includes('ggcheckout')) {
         fee = 0; // TODO: Add GGCheckout fee structure
+      } else if (gateway.includes('frendz')) {
+        fee = (venda.total_amount * 0.0499) + 1.00;
       }
 
       if (isPaid) {
@@ -916,7 +918,7 @@ const VendasBoard = () => {
 
   const handleDeleteSale = (id: string) => {
     if (!firestore) return;
-    deleteDocumentNonBlocking(doc(firestore, 'vendas', id));
+    deleteDocumentNonBlocking(doc(firestore, 'organizations', orgId, 'vendas', id));
     toast({
       title: "Venda excluída",
       description: "O registro da venda foi removido.",
@@ -992,7 +994,7 @@ const VendasBoard = () => {
               <CardTitle>Feed de Vendas em Tempo Real</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2 md:gap-4">
                 <StatCard
                   title="Faturamento"
                   value={formatCurrencyBRL(salesMetrics.totalRevenue)}
@@ -1470,7 +1472,7 @@ const VendasBoard = () => {
                                     <TableBody>
                                       {sortedGroups.length > 0 ? (
                                         sortedGroups.map((group) => (
-                                          <>
+                                          <Fragment key={group.name}>
                                             {/* Individual Campaigns */}
                                             {group.campaigns.sort((a, b) => b.revenue - a.revenue).map((campaign) => {
                                               const convRate = campaign.generated > 0 ? ((campaign.count / campaign.generated) * 100) : 0;
@@ -1513,7 +1515,7 @@ const VendasBoard = () => {
                                                 </TableCell>
                                               </TableRow>
                                             )}
-                                          </>
+                                          </Fragment>
                                         ))
                                       ) : (
                                         <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">Sem dados de campanha.</TableCell></TableRow>

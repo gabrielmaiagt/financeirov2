@@ -108,7 +108,7 @@ export class WebhookProcessor {
     }
 
     private async findExistingSale(orgId: string, gateway: string, externalId: string) {
-        const salesRef = this.db.collection('organizations').doc(orgId).collection('sales');
+        const salesRef = this.db.collection('organizations').doc(orgId).collection('vendas');
         const q = salesRef.where('gateway', '==', gateway).where('externalId', '==', externalId).limit(1);
         const snap = await q.get();
         if (!snap.empty) {
@@ -119,7 +119,7 @@ export class WebhookProcessor {
     }
 
     private async createSale(orgId: string, sale: UnifiedSale): Promise<string> {
-        const docRef = this.db.collection('organizations').doc(orgId).collection('sales').doc(); // Auto ID
+        const docRef = this.db.collection('organizations').doc(orgId).collection('vendas').doc(); // Auto ID
 
         const saleData = {
             ...sale,
@@ -136,7 +136,7 @@ export class WebhookProcessor {
     }
 
     private async updateSale(orgId: string, saleId: string, sale: UnifiedSale) {
-        const docRef = this.db.collection('organizations').doc(orgId).collection('sales').doc(saleId);
+        const docRef = this.db.collection('organizations').doc(orgId).collection('vendas').doc(saleId);
 
         await docRef.update({
             status: sale.status,
@@ -157,7 +157,7 @@ export class WebhookProcessor {
             : `PIX de ${formatCurrencyBRL(sale.amount)} aguardando pagamento.`;
 
         // 1. Save to DB
-        await this.db.collection('organizations').doc(orgId).collection('notifications').add({
+        await this.db.collection('organizations').doc(orgId).collection('notificacoes').add({
             title,
             message,
             type: type === 'paid' ? 'sale_paid' : 'sale_created',

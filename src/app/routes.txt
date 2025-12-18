@@ -1,0 +1,12 @@
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\admin\docs\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\admin\migration\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\cron\sync-meta-spend\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\debug-env\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\send-push\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\test-admin\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\test-push\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\webhook\buckpay\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\webhook\frendz\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\webhook\ggcheckout\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\webhook\paradise\route.ts
+C:\Users\Gabri\.gemini\antigravity\playground\harmonic-stellar\financeirov2-main\src\app\api\webhooks\[gateway]\[orgSecret]\route.ts

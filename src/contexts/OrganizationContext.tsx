@@ -4,6 +4,7 @@ import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Organization } from '@/types/organization';
+import { useAuth } from './AuthContext';
 
 interface OrganizationContextType {
     orgId: string;
@@ -15,19 +16,22 @@ interface OrganizationContextType {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
+    const { user, isLoading: isAuthLoading } = useAuth();
     // Hardcoded orgId as requested by the user to simplify login.
-    const orgId = 'interno-fluxo';
+    const orgId = user?.orgId || 'interno-fluxo';
     const firestore = useFirestore();
 
     const orgRef = useMemo(() => {
-        return (firestore && orgId) ? doc(firestore, 'organizations', orgId) : null;
-    }, [firestore, orgId]);
+        // Only attempt to fetch if user is logged in
+        return (firestore && orgId && user) ? doc(firestore, 'organizations', orgId) : null;
+    }, [firestore, orgId, user]);
 
     const { data: organization, isLoading: isDocLoading, error: docError } = useDoc<Organization>(orgRef);
 
-    const isLoading = isDocLoading;
+    const isLoading = isAuthLoading || isDocLoading;
 
-    const isNotFound = !isLoading && orgId && !organization;
+    // Only show "Not Found" if we actually tried to fetch (user is logged in) and failed
+    const isNotFound = user && !isLoading && orgId && !organization;
     const error = docError || (isNotFound ? new Error(`Organization '${orgId}' not found`) : null);
 
     const value = {

@@ -148,6 +148,7 @@ export type GGCheckoutWebhook = z.infer<typeof GGCheckoutWebhookSchema>;
 export const FrendzCustomerSchema = z.object({
     name: z.string().optional().nullable(),
     email: z.string().optional().nullable(),
+    phone: z.string().optional().nullable(),
     phone_number: z.string().optional().nullable(),
     document: z.string().optional().nullable(),
     street_name: z.string().optional().nullable(),
@@ -160,6 +161,7 @@ export const FrendzCustomerSchema = z.object({
 });
 
 export const FrendzCartItemSchema = z.object({
+    hash: z.string().optional().nullable(),
     product_hash: z.string().optional().nullable(),
     product_id: z.number().optional().nullable(),
     offer_id: z.number().optional().nullable(),
@@ -180,34 +182,45 @@ export const FrendzTrackingSchema = z.object({
     utm_content: z.string().optional().nullable(),
 });
 
+export const FrendzTransactionSchema = z.object({
+    id: z.string().or(z.number().transform(String)).optional().nullable(),
+    status: z.string().optional().nullable(),
+    method: z.string().optional().nullable(),
+    amount: z.number().optional().nullable(),
+    net_amount: z.number().optional().nullable(),
+    tracking_code: z.string().optional().nullable(),
+    country: z.string().optional().nullable(),
+    url: z.string().optional().nullable(),
+});
+
 export const FrendzWebhookSchema = z.object({
-    // Transaction identification
+    // Platform-level identification
+    token: z.string().optional().nullable(),
+    event: z.string().optional().nullable(),
+    status: z.string().optional().nullable(),
+    method: z.string().optional().nullable(),
+    platform: z.string().optional().nullable(),
+
+    // Nested objects (Actual current structure)
+    customer: FrendzCustomerSchema.optional().nullable(),
+    transaction: FrendzTransactionSchema.optional().nullable(),
+    offer: z.object({
+        hash: z.string().optional().nullable(),
+        title: z.string().optional().nullable(),
+        price: z.number().optional().nullable(),
+    }).optional().nullable(),
+    items: z.array(FrendzCartItemSchema).optional().nullable(),
+    tracking: FrendzTrackingSchema.optional().nullable(),
+
+    // Legacy or flat structure support
     hash: z.string().optional().nullable(),
     transaction_id: z.string().or(z.number().transform(String)).optional().nullable(),
     id: z.string().or(z.number().transform(String)).optional().nullable(),
-
-    // Status
-    status: z.string().optional().nullable(),
-    event: z.string().optional().nullable(),
-
-    // Amount in centavos
     amount: z.preprocess((val) => Number(val), z.number()).optional().nullable(),
-
-    // Payment info
-    payment_method: z.string().optional().nullable(), // pix, credit_card, billet
+    payment_method: z.string().optional().nullable(),
     installments: z.number().optional().nullable(),
-
-    // Customer info
-    customer: FrendzCustomerSchema.optional().nullable(),
-
-    // Cart/Products
     cart: z.array(FrendzCartItemSchema).optional().nullable(),
-
-    // Offer info
     offer_hash: z.string().optional().nullable(),
-
-    // Tracking
-    tracking: FrendzTrackingSchema.optional().nullable(),
 
     // Timestamps
     created_at: z.string().optional().nullable(),
@@ -215,9 +228,10 @@ export const FrendzWebhookSchema = z.object({
     paid_at: z.string().optional().nullable(),
 }).transform((data) => ({
     ...data,
-    transaction_id: data.hash || data.transaction_id || data.id || 'unknown_id',
-    status: data.status || data.event || 'unknown',
-    amount: data.amount || 0,
+    transaction_id: data.transaction?.id || data.hash || data.transaction_id || data.id || 'unknown_id',
+    status: data.transaction?.status || data.status || data.event || 'unknown',
+    amount: data.transaction?.amount || data.amount || 0,
+    cart: data.items || data.cart || [],
 }));
 
 export type FrendzWebhook = z.infer<typeof FrendzWebhookSchema>;
@@ -290,10 +304,11 @@ import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 export async function checkDuplicateTransaction(
     firestore: any,
     transactionId: string,
-    gateway: string
+    gateway: string,
+    orgId: string
 ): Promise<{ exists: boolean; docId?: string; currentStatus?: string }> {
     try {
-        const vendasRef = collection(firestore, 'vendas');
+        const vendasRef = collection(firestore, 'organizations', orgId, 'vendas');
         const q = query(
             vendasRef,
             where('transactionId', '==', transactionId),

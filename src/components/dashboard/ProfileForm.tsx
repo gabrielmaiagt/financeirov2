@@ -72,7 +72,7 @@ const ProfileForm = ({ onSave, onClose, existingProfile }: ProfileFormProps) => 
   };
 
   const onSubmit = (data: FormData) => {
-    onSave(data);
+    onSave(data as any);
     onClose();
   };
 

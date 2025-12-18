@@ -1,12 +1,30 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Allow authenticated users to read/write within their own organization's subcollections.
-    // The orgId in the path must match the orgId claim on the user's token.
-    match /organizations/{orgId}/{document=**} {
+    // 1. Organization-scoped data (Primary data model)
+    // Matches the organization document and all nested subcollections
+    match /organizations/{orgId} {
       allow read, write: if request.auth != null;
+      
+      match /{allChildren=**} {
+        allow read, write: if request.auth != null;
+      }
     }
+    
+    // 2. User Profiles (Legacy/Auth mapping)
+    // Each user can read/write their own profile
+    match /perfis/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 3. Global Error Logs (Allow any authenticated user to create a log)
+    match /errorLogs/{docId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+    }
+    
+    // All other root-level collections or documents are implicitly denied.
+    // This completes the migration to the organization-scoped data model.
   }
 }

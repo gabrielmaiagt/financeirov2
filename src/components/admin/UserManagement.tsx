@@ -123,26 +123,17 @@ export function UserManagement() {
 
             if (password) payload.password = password;
 
-            if (isEditing) {
-                payload.userId = editingUser.id;
-                payload.currentOrgId = orgId;
-                payload.updates = {
-                    email, name, role,
-                    password: password || undefined,
-                    newOrgId: newOrgId !== orgId ? newOrgId : undefined
-                };
-            } else {
-                payload.adminUserId = currentUser?.id;
-            }
-
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(isEditing ? {
                     userId: editingUser.id,
                     currentOrgId: orgId,
-                    updates: payload.updates
-                } : payload),
+                    updates: payload
+                } : {
+                    ...payload,
+                    adminUserId: currentUser?.uid
+                }),
             });
 
             const data = await response.json();
@@ -279,7 +270,7 @@ export function UserManagement() {
                                         <Button variant="ghost" size="icon" onClick={() => setEditingUser(userData)}>
                                             <Pencil className="h-4 w-4" />
                                         </Button>
-                                        {userData.id !== currentUser?.id && (
+                                        {userData.id !== currentUser?.uid && (
                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setUserToDelete(userData.id)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

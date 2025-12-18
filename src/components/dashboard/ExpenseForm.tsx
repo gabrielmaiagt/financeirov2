@@ -45,7 +45,7 @@ const ExpenseForm = ({ onSave, onClose }: ExpenseFormProps) => {
     onSave({
       ...data,
       data: Timestamp.fromDate(data.data),
-    });
+    } as any);
     reset();
     onClose();
   };
@@ -104,7 +104,7 @@ const ExpenseForm = ({ onSave, onClose }: ExpenseFormProps) => {
               />
               {errors.valor && <p className="text-sm text-red-500">{errors.valor.message}</p>}
             </div>
-             <div className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="categoria">Categoria</Label>
               <Controller
                 name="categoria"

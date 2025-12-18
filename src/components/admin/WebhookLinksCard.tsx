@@ -75,6 +75,7 @@ const WebhookLinksCard = () => {
     const webhookUrls = {
         Buckpay: webhookSecret ? `${baseUrl}/api/webhooks/buckpay/${webhookSecret}` : 'Requer geração de segredo',
         Paradise: webhookSecret ? `${baseUrl}/api/webhooks/paradise/${webhookSecret}` : 'Requer geração de segredo',
+        Frendz: webhookSecret ? `${baseUrl}/api/webhooks/frendz/${webhookSecret}` : 'Requer geração de segredo',
         GGCheckout: webhookSecret ? `${baseUrl}/api/webhooks/ggcheckout/${webhookSecret}` : 'Em breve...',
     };
 

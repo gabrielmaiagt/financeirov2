@@ -23,36 +23,37 @@ export function DataMigration() {
     const [results, setResults] = useState<MigrationResult[]>([]);
 
     const collectionsToMigrate = [
-        'tarefas', 'perfis', 'vendas', 'scripts', 'reminders', 'recuperacao', 
-        'frases', 'ofertasEscaladas', 'notificacoes', 'anotacoes', 'logins', 
+        'tarefas', 'perfis', 'vendas', 'scripts', 'reminders', 'recuperacao',
+        'frases', 'ofertasEscaladas', 'notificacoes', 'anotacoes', 'logins',
         'insights', 'metas', 'despesas', 'operacoesSocios', 'criativos', 'banco_criativos'
     ];
 
     const migrateCollection = async (fromPath: string, toPath: string): Promise<MigrationResult> => {
-        if (!firestore) throw new Error('Firestore not initialized');
-
         try {
-            console.log(`Migrating: ${fromPath} → ${toPath}`);
+            console.log(`Starting migration for: ${fromPath}`);
 
-            const sourceRef = collection(firestore, fromPath);
-            const snapshot = await getDocs(sourceRef);
-
-            if (snapshot.empty) {
-                return { collection: fromPath, count: 0, success: true };
-            }
-
-            const batch = writeBatch(firestore);
-            let count = 0;
-
-            snapshot.forEach((docSnap) => {
-                const destRef = doc(firestore, toPath, docSnap.id);
-                batch.set(destRef, docSnap.data());
-                count++;
+            const response = await fetch('/api/admin/migration', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orgId: ORG_ID, collectionName: fromPath }),
             });
 
-            await batch.commit();
+            const result = await response.json();
 
-            return { collection: fromPath, count, success: true };
+            if (!response.ok) {
+                return {
+                    collection: fromPath,
+                    count: 0,
+                    success: false,
+                    error: result.error || 'Server error'
+                };
+            }
+
+            return {
+                collection: fromPath,
+                count: result.count,
+                success: true
+            };
         } catch (error) {
             return {
                 collection: fromPath,
@@ -141,8 +142,8 @@ export function DataMigration() {
                                         {result.count} docs
                                     </Badge>
                                 ) : (
-                                    <Badge variant="outline" className="bg-red-500/10 text-red-400">
-                                        Error
+                                    <Badge variant="outline" className="bg-red-500/10 text-red-400 max-w-[200px] truncate" title={result.error}>
+                                        {result.error || 'Error'}
                                     </Badge>
                                 )}
                             </div>

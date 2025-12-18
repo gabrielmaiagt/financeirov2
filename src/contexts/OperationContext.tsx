@@ -6,6 +6,7 @@ import { useMemoFirebase } from '@/firebase/provider';
 import { query, collection, where } from 'firebase/firestore';
 import { useOrganization } from './OrganizationContext';
 import { useOrgCollection } from '@/hooks/useFirestoreOrg';
+import { useAuth } from './AuthContext';
 import { Operation } from '@/types/organization';
 
 interface OperationContextType {
@@ -19,17 +20,20 @@ interface OperationContextType {
 const OperationContext = createContext<OperationContextType | undefined>(undefined);
 
 export function OperationProvider({ children }: { children: ReactNode }) {
+    const { user } = useAuth();
     const { orgId } = useOrganization();
     const [selectedOperationId, setSelectedOperationId] = useState<string | null>(null);
 
     const operationsCollection = useOrgCollection<Operation>('operations');
 
     const operationsQuery = useMemoFirebase(
-        () => operationsCollection ? query(operationsCollection, where('active', '==', true)) : null,
-        [operationsCollection]
+        () => (operationsCollection && user) ? query(operationsCollection, where('active', '==', true)) : null,
+        [operationsCollection, user]
     );
 
-    const { data: operations, isLoading } = useCollection<Operation>(operationsQuery);
+    const { data: operations, isLoading: isCollLoading } = useCollection<Operation>(operationsQuery);
+
+    const isLoading = isCollLoading;
 
     const selectedOperation = React.useMemo(() => {
         if (!selectedOperationId || !operations) return null;

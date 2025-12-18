@@ -57,7 +57,7 @@ export function ChangePasswordModal({ trigger }: ChangePasswordModalProps) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: user.id,
+                    userId: user.uid,
                     orgId: user.orgId,
                     currentPassword,
                     newPassword,

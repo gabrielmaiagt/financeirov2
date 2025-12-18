@@ -20,7 +20,9 @@ export async function POST(request: NextRequest) {
         firestore = client.firestore;
         const body = await request.json();
 
-        // Log the raw webhook request immediately
+        const orgId = request.nextUrl.searchParams.get('orgId') || 'interno-fluxo';
+
+        // Log the raw webhook request immediately (scoped to organization)
         const webhookRequestData = {
             receivedAt: Timestamp.now(),
             source: 'Frendz',
@@ -28,7 +30,7 @@ export async function POST(request: NextRequest) {
             body,
             processingStatus: 'pending',
         };
-        webhookLogRef = await addDoc(collection(firestore, 'webhookRequests'), webhookRequestData);
+        webhookLogRef = await addDoc(collection(firestore, 'organizations', orgId, 'webhook_logs'), webhookRequestData);
 
         // ============ VALIDATE PAYLOAD ============
         const validationResult = FrendzWebhookSchema.safeParse(body);
@@ -71,22 +73,21 @@ export async function POST(request: NextRequest) {
         }
 
         // ============ CHECK FOR DUPLICATES ============
-        const duplicateCheck = await checkDuplicateTransaction(firestore, transactionId, 'Frendz');
+        const duplicateCheck = await checkDuplicateTransaction(firestore, transactionId, 'Frendz', orgId);
 
-        const vendasRef = collection(firestore, 'vendas');
+        const vendasRef = collection(firestore, 'organizations', orgId, 'vendas');
         // Frendz sends amount in centavos
         const saleValue = validatedData.amount ? validatedData.amount / 100 : 0;
         const trackingData = normalizeTrackingData(validatedData.tracking, 'Frendz');
 
-        // Get product info from cart if available
-        const firstProduct = validatedData.cart?.[0];
-        const productName = firstProduct?.title || null;
+        // Get product info from offer or cart if available
+        const productName = validatedData.offer?.title || validatedData.cart?.[0]?.title || null;
 
         if (duplicateCheck.exists && duplicateCheck.docId) {
             // Transaction already exists - UPDATE instead of creating duplicate
             console.log(`Duplicate transaction detected: ${transactionId}. Updating existing record.`);
 
-            const existingDocRef = doc(firestore, 'vendas', duplicateCheck.docId);
+            const existingDocRef = doc(firestore, 'organizations', orgId, 'vendas', duplicateCheck.docId);
             const existingDoc = await getDoc(existingDocRef);
             const existingData = existingDoc.data();
 
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
             if (duplicateCheck.currentStatus !== 'approved' && normalizedStatus === 'approved') {
                 await createNotificationAndPush(
                     firestore,
+                    orgId,
                     request,
                     validatedData.customer?.name || 'Cliente anônimo',
                     saleValue,
@@ -141,16 +143,16 @@ export async function POST(request: NextRequest) {
 
         const newSale = {
             transactionId,
-            externalId: validatedData.offer_hash || null,
+            externalId: validatedData.offer?.hash || validatedData.offer_hash || null,
             status: normalizedStatus,
             rawStatus: transactionStatus,
             eventType: validatedData.event || 'transaction',
             customerName: validatedData.customer?.name || null,
             customerEmail: validatedData.customer?.email || null,
-            customerPhone: validatedData.customer?.phone_number || null,
+            customerPhone: validatedData.customer?.phone || validatedData.customer?.phone_number || null,
             customerDocument: validatedData.customer?.document || null,
             value: saleValue,
-            paymentMethod: validatedData.payment_method || null,
+            paymentMethod: validatedData.transaction?.method || validatedData.payment_method || validatedData.method || null,
             installments: validatedData.installments || 1,
             productName,
             cart: validatedData.cart || [],
@@ -174,6 +176,7 @@ export async function POST(request: NextRequest) {
         // ============ CREATE NOTIFICATION ============
         await createNotificationAndPush(
             firestore,
+            orgId,
             request,
             newSale.customerName || 'Cliente anônimo',
             newSale.value,
@@ -257,12 +260,13 @@ function normalizeStatus(status: string): string {
 // Helper function to create notification and send push
 async function createNotificationAndPush(
     firestore: any,
+    orgId: string,
     request: NextRequest,
     customerName: string,
     saleValue: number | null,
     transactionStatus: string
 ) {
-    const notificacoesRef = collection(firestore, 'notificacoes');
+    const notificacoesRef = collection(firestore, 'organizations', orgId, 'notificacoes');
     let notificationMessage: string | null = null;
     let notificationTitle: string | null = null;
 
@@ -291,6 +295,33 @@ async function createNotificationAndPush(
         const host = request.headers.get('host');
         const protocol = host?.startsWith('localhost') ? 'http' : 'https';
         const baseUrl = `${protocol}://${host}`;
-        sendPushNotification(notificationTitle, notificationMessage, '/vendas', baseUrl);
+
+        // Use Admin SDK for scoped push notifications
+        try {
+            const { initializeFirebase } = await import('@/firebase/server-admin');
+            const adminServices = initializeFirebase();
+            const adminFirestore = adminServices.firestore;
+            const messaging = adminServices.messaging;
+
+            const profilesSnapshot = await adminFirestore.collection('organizations').doc(orgId).collection('perfis').get();
+            const tokens: string[] = [];
+            profilesSnapshot.forEach((doc: any) => {
+                const data = doc.data();
+                if (data.fcmTokens && Array.isArray(data.fcmTokens)) {
+                    tokens.push(...data.fcmTokens);
+                }
+            });
+
+            if (tokens.length > 0) {
+                const messagePayload = {
+                    tokens: [...new Set(tokens)],
+                    webpush: { fcmOptions: { link: '/vendas' } },
+                    data: { title: notificationTitle, body: notificationMessage, link: '/vendas', icon: '/icon-192x192.png' }
+                };
+                await messaging.sendEachForMulticast(messagePayload as any);
+            }
+        } catch (pushErr) {
+            console.error('Failed to send scoped push:', pushErr);
+        }
     }
 }

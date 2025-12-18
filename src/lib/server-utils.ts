@@ -4,7 +4,7 @@
 import { Timestamp, collection, addDoc } from 'firebase/firestore';
 
 // Função para logar erros no Firestore
-export async function logError(firestore: any, error: any, context: string, details?: any) {
+export async function logError(firestore: any, error: any, context: string, details?: any, orgId?: string) {
   try {
     const errorLog = {
       timestamp: Timestamp.now(),
@@ -13,9 +13,14 @@ export async function logError(firestore: any, error: any, context: string, deta
       context: context,
       details: details || {},
     };
-    // Use modular syntax if firestore is a Client SDK instance
-    // If it's passed as 'any', we assume it's the Client SDK instance now
-    await addDoc(collection(firestore, 'errorLogs'), errorLog);
+
+    // Scoped logging if orgId is provided
+    if (orgId) {
+      await addDoc(collection(firestore, 'organizations', orgId, 'error_logs'), errorLog);
+    } else {
+      await addDoc(collection(firestore, 'errorLogs'), errorLog);
+    }
+
     console.error(`[${context}] Error logged to Firestore:`, error.message);
   } catch (logErr) {
     console.error(`[${context}] Failed to log error to Firestore:`, logErr);
@@ -23,7 +28,7 @@ export async function logError(firestore: any, error: any, context: string, deta
   }
 }
 
-export const sendPushNotification = async (title: string, message: string, link: string = '/', baseUrl?: string) => {
+export const sendPushNotification = async (title: string, message: string, link: string = '/', baseUrl?: string, orgId?: string) => {
   if (!baseUrl) {
     console.error("❌ sendPushNotification failed: baseUrl is required to make the API call.");
     return;
@@ -41,7 +46,7 @@ export const sendPushNotification = async (title: string, message: string, link:
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title, message, link }),
+      body: JSON.stringify({ title, message, link, orgId }),
     });
 
     if (response.ok) {

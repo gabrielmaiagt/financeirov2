@@ -5,6 +5,7 @@ import { formatCurrencyBRL } from '@/lib/formatters';
 import type { Venda } from '@/types/venda';
 import { Switch } from '@/components/ui/switch';
 import { useFirestore } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -24,6 +25,7 @@ interface Props {
 
 export default function DetalhesVendaModal({ venda, open, onClose }: Props) {
     const firestore = useFirestore();
+    const { orgId } = useOrganization();
     const { toast } = useToast();
     const [isUpdating, setIsUpdating] = useState(false);
 
@@ -34,7 +36,7 @@ export default function DetalhesVendaModal({ venda, open, onClose }: Props) {
 
         setIsUpdating(true);
         try {
-            await updateDoc(doc(firestore, 'vendas', venda.id), {
+            await updateDoc(doc(firestore, 'organizations', orgId, 'vendas', venda.id), {
                 isRecovery: checked
             });
             toast({
@@ -115,11 +117,17 @@ export default function DetalhesVendaModal({ venda, open, onClose }: Props) {
                         </div>
 
                         <h4 className="font-medium mt-4 text-foreground">Tracking</h4>
-                        {venda.tracking && Object.keys(venda.tracking).length > 0 ? (
+                        {venda.tracking && typeof venda.tracking === 'object' && Object.keys(venda.tracking).length > 0 ? (
                             <div className="bg-neutral-800 p-3 rounded space-y-2 text-xs">
-                                {Object.entries(venda.tracking).map(([key, value]) => value && (
-                                    <p key={key}><span className="text-muted-foreground capitalize">{key.replace('_', ' ')}:</span> <span className="text-foreground">{value}</span></p>
-                                ))}
+                                {Object.entries(venda.tracking).map(([key, value]) => {
+                                    if (!value) return null;
+                                    return (
+                                        <p key={key}>
+                                            <span className="text-muted-foreground capitalize">{key.replace('_', ' ')}:</span>{" "}
+                                            <span className="text-foreground">{String(value)}</span>
+                                        </p>
+                                    );
+                                })}
                             </div>
                         ) : (
                             <p className="text-muted-foreground text-xs">Sem dados de tracking</p>

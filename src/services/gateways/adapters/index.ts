@@ -1,10 +1,12 @@
 import { BuckpayAdapter } from './buckpay';
 import { ParadiseAdapter } from './paradise';
+import { FrendzAdapter } from './frendz';
 import { GatewayAdapter } from '../types';
 
 const adapters: Record<string, GatewayAdapter> = {
     buckpay: new BuckpayAdapter(),
     paradise: new ParadiseAdapter(),
+    frendz: new FrendzAdapter(),
 };
 
 export function getGatewayAdapter(slug: string): GatewayAdapter | null {

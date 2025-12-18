@@ -2,6 +2,7 @@
 
 import { useFirestore, useCollection } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,10 +21,11 @@ export interface ErrorLog {
 
 const ErrorLogViewer = () => {
   const firestore = useFirestore();
+  const { orgId } = useOrganization();
 
   const errorLogsQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'errorLogs'), orderBy('timestamp', 'desc')) : null),
-    [firestore]
+    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'error_logs'), orderBy('timestamp', 'desc')) : null),
+    [firestore, orgId]
   );
 
   const { data: errorLogs, isLoading } = useCollection<ErrorLog>(errorLogsQuery);
@@ -68,9 +70,9 @@ const ErrorLogViewer = () => {
               {errorLogs.map((log) => (
                 <AccordionItem value={log.id} key={log.id} className="border-b-0">
                   <AccordionTrigger className="grid grid-cols-[150px_120px_1fr] items-center text-left p-4 hover:bg-muted/50 hover:no-underline">
-                      <TimeAgo timestamp={log.timestamp} />
-                      <span>{getContextBadge(log.context)}</span>
-                      <span className="font-mono text-sm truncate">{log.message}</span>
+                    <TimeAgo timestamp={log.timestamp} />
+                    <span>{getContextBadge(log.context)}</span>
+                    <span className="font-mono text-sm truncate">{log.message}</span>
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="p-4 pt-0 bg-muted/20">

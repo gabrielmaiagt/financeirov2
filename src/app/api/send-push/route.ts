@@ -9,6 +9,7 @@ async function cleanupInvalidTokens(firestore: any, tokensToRemove: string[]) {
   if (tokensToRemove.length === 0) return;
 
   console.log(`Cleaning up ${tokensToRemove.length} invalid tokens.`);
+  // Note: Cleanup currently remains global across perfis for efficiency, but we search for tokens.
   const profilesSnapshot = await firestore.collection('perfis').get();
 
   const batch = firestore.batch();
@@ -43,13 +44,20 @@ export async function POST(request: Request) {
     firestore = adminServices.firestore;
     const messaging = adminServices.messaging;
 
-    const { message, title, link = '/' } = await request.json();
+    const { message, title, link = '/', orgId } = await request.json();
 
     if (!message || !title) {
       return NextResponse.json({ message: 'Missing message or title in request body.' }, { status: 400 });
     }
 
-    const profilesSnapshot = await firestore.collection("perfis").get();
+    let profilesSnapshot;
+    if (orgId) {
+      console.log(`Sending organization-scoped notification for org: ${orgId}`);
+      profilesSnapshot = await firestore.collection("perfis").where('orgId', '==', orgId).get();
+    } else {
+      console.log("Sending global notification (fallback)");
+      profilesSnapshot = await firestore.collection("perfis").get();
+    }
     if (profilesSnapshot.empty) {
       console.log("No user profiles found to send notifications to.");
       return NextResponse.json({ message: 'No user profiles found.', successCount: 0, failureCount: 0 }, { status: 200 });
