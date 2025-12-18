@@ -87,10 +87,17 @@ export async function POST(request: NextRequest) {
                 orgId: orgId,
             },
         });
-    } catch (error) {
-        console.error('Login error:', error);
+    } catch (error: any) {
+        console.error('Login error details:', {
+            message: error.message,
+            stack: error.stack,
+            code: error.code
+        });
         return NextResponse.json(
-            { error: 'Erro interno do servidor' },
+            {
+                error: 'Erro interno do servidor',
+                debug: error.message // Temporarily exposing error for debugging
+            },
             { status: 500 }
         );
     }
