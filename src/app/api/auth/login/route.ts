@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 export async function POST(request: NextRequest) {
     try {
         const { email, password } = await request.json();
+        const orgId = 'interno-fluxo'; // Hardcoded orgId
 
         if (!email || !password) {
             return NextResponse.json(
@@ -13,51 +14,23 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Initialize Firebase Admin
         const { firestore: db, auth } = initializeFirebase();
 
-        // 1. Intelligent Login: Find user across ALL organizations
-        // Using Collection Group Query to search all 'users' collections
-        let usersSnapshot;
-        try {
-            usersSnapshot = await db.collectionGroup('users')
-                .where('email', '==', email.toLowerCase())
-                .limit(1)
-                .get();
-        } catch (cgError) {
-            console.warn("Collection Group query failed, falling back to specific org", cgError);
-            usersSnapshot = { empty: true, docs: [] } as any;
-        }
-
-        // Fallback: If not found globally (or query failed), try default 'interno-fluxo' explicitly
-        if (usersSnapshot.empty) {
-            console.log("User not found in CollectionGroup, checking 'interno-fluxo' directly...");
-            const fallbackRef = db.collection('organizations').doc('interno-fluxo').collection('users');
-            usersSnapshot = await fallbackRef.where('email', '==', email.toLowerCase()).limit(1).get();
-        }
+        // Direct lookup in the specific organization
+        const usersRef = db.collection('organizations').doc(orgId).collection('users');
+        const usersSnapshot = await usersRef.where('email', '==', email.toLowerCase()).limit(1).get();
 
         if (usersSnapshot.empty) {
-            console.log(`Login failed: User with email ${email} not found in any organization.`);
+            console.log(`Login failed: User with email ${email} not found in org ${orgId}.`);
             return NextResponse.json(
-                { error: 'Usuário não encontrado (Debug: Verifique o email ou se o usuário foi criado)' },
+                { error: 'Usuário não encontrado.' },
                 { status: 401 }
             );
         }
-
-        // ... existing code ...
+        
         const userDoc = usersSnapshot.docs[0];
         const userData = userDoc.data();
 
-        // Use userDoc.ref.parent.parent to find the organization document
-        let orgId = 'interno-fluxo'; // Default safe value
-        const orgDocRef = userDoc.ref.parent.parent;
-
-        if (orgDocRef) {
-            orgId = orgDocRef.id;
-        }
-
-        // 2. Verify Password
-        // Check if passwordHash exists
         if (!userData.passwordHash) {
             console.error(`Login failed: User ${email} has no password hash set.`);
             return NextResponse.json(
@@ -71,30 +44,17 @@ export async function POST(request: NextRequest) {
         if (!isValidPassword) {
             console.log(`Login failed: Invalid password for user ${email}`);
             return NextResponse.json(
-                { error: 'Senha incorreta (Debug: Verifique se a senha está correta)' },
+                { error: 'Senha incorreta.' },
                 { status: 401 }
             );
         }
 
-        // 3. Generate Firebase Custom Token
-        // If the user already has a Firebase Auth UID stored, use it. Otherwise use the doc ID.
-        // It's safer to always use the Doc ID as the UID for consistency if not linked yet.
         const userId = userDoc.id;
-
-        // Add custom claims for RBAC and Multi-tenancy
-        const additionalClaims = {
-            orgId: orgId,
-            role: userData.role
-        };
-
+        const additionalClaims = { orgId, role: userData.role };
         const customToken = await auth.createCustomToken(userId, additionalClaims);
 
-        // 4. Update last login
-        await userDoc.ref.update({
-            lastLoginAt: new Date(),
-        });
+        await userDoc.ref.update({ lastLoginAt: new Date() });
 
-        // 5. Return success with token and context data
         return NextResponse.json({
             success: true,
             token: customToken,
@@ -106,6 +66,7 @@ export async function POST(request: NextRequest) {
                 orgId: orgId,
             },
         });
+
     } catch (error: any) {
         console.error('Login error details:', {
             message: error.message,
@@ -115,7 +76,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
             {
                 error: 'Erro interno do servidor',
-                debug: error.message // Temporarily exposing error for debugging
+                debug: error.message
             },
             { status: 500 }
         );

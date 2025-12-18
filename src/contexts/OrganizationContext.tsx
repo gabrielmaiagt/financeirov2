@@ -15,34 +15,9 @@ interface OrganizationContextType {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
-    const [orgId, setOrgId] = React.useState<string | null>(null);
+    // Hardcoded orgId as requested by the user to simplify login.
+    const orgId = 'interno-fluxo';
     const firestore = useFirestore();
-
-    React.useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const hostname = window.location.hostname;
-            const parts = hostname.split('.');
-
-            const subdomainMappings: Record<string, string> = {
-                'financeiro': 'interno-fluxo',
-            };
-
-            let detectedOrgId: string;
-
-            if (hostname === 'localhost' || hostname.startsWith('192.168.') || hostname.startsWith('127.0.0.1')) {
-                detectedOrgId = 'interno-fluxo';
-            } else if (hostname.includes('.devtunnels.ms')) { // Handle preview URLs
-                detectedOrgId = 'interno-fluxo';
-            } else if (parts.length > 1 && parts[0] !== 'www') {
-                const subdomain = parts[0];
-                detectedOrgId = subdomainMappings[subdomain] || subdomain;
-            } else {
-                detectedOrgId = 'interno-fluxo';
-            }
-
-            setOrgId(detectedOrgId);
-        }
-    }, []);
 
     const orgRef = useMemo(() => {
         return (firestore && orgId) ? doc(firestore, 'organizations', orgId) : null;
@@ -50,13 +25,13 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
     const { data: organization, isLoading: isDocLoading, error: docError } = useDoc<Organization>(orgRef);
 
-    const isLoading = orgId === null || isDocLoading;
+    const isLoading = isDocLoading;
 
     const isNotFound = !isLoading && orgId && !organization;
     const error = docError || (isNotFound ? new Error(`Organization '${orgId}' not found`) : null);
 
     const value = {
-        orgId: orgId || '',
+        orgId: orgId,
         organization: organization || null,
         isLoading,
         error: error || null

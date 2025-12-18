@@ -14,7 +14,6 @@ import Link from 'next/link';
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    // OrgId removed
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
@@ -26,6 +25,7 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
+            // The login function now only requires email and password
             const result = await login(email, password);
 
             if (result.success) {
@@ -54,8 +54,6 @@ export default function LoginPage() {
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
-                        {/* OrgId input removed */}
-
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
                             <Input
