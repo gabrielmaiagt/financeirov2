@@ -147,19 +147,38 @@ export async function POST(request: NextRequest) {
             status: normalizedStatus,
             rawStatus: transactionStatus,
             eventType: validatedData.event || 'transaction',
+            // Customer info
+            customerId: validatedData.customer?.id || null,
             customerName: validatedData.customer?.name || null,
             customerEmail: validatedData.customer?.email || null,
             customerPhone: validatedData.customer?.phone || validatedData.customer?.phone_number || null,
             customerDocument: validatedData.customer?.document || null,
+            // Affiliate info (if present)
+            affiliateId: validatedData.affiliate?.id || null,
+            affiliateName: validatedData.affiliate?.name || null,
+            affiliateEmail: validatedData.affiliate?.email || null,
+            // Payment info
             value: saleValue,
+            netValue: validatedData.transaction?.net_amount ? validatedData.transaction.net_amount / 100 : null,
             paymentMethod: validatedData.transaction?.method || validatedData.payment_method || validatedData.method || null,
             installments: validatedData.installments || 1,
+            // Product info
             productName,
             cart: validatedData.cart || [],
+            // Tracking and Meta pixels
             tracking: trackingData,
+            ip: validatedData.ip || null,
+            fbp: validatedData.fbp || null,
+            fbc: validatedData.fbc || null,
+            // URLs
+            checkoutUrl: validatedData.transaction?.checkout_url || validatedData.checkout_url || null,
+            // Timestamps
             created_at: Timestamp.now(), // For VendasBoard compatibility
             receivedAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
+            paidAt: validatedData.paid_at || null,
+            refundAt: validatedData.refund_at || null,
+            // Raw data
             payload: body,
             gateway: 'Frendz',
             processingHistory: [
@@ -232,19 +251,19 @@ export async function POST(request: NextRequest) {
 
 /**
  * Normalize Frendz status to our internal status format
- * Common Frendz statuses: paid, pending, refused, refunded, chargeback, waiting_payment
+ * Frendz statuses: processing, authorized, paid, refunded, waiting_payment, refused, antifraud, chargeback, cancelled
  */
 function normalizeStatus(status: string): string {
     const statusLower = status.toLowerCase();
 
     // Map to our standard statuses
-    if (['paid', 'approved', 'confirmed', 'completed'].includes(statusLower)) {
+    if (['paid', 'approved', 'confirmed', 'completed', 'authorized'].includes(statusLower)) {
         return 'approved';
     }
     if (['pending', 'waiting_payment', 'processing', 'waiting'].includes(statusLower)) {
         return 'pending';
     }
-    if (['refused', 'declined', 'failed', 'canceled', 'cancelled'].includes(statusLower)) {
+    if (['refused', 'declined', 'failed', 'canceled', 'cancelled', 'antifraud'].includes(statusLower)) {
         return 'refused';
     }
     if (['refunded', 'refund'].includes(statusLower)) {

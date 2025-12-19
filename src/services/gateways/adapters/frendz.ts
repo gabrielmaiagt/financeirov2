@@ -16,18 +16,19 @@ export class FrendzAdapter implements GatewayAdapter {
     normalize(body: any): UnifiedSale {
         const result = FrendzWebhookSchema.parse(body);
 
-        // Map Status
+        // Map Status - including all Frendz statuses: processing, authorized, paid, refunded, waiting_payment, refused, antifraud, chargeback, cancelled
         let status: UnifiedSale['status'] = 'pending';
         const s = result.status?.toLowerCase() || '';
-        if (['paid', 'approved', 'completed'].includes(s)) status = 'paid';
-        else if (['refused', 'declined', 'failed', 'canceled'].includes(s)) status = 'refused';
+        if (['paid', 'approved', 'completed', 'authorized'].includes(s)) status = 'paid';
+        else if (['refused', 'declined', 'failed', 'canceled', 'cancelled', 'antifraud'].includes(s)) status = 'refused';
         else if (['refunded'].includes(s)) status = 'refunded';
         else if (['chargeback'].includes(s)) status = 'chargeback';
+        else if (['processing', 'waiting_payment'].includes(s)) status = 'pending';
 
         // Map Amount (Frendz sends in cents)
         const amount = (result.amount || 0) / 100;
 
-        // Product info
+        // Product info from items or offer
         const firstItem = result.cart?.[0];
         const productName = result.offer?.title || firstItem?.title || 'Produto Frendz';
 

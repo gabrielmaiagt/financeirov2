@@ -146,6 +146,7 @@ export type GGCheckoutWebhook = z.infer<typeof GGCheckoutWebhookSchema>;
 // Webhook payload sent to postback_url when transaction status changes
 
 export const FrendzCustomerSchema = z.object({
+    id: z.string().optional().nullable(),
     name: z.string().optional().nullable(),
     email: z.string().optional().nullable(),
     phone: z.string().optional().nullable(),
@@ -158,6 +159,14 @@ export const FrendzCustomerSchema = z.object({
     city: z.string().optional().nullable(),
     state: z.string().optional().nullable(),
     zip_code: z.string().optional().nullable(),
+});
+
+// Affiliate schema for Frendz
+export const FrendzAffiliateSchema = z.object({
+    id: z.string().optional().nullable(),
+    name: z.string().optional().nullable(),
+    email: z.string().optional().nullable(),
+    phone_number: z.string().optional().nullable(),
 });
 
 export const FrendzCartItemSchema = z.object({
@@ -186,31 +195,49 @@ export const FrendzTransactionSchema = z.object({
     id: z.string().or(z.number().transform(String)).optional().nullable(),
     status: z.string().optional().nullable(),
     method: z.string().optional().nullable(),
-    amount: z.number().optional().nullable(),
-    net_amount: z.number().optional().nullable(),
     tracking_code: z.string().optional().nullable(),
     country: z.string().optional().nullable(),
+    amount: z.number().optional().nullable(), // in centavos
+    net_amount: z.number().optional().nullable(), // in centavos
     url: z.string().optional().nullable(),
+    checkout_url: z.string().optional().nullable(),
+    billet: z.object({
+        url: z.string().optional().nullable(),
+        barcode: z.string().optional().nullable(),
+        expires_at: z.string().optional().nullable(),
+    }).optional().nullable(),
+    pix: z.object({
+        code: z.string().optional().nullable(),
+        url: z.string().optional().nullable(),
+        expires_at: z.string().optional().nullable(),
+    }).optional().nullable(),
 });
 
 export const FrendzWebhookSchema = z.object({
     // Platform-level identification
     token: z.string().optional().nullable(),
-    event: z.string().optional().nullable(),
-    status: z.string().optional().nullable(),
-    method: z.string().optional().nullable(),
+    event: z.string().optional().nullable(), // 'transaction' or 'cart.abandoned'
+    status: z.string().optional().nullable(), // processing, authorized, paid, refunded, waiting_payment, refused, antifraud, chargeback, cancelled
+    method: z.string().optional().nullable(), // credit_card, billet, pix
     platform: z.string().optional().nullable(),
 
     // Nested objects (Actual current structure)
     customer: FrendzCustomerSchema.optional().nullable(),
+    affiliate: FrendzAffiliateSchema.optional().nullable(),
     transaction: FrendzTransactionSchema.optional().nullable(),
     offer: z.object({
         hash: z.string().optional().nullable(),
         title: z.string().optional().nullable(),
-        price: z.number().optional().nullable(),
+        price: z.number().optional().nullable(), // in centavos
+        payment_methods: z.string().optional().nullable(), // For cart.abandoned
     }).optional().nullable(),
     items: z.array(FrendzCartItemSchema).optional().nullable(),
     tracking: FrendzTrackingSchema.optional().nullable(),
+
+    // Meta/Facebook tracking pixels
+    ip: z.string().optional().nullable(),
+    fbp: z.string().optional().nullable(), // Facebook browser pixel
+    fbc: z.string().optional().nullable(), // Facebook click ID
 
     // Legacy or flat structure support
     hash: z.string().optional().nullable(),
@@ -221,11 +248,16 @@ export const FrendzWebhookSchema = z.object({
     installments: z.number().optional().nullable(),
     cart: z.array(FrendzCartItemSchema).optional().nullable(),
     offer_hash: z.string().optional().nullable(),
+    checkout_url: z.string().optional().nullable(),
 
     // Timestamps
     created_at: z.string().optional().nullable(),
     updated_at: z.string().optional().nullable(),
     paid_at: z.string().optional().nullable(),
+    refund_at: z.string().optional().nullable(),
+
+    // Cart abandoned specific
+    abandoned_id: z.number().optional().nullable(),
 }).transform((data) => ({
     ...data,
     transaction_id: data.transaction?.id || data.hash || data.transaction_id || data.id || 'unknown_id',
