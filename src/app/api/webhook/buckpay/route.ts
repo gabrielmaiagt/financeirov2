@@ -1,23 +1,20 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getFirebaseClient } from '@/firebase/api-client';
-import { Timestamp, collection, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { sendPushNotification, logError } from '@/lib/server-utils';
+import { initializeFirebase } from '@/firebase/server-admin';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import {
   BuckpayWebhookSchema,
   formatCurrencyBRL,
   objectFromHeaders,
   normalizeTrackingData,
-  checkDuplicateTransaction,
-  addProcessingHistory,
 } from '@/lib/webhook-utils';
 
 export async function POST(request: NextRequest) {
-  let firestore: any;
-  let webhookLogRef: any;
+  let db: FirebaseFirestore.Firestore;
+  let webhookLogRef: FirebaseFirestore.DocumentReference | null = null;
 
   try {
-    const client = getFirebaseClient();
-    firestore = client.firestore;
+    const { firestore, messaging } = initializeFirebase();
+    db = firestore;
     const body = await request.json();
 
     const orgId = request.nextUrl.searchParams.get('orgId') || 'interno-fluxo';
@@ -30,7 +27,7 @@ export async function POST(request: NextRequest) {
       body,
       processingStatus: 'pending',
     };
-    webhookLogRef = await addDoc(collection(firestore, 'organizations', orgId, 'webhook_logs'), webhookRequestData);
+    webhookLogRef = await db.collection('organizations').doc(orgId).collection('webhook_logs').add(webhookRequestData);
 
     // ============ VALIDATE PAYLOAD ============
     const validationResult = BuckpayWebhookSchema.safeParse(body);
@@ -39,11 +36,10 @@ export async function POST(request: NextRequest) {
       const errorMessage = `Invalid webhook payload: ${validationResult.error.message}`;
       console.error('Buckpay webhook validation failed:', validationResult.error);
 
-      // Serialize Zod errors to plain objects for Firestore
       const serializableErrors = JSON.parse(JSON.stringify(validationResult.error.errors));
 
       if (webhookLogRef) {
-        await updateDoc(webhookLogRef, {
+        await webhookLogRef.update({
           processingStatus: 'validation_error',
           errorMessage,
           validationErrors: serializableErrors,
@@ -66,46 +62,45 @@ export async function POST(request: NextRequest) {
     const transactionId = saleData.id;
 
     // ============ CHECK FOR DUPLICATES ============
-    const duplicateCheck = await checkDuplicateTransaction(firestore, transactionId, 'Buckpay', orgId);
+    const vendasRef = db.collection('organizations').doc(orgId).collection('vendas');
+    const duplicateQuery = await vendasRef
+      .where('transactionId', '==', transactionId)
+      .where('gateway', '==', 'Buckpay')
+      .limit(1)
+      .get();
 
-    const vendasRef = collection(firestore, 'organizations', orgId, 'vendas');
     const saleValue = saleData.total_amount ? saleData.total_amount / 100 : null;
     const trackingData = normalizeTrackingData(saleData.tracking, 'Buckpay');
 
-    if (duplicateCheck.exists && duplicateCheck.docId) {
+    if (!duplicateQuery.empty) {
       // Transaction already exists - UPDATE instead of creating duplicate
-      console.log(`Duplicate transaction detected: ${transactionId}. Updating existing record.`);
-
-      const existingDocRef = doc(firestore, 'organizations', orgId, 'vendas', duplicateCheck.docId);
-      const existingDoc = await getDoc(existingDocRef);
+      const existingDoc = duplicateQuery.docs[0];
       const existingData = existingDoc.data();
 
-      const updatedData = {
+      console.log(`Duplicate transaction detected: ${transactionId}. Updating existing record.`);
+
+      await existingDoc.ref.update({
         status: transactionStatus,
         eventType,
         updatedAt: Timestamp.now(),
-        processingHistory: addProcessingHistory(
-          existingData?.processingHistory || [],
+        processingHistory: FieldValue.arrayUnion({
+          timestamp: Timestamp.now(),
           eventType,
-          transactionStatus,
-          Timestamp.now()
-        ),
-        // Update payload with latest data
+          status: transactionStatus,
+        }),
         payload: body,
-      };
-
-      await updateDoc(existingDocRef, updatedData);
+      });
 
       // Only send notification if status changed to 'paid'
       if (
-        duplicateCheck.currentStatus !== 'paid' &&
+        existingData.status !== 'paid' &&
         eventType === 'transaction.processed' &&
         transactionStatus === 'paid'
       ) {
         await createNotificationAndPush(
-          firestore,
+          db,
+          messaging,
           orgId,
-          request,
           saleData.buyer?.name || 'Cliente anônimo',
           saleValue,
           eventType,
@@ -114,7 +109,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (webhookLogRef) {
-        await updateDoc(webhookLogRef, {
+        await webhookLogRef.update({
           processingStatus: 'success_updated',
           message: 'Duplicate transaction updated',
         });
@@ -145,8 +140,8 @@ export async function POST(request: NextRequest) {
       offerName: saleData.offer?.name || null,
       offerPrice: saleData.offer?.discount_price || null,
       offerQuantity: saleData.offer?.quantity || null,
-      tracking: trackingData, // Changed from trackingData to tracking
-      created_at: Timestamp.now(), // For VendasBoard compatibility
+      tracking: trackingData,
+      created_at: Timestamp.now(),
       receivedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       payload: body,
@@ -160,13 +155,13 @@ export async function POST(request: NextRequest) {
       ],
     };
 
-    await addDoc(vendasRef, newSale);
+    await vendasRef.add(newSale);
 
     // ============ CREATE NOTIFICATION ============
     await createNotificationAndPush(
-      firestore,
+      db,
+      messaging,
       orgId,
-      request,
       newSale.customerName || 'Cliente anônimo',
       newSale.value,
       eventType,
@@ -175,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     // Update webhook log to success
     if (webhookLogRef) {
-      await updateDoc(webhookLogRef, {
+      await webhookLogRef.update({
         processingStatus: 'success',
         transactionId,
       });
@@ -193,15 +188,9 @@ export async function POST(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao processar webhook.';
     console.error('Erro ao processar o webhook (Buckpay):', errorMessage, error);
 
-    if (firestore) {
-      await logError(firestore, error, 'webhook-buckpay', {
-        body: 'Could not read request body or process webhook.',
-      });
-    }
-
     if (webhookLogRef) {
       try {
-        await updateDoc(webhookLogRef, {
+        await webhookLogRef.update({
           processingStatus: 'error',
           errorMessage: errorMessage,
         });
@@ -222,15 +211,14 @@ export async function POST(request: NextRequest) {
 
 // Helper function to create notification and send push
 async function createNotificationAndPush(
-  firestore: any,
+  db: FirebaseFirestore.Firestore,
+  messaging: any,
   orgId: string,
-  request: NextRequest,
   customerName: string,
   saleValue: number | null,
   eventType: string,
   transactionStatus: string
 ) {
-  const notificacoesRef = collection(firestore, 'organizations', orgId, 'notificacoes');
   let notificationMessage: string | null = null;
   let notificationTitle: string | null = null;
 
@@ -247,62 +235,42 @@ async function createNotificationAndPush(
   if (notificationMessage && notificationTitle) {
     const newNotification = {
       message: notificationMessage,
+      title: notificationTitle,
       createdAt: Timestamp.now(),
       read: false,
       type: 'webhook_sale_buckpay',
     };
-    await addDoc(notificacoesRef, newNotification);
+    await db.collection('organizations').doc(orgId).collection('notificacoes').add(newNotification);
 
-    // Send push notification directly using Admin SDK
+    // Send push notification
     try {
-      console.log(`📲 Sending push notification: ${notificationTitle}`);
-
-      const { initializeFirebase } = await import('@/firebase/server-admin');
-      const adminServices = initializeFirebase();
-      const adminFirestore = adminServices.firestore;
-      const messaging = adminServices.messaging;
-
-      // Get all FCM tokens for this organization
-      const profilesSnapshot = await adminFirestore.collection('organizations').doc(orgId).collection('perfis').get();
+      const profilesSnapshot = await db.collection('organizations').doc(orgId).collection('perfis').get();
       const tokens: string[] = [];
 
-      profilesSnapshot.forEach((doc: any) => {
+      profilesSnapshot.forEach((doc) => {
         const data = doc.data();
         if (data.fcmTokens && Array.isArray(data.fcmTokens)) {
-          data.fcmTokens.forEach((token: string) => {
-            if (token && !tokens.includes(token)) {
-              tokens.push(token);
-            }
-          });
+          tokens.push(...data.fcmTokens);
         }
       });
 
       if (tokens.length > 0) {
-        const message: any = {
-          tokens: tokens,
-          // Remove 'notification' key to prevent automatic display by Firebase SDK
-          // Service Worker will handle display via onBackgroundMessage using 'data'
+        const message = {
+          tokens: [...new Set(tokens)],
           webpush: {
-            fcmOptions: {
-              link: '/vendas',
-            },
-            headers: {
-              Urgency: 'high',
-            },
+            fcmOptions: { link: '/vendas' },
+            headers: { Urgency: 'high' },
           },
           data: {
             title: notificationTitle,
             body: notificationMessage,
             link: '/vendas',
             icon: '/icon-192x192.png',
-            badge: '/icon-192x192.png',
           }
         };
 
         const response = await messaging.sendEachForMulticast(message);
         console.log(`✅ Push sent: ${response.successCount} success, ${response.failureCount} failed`);
-      } else {
-        console.log('⚠️ No FCM tokens found');
       }
     } catch (pushError) {
       console.error('❌ Failed to send push notification:', pushError);

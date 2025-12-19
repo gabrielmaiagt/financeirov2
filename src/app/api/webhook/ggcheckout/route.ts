@@ -1,22 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getFirebaseClient } from '@/firebase/api-client';
-import { Timestamp, collection, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { sendPushNotification, logError } from '@/lib/server-utils';
+import { initializeFirebase } from '@/firebase/server-admin';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import {
   GGCheckoutWebhookSchema,
   formatCurrencyBRL,
   objectFromHeaders,
-  checkDuplicateTransaction,
-  addProcessingHistory,
 } from '@/lib/webhook-utils';
 
 export async function POST(request: NextRequest) {
-  let firestore: any;
-  let webhookLogRef: any;
+  let db: FirebaseFirestore.Firestore;
+  let webhookLogRef: FirebaseFirestore.DocumentReference | null = null;
 
   try {
-    const client = getFirebaseClient();
-    firestore = client.firestore;
+    const { firestore, messaging } = initializeFirebase();
+    db = firestore;
     const body = await request.json();
 
     const orgId = request.nextUrl.searchParams.get('orgId') || 'interno-fluxo';
@@ -29,7 +26,7 @@ export async function POST(request: NextRequest) {
       body,
       processingStatus: 'pending',
     };
-    webhookLogRef = await addDoc(collection(firestore, 'organizations', orgId, 'webhook_logs'), webhookRequestData);
+    webhookLogRef = await db.collection('organizations').doc(orgId).collection('webhook_logs').add(webhookRequestData);
 
     // ============ VALIDATE PAYLOAD ============
     const validationResult = GGCheckoutWebhookSchema.safeParse(body);
@@ -38,11 +35,10 @@ export async function POST(request: NextRequest) {
       const errorMessage = `Invalid webhook payload: ${validationResult.error.message}`;
       console.error('GGCheckout webhook validation failed:', validationResult.error);
 
-      // Serialize Zod errors to plain objects for Firestore
       const serializableErrors = JSON.parse(JSON.stringify(validationResult.error.errors));
 
       if (webhookLogRef) {
-        await updateDoc(webhookLogRef, {
+        await webhookLogRef.update({
           processingStatus: 'validation_error',
           errorMessage,
           validationErrors: serializableErrors,
@@ -65,9 +61,13 @@ export async function POST(request: NextRequest) {
     const paymentMethod = validatedData.payment.method || 'unknown';
 
     // ============ CHECK FOR DUPLICATES ============
-    const duplicateCheck = await checkDuplicateTransaction(firestore, transactionId, 'GGCheckout', orgId);
+    const vendasRef = db.collection('organizations').doc(orgId).collection('vendas');
+    const duplicateQuery = await vendasRef
+      .where('transactionId', '==', transactionId)
+      .where('gateway', '==', 'GGCheckout')
+      .limit(1)
+      .get();
 
-    const vendasRef = collection(firestore, 'organizations', orgId, 'vendas');
     const saleValue = validatedData.payment.amount ? validatedData.payment.amount / 100 : null;
 
     // Extract tracking data from payload root
@@ -81,37 +81,32 @@ export async function POST(request: NextRequest) {
       sck: validatedData.sck || null,
     };
 
-    if (duplicateCheck.exists && duplicateCheck.docId) {
+    if (!duplicateQuery.empty) {
       // Transaction already exists - UPDATE instead of creating duplicate
-      console.log(`Duplicate transaction detected: ${transactionId}. Updating existing record.`);
-
-      const existingDocRef = doc(firestore, 'organizations', orgId, 'vendas', duplicateCheck.docId);
-      const existingDoc = await getDoc(existingDocRef);
+      const existingDoc = duplicateQuery.docs[0];
       const existingData = existingDoc.data();
 
-      const updatedData = {
+      console.log(`Duplicate transaction detected: ${transactionId}. Updating existing record.`);
+
+      await existingDoc.ref.update({
         status: transactionStatus,
         eventType,
         updatedAt: Timestamp.now(),
-        processingHistory: addProcessingHistory(
-          existingData?.processingHistory || [],
+        processingHistory: FieldValue.arrayUnion({
+          timestamp: Timestamp.now(),
           eventType,
-          transactionStatus,
-          Timestamp.now()
-        ),
-        // Update payload with latest data
+          status: transactionStatus,
+        }),
         payload: body,
-      };
-
-      await updateDoc(existingDocRef, updatedData);
+      });
 
       // Send notification if payment was completed
       const isPaid = eventType === 'pix.paid' || eventType === 'card.paid' || transactionStatus === 'paid';
-      if (duplicateCheck.currentStatus !== 'paid' && isPaid) {
+      if (existingData.status !== 'paid' && isPaid) {
         await createNotificationAndPush(
-          firestore,
+          db,
+          messaging,
           orgId,
-          request,
           validatedData.customer?.name || 'Cliente anônimo',
           saleValue,
           eventType,
@@ -120,7 +115,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (webhookLogRef) {
-        await updateDoc(webhookLogRef, {
+        await webhookLogRef.update({
           processingStatus: 'success_updated',
           message: 'Duplicate transaction updated',
         });
@@ -154,7 +149,7 @@ export async function POST(request: NextRequest) {
       productQuantity: validatedData.product?.quantity || null,
       products: validatedData.products || [],
       tracking: trackingData,
-      created_at: Timestamp.now(), // For VendasBoard compatibility
+      created_at: Timestamp.now(),
       receivedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       payload: body,
@@ -168,13 +163,13 @@ export async function POST(request: NextRequest) {
       ],
     };
 
-    await addDoc(vendasRef, newSale);
+    await vendasRef.add(newSale);
 
     // ============ CREATE NOTIFICATION ============
     await createNotificationAndPush(
-      firestore,
+      db,
+      messaging,
       orgId,
-      request,
       newSale.customerName || 'Cliente anônimo',
       newSale.value,
       eventType,
@@ -183,7 +178,7 @@ export async function POST(request: NextRequest) {
 
     // Update webhook log to success
     if (webhookLogRef) {
-      await updateDoc(webhookLogRef, {
+      await webhookLogRef.update({
         processingStatus: 'success',
         transactionId,
       });
@@ -201,15 +196,9 @@ export async function POST(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao processar webhook.';
     console.error('Erro ao processar o webhook (GGCheckout):', errorMessage, error);
 
-    if (firestore) {
-      await logError(firestore, error, 'webhook-ggcheckout', {
-        body: 'Could not read request body or process webhook.',
-      });
-    }
-
     if (webhookLogRef) {
       try {
-        await updateDoc(webhookLogRef, {
+        await webhookLogRef.update({
           processingStatus: 'error',
           errorMessage: errorMessage,
         });
@@ -230,15 +219,14 @@ export async function POST(request: NextRequest) {
 
 // Helper function to create notification and send push
 async function createNotificationAndPush(
-  firestore: any,
+  db: FirebaseFirestore.Firestore,
+  messaging: any,
   orgId: string,
-  request: NextRequest,
   customerName: string,
   saleValue: number | null,
   eventType: string,
   paymentMethod: string
 ) {
-  const notificacoesRef = collection(firestore, 'organizations', orgId, 'notificacoes');
   let notificationMessage: string | null = null;
   let notificationTitle: string | null = null;
 
@@ -261,26 +249,18 @@ async function createNotificationAndPush(
   if (notificationMessage && notificationTitle) {
     const newNotification = {
       message: notificationMessage,
+      title: notificationTitle,
       createdAt: Timestamp.now(),
       read: false,
       type: 'webhook_sale_ggcheckout',
     };
-    await addDoc(notificacoesRef, newNotification);
+    await db.collection('organizations').doc(orgId).collection('notificacoes').add(newNotification);
 
-    const host = request.headers.get('host');
-    const protocol = host?.startsWith('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${host}`;
-
-    // Use Admin SDK for scoped push notifications
+    // Send push notification
     try {
-      const { initializeFirebase } = await import('@/firebase/server-admin');
-      const adminServices = initializeFirebase();
-      const adminFirestore = adminServices.firestore;
-      const messaging = adminServices.messaging;
-
-      const profilesSnapshot = await adminFirestore.collection('organizations').doc(orgId).collection('perfis').get();
+      const profilesSnapshot = await db.collection('organizations').doc(orgId).collection('perfis').get();
       const tokens: string[] = [];
-      profilesSnapshot.forEach((doc: any) => {
+      profilesSnapshot.forEach((doc) => {
         const data = doc.data();
         if (data.fcmTokens && Array.isArray(data.fcmTokens)) {
           tokens.push(...data.fcmTokens);
@@ -293,10 +273,10 @@ async function createNotificationAndPush(
           webpush: { fcmOptions: { link: '/vendas' } },
           data: { title: notificationTitle, body: notificationMessage, link: '/vendas', icon: '/icon-192x192.png' }
         };
-        await messaging.sendEachForMulticast(messagePayload as any);
+        await messaging.sendEachForMulticast(messagePayload);
       }
     } catch (pushErr) {
-      console.error('Failed to send scoped push:', pushErr);
+      console.error('Failed to send push notifications:', pushErr);
     }
   }
 }
