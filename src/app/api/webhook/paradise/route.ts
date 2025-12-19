@@ -7,6 +7,7 @@ import {
   objectFromHeaders,
   normalizeTrackingData,
 } from '@/lib/webhook-utils';
+import { sendTemplatedNotification } from '@/lib/notification-utils';
 
 export async function POST(request: NextRequest) {
   let db: FirebaseFirestore.Firestore;
@@ -101,14 +102,22 @@ export async function POST(request: NextRequest) {
 
       // Only send notification if status changed to 'approved'
       if (existingData.status !== 'approved' && transactionStatus === 'approved') {
-        await createNotificationAndPush(
-          db,
-          messaging,
-          orgId,
-          validatedData.customer?.name || 'Cliente anônimo',
-          saleValue,
-          transactionStatus
-        );
+        let notifType: 'sale_approved' | 'sale_pending' | null = null;
+        if (transactionStatus === 'approved') notifType = 'sale_approved';
+
+        if (notifType) {
+          await sendTemplatedNotification(
+            db,
+            messaging,
+            orgId,
+            notifType,
+            {
+              customerName: validatedData.customer?.name || 'Cliente anônimo',
+              value: saleValue,
+              gateway: 'Paradise'
+            }
+          );
+        }
       }
 
       if (webhookLogRef) {
@@ -159,14 +168,24 @@ export async function POST(request: NextRequest) {
     await vendasRef.add(newSale);
 
     // ============ CREATE NOTIFICATION ============
-    await createNotificationAndPush(
-      db,
-      messaging,
-      orgId,
-      newSale.customerName || 'Cliente anônimo',
-      newSale.value,
-      transactionStatus
-    );
+    // ============ CREATE NOTIFICATION ============
+    let notifType: 'sale_approved' | 'sale_pending' | null = null;
+    if (transactionStatus === 'approved') notifType = 'sale_approved';
+    else if (transactionStatus === 'pending') notifType = 'sale_pending';
+
+    if (notifType) {
+      await sendTemplatedNotification(
+        db,
+        messaging,
+        orgId,
+        notifType,
+        {
+          customerName: newSale.customerName || 'Cliente anônimo',
+          value: newSale.value,
+          gateway: 'Paradise'
+        }
+      );
+    }
 
     // Update webhook log to success
     if (webhookLogRef) {
@@ -209,59 +228,5 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to create notification and send push
-async function createNotificationAndPush(
-  db: FirebaseFirestore.Firestore,
-  messaging: any,
-  orgId: string,
-  customerName: string,
-  saleValue: number | null,
-  transactionStatus: string
-) {
-  let notificationMessage: string | null = null;
-  let notificationTitle: string | null = null;
+// Helper function removed - replaced by sendTemplatedNotification
 
-  const formattedSaleValue = formatCurrencyBRL(saleValue);
-
-  if (transactionStatus === 'approved') {
-    notificationTitle = '💸 PIX Pago! (Paradise)';
-    notificationMessage = `Venda de ${formattedSaleValue} para ${customerName} confirmada!`;
-  } else if (transactionStatus === 'pending') {
-    notificationTitle = '⏳ PIX Gerado (Paradise)';
-    notificationMessage = `PIX de ${formattedSaleValue} para ${customerName} aguardando pagamento.`;
-  }
-
-  if (notificationMessage && notificationTitle) {
-    const newNotification = {
-      message: notificationMessage,
-      title: notificationTitle,
-      createdAt: Timestamp.now(),
-      read: false,
-      type: 'webhook_sale_paradise',
-    };
-    await db.collection('organizations').doc(orgId).collection('notificacoes').add(newNotification);
-
-    // Send push notification
-    try {
-      const profilesSnapshot = await db.collection('organizations').doc(orgId).collection('perfis').get();
-      const tokens: string[] = [];
-      profilesSnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.fcmTokens && Array.isArray(data.fcmTokens)) {
-          tokens.push(...data.fcmTokens);
-        }
-      });
-
-      if (tokens.length > 0) {
-        const messagePayload = {
-          tokens: [...new Set(tokens)],
-          webpush: { fcmOptions: { link: '/vendas' } },
-          data: { title: notificationTitle, body: notificationMessage, link: '/vendas', icon: '/icon-192x192.png' }
-        };
-        await messaging.sendEachForMulticast(messagePayload);
-      }
-    } catch (pushErr) {
-      console.error('Failed to send push notifications:', pushErr);
-    }
-  }
-}

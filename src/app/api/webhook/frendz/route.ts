@@ -7,6 +7,7 @@ import {
     objectFromHeaders,
     normalizeTrackingData,
 } from '@/lib/webhook-utils';
+import { sendTemplatedNotification } from '@/lib/notification-utils';
 
 export async function POST(request: NextRequest) {
     let db: FirebaseFirestore.Firestore;
@@ -108,13 +109,17 @@ export async function POST(request: NextRequest) {
 
             // Only send notification if status changed to paid/approved
             if (existingData.status !== 'approved' && normalizedStatus === 'approved') {
-                await createNotificationAndPush(
+                await sendTemplatedNotification(
                     db,
                     messaging,
                     orgId,
-                    validatedData.customer?.name || 'Cliente anônimo',
-                    saleValue,
-                    normalizedStatus
+                    'sale_approved',
+                    {
+                        customerName: validatedData.customer?.name || 'Cliente anônimo',
+                        value: saleValue,
+                        productName: productName || undefined,
+                        gateway: 'Frendz'
+                    }
                 );
             }
 
@@ -190,14 +195,25 @@ export async function POST(request: NextRequest) {
         await vendasRef.add(newSale);
 
         // ============ CREATE NOTIFICATION ============
-        await createNotificationAndPush(
-            db,
-            messaging,
-            orgId,
-            newSale.customerName || 'Cliente anônimo',
-            newSale.value,
-            normalizedStatus
-        );
+        let notifType: 'sale_approved' | 'sale_pending' | 'sale_refunded' | null = null;
+        if (normalizedStatus === 'approved') notifType = 'sale_approved';
+        else if (normalizedStatus === 'pending') notifType = 'sale_pending';
+        else if (normalizedStatus === 'refunded') notifType = 'sale_refunded';
+
+        if (notifType) {
+            await sendTemplatedNotification(
+                db,
+                messaging,
+                orgId,
+                notifType,
+                {
+                    customerName: newSale.customerName || 'Cliente anônimo',
+                    value: newSale.value,
+                    productName: newSale.productName || undefined,
+                    gateway: 'Frendz'
+                }
+            );
+        }
 
         // Update webhook log to success
         if (webhookLogRef) {
@@ -267,62 +283,5 @@ function normalizeStatus(status: string): string {
     return status; // Return original if not matched
 }
 
-// Helper function to create notification and send push
-async function createNotificationAndPush(
-    db: FirebaseFirestore.Firestore,
-    messaging: any,
-    orgId: string,
-    customerName: string,
-    saleValue: number | null,
-    transactionStatus: string
-) {
-    let notificationMessage: string | null = null;
-    let notificationTitle: string | null = null;
+// Helper function removed - replaced by sendTemplatedNotification
 
-    const formattedSaleValue = formatCurrencyBRL(saleValue);
-
-    if (transactionStatus === 'approved') {
-        notificationTitle = '💸 Pagamento Confirmado! (Frendz)';
-        notificationMessage = `Venda de ${formattedSaleValue} para ${customerName} confirmada!`;
-    } else if (transactionStatus === 'pending') {
-        notificationTitle = '⏳ Pagamento Pendente (Frendz)';
-        notificationMessage = `Pagamento de ${formattedSaleValue} para ${customerName} aguardando confirmação.`;
-    } else if (transactionStatus === 'refunded') {
-        notificationTitle = '🔄 Reembolso Processado (Frendz)';
-        notificationMessage = `Reembolso de ${formattedSaleValue} para ${customerName} processado.`;
-    }
-
-    if (notificationMessage && notificationTitle) {
-        const newNotification = {
-            message: notificationMessage,
-            title: notificationTitle,
-            createdAt: Timestamp.now(),
-            read: false,
-            type: 'webhook_sale_frendz',
-        };
-        await db.collection('organizations').doc(orgId).collection('notificacoes').add(newNotification);
-
-        // Send push notifications to all users in the org
-        try {
-            const profilesSnapshot = await db.collection('organizations').doc(orgId).collection('perfis').get();
-            const tokens: string[] = [];
-            profilesSnapshot.forEach((doc) => {
-                const data = doc.data();
-                if (data.fcmTokens && Array.isArray(data.fcmTokens)) {
-                    tokens.push(...data.fcmTokens);
-                }
-            });
-
-            if (tokens.length > 0) {
-                const messagePayload = {
-                    tokens: [...new Set(tokens)],
-                    webpush: { fcmOptions: { link: '/vendas' } },
-                    data: { title: notificationTitle, body: notificationMessage, link: '/vendas', icon: '/icon-192x192.png' }
-                };
-                await messaging.sendEachForMulticast(messagePayload);
-            }
-        } catch (pushErr) {
-            console.error('Failed to send push notifications:', pushErr);
-        }
-    }
-}

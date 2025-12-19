@@ -7,6 +7,7 @@ import {
   objectFromHeaders,
   normalizeTrackingData,
 } from '@/lib/webhook-utils';
+import { sendTemplatedNotification } from '@/lib/notification-utils';
 
 export async function POST(request: NextRequest) {
   let db: FirebaseFirestore.Firestore;
@@ -97,15 +98,23 @@ export async function POST(request: NextRequest) {
         eventType === 'transaction.processed' &&
         transactionStatus === 'paid'
       ) {
-        await createNotificationAndPush(
-          db,
-          messaging,
-          orgId,
-          saleData.buyer?.name || 'Cliente anônimo',
-          saleValue,
-          eventType,
-          transactionStatus
-        );
+        let notifType: 'sale_approved' | 'sale_pending' | null = null;
+        if (eventType === 'transaction.processed' && transactionStatus === 'paid') notifType = 'sale_approved';
+
+        if (notifType) {
+          await sendTemplatedNotification(
+            db,
+            messaging,
+            orgId,
+            notifType,
+            {
+              customerName: saleData.buyer?.name || 'Cliente anônimo',
+              value: saleValue,
+              productName: saleData.offer?.name || undefined,
+              gateway: 'Buckpay'
+            }
+          );
+        }
       }
 
       if (webhookLogRef) {
@@ -158,15 +167,24 @@ export async function POST(request: NextRequest) {
     await vendasRef.add(newSale);
 
     // ============ CREATE NOTIFICATION ============
-    await createNotificationAndPush(
-      db,
-      messaging,
-      orgId,
-      newSale.customerName || 'Cliente anônimo',
-      newSale.value,
-      eventType,
-      transactionStatus
-    );
+    let notifType: 'sale_approved' | 'sale_pending' | null = null;
+    if (eventType === 'transaction.processed' && transactionStatus === 'paid') notifType = 'sale_approved';
+    else if (eventType === 'transaction.created' && transactionStatus === 'pending') notifType = 'sale_pending';
+
+    if (notifType) {
+      await sendTemplatedNotification(
+        db,
+        messaging,
+        orgId,
+        notifType,
+        {
+          customerName: newSale.customerName || 'Cliente anônimo',
+          value: newSale.value,
+          productName: newSale.offerName || undefined,
+          gateway: 'Buckpay'
+        }
+      );
+    }
 
     // Update webhook log to success
     if (webhookLogRef) {
@@ -209,71 +227,5 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to create notification and send push
-async function createNotificationAndPush(
-  db: FirebaseFirestore.Firestore,
-  messaging: any,
-  orgId: string,
-  customerName: string,
-  saleValue: number | null,
-  eventType: string,
-  transactionStatus: string
-) {
-  let notificationMessage: string | null = null;
-  let notificationTitle: string | null = null;
+// Helper function removed - replaced by sendTemplatedNotification
 
-  const formattedSaleValue = formatCurrencyBRL(saleValue);
-
-  if (eventType === 'transaction.processed' && transactionStatus === 'paid') {
-    notificationTitle = '💸 PIX Pago! (Buckpay)';
-    notificationMessage = `Venda de ${formattedSaleValue} para ${customerName} confirmada!`;
-  } else if (eventType === 'transaction.created' && transactionStatus === 'pending') {
-    notificationTitle = '⏳ PIX Gerado (Buckpay)';
-    notificationMessage = `PIX de ${formattedSaleValue} para ${customerName} aguardando pagamento.`;
-  }
-
-  if (notificationMessage && notificationTitle) {
-    const newNotification = {
-      message: notificationMessage,
-      title: notificationTitle,
-      createdAt: Timestamp.now(),
-      read: false,
-      type: 'webhook_sale_buckpay',
-    };
-    await db.collection('organizations').doc(orgId).collection('notificacoes').add(newNotification);
-
-    // Send push notification
-    try {
-      const profilesSnapshot = await db.collection('organizations').doc(orgId).collection('perfis').get();
-      const tokens: string[] = [];
-
-      profilesSnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.fcmTokens && Array.isArray(data.fcmTokens)) {
-          tokens.push(...data.fcmTokens);
-        }
-      });
-
-      if (tokens.length > 0) {
-        const message = {
-          tokens: [...new Set(tokens)],
-          webpush: {
-            fcmOptions: { link: '/vendas' },
-            headers: { Urgency: 'high' },
-          },
-          data: {
-            title: notificationTitle,
-            body: notificationMessage,
-            link: '/vendas',
-            icon: '/icon-192x192.png',
-          }
-        };
-
-        const response = await messaging.sendEachForMulticast(message);
-        console.log(`✅ Push sent: ${response.successCount} success, ${response.failureCount} failed`);
-      }
-    } catch (pushError) {
-      console.error('❌ Failed to send push notification:', pushError);
-    }
-  }
-}

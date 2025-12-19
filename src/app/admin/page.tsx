@@ -13,6 +13,7 @@ import { UserManagement } from '@/components/admin/UserManagement';
 import WebhookRequestViewer from '@/components/admin/WebhookRequestViewer';
 import WebhookDocumentation from '@/components/admin/WebhookDocumentation';
 import WebhookLinksCard from '@/components/admin/WebhookLinksCard';
+import NotificationSettingsCard from '@/components/admin/NotificationSettingsCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from '@/components/ui/separator';
 import { useOrganization } from '@/contexts/OrganizationContext';
@@ -108,58 +109,61 @@ export default function AdminPage() {
 
                     {/* NOTIFICATIONS TAB */}
                     <TabsContent value="notifications" className="space-y-6">
-                        <Card className="w-full">
-                            <CardHeader>
-                                <CardTitle>Testar Notificações Push</CardTitle>
-                                <CardDescription>
-                                    Envie mensagens de teste para todos os dispositivos inscritos.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="title">Título</Label>
-                                    <Input
-                                        id="title"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        placeholder="Título da notificação"
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="message">Mensagem</Label>
-                                    <Input
-                                        id="message"
-                                        value={message}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                        placeholder="Conteúdo da mensagem"
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="link">Link de Destino</Label>
-                                    <Input
-                                        id="link"
-                                        value={link}
-                                        onChange={(e) => setLink(e.target.value)}
-                                        placeholder="Ex: /tarefas"
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                                <Button
-                                    onClick={handleSendNotification}
-                                    disabled={isLoading || !title || !message}
-                                    className="w-full"
-                                >
-                                    {isLoading ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Send className="mr-2 h-4 w-4" />
-                                    )}
-                                    Enviar Notificação
-                                </Button>
-                            </CardContent>
-                        </Card>
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <NotificationSettingsCard />
+                            <Card className="w-full">
+                                <CardHeader>
+                                    <CardTitle>Testar Notificações Push</CardTitle>
+                                    <CardDescription>
+                                        Envie mensagens de teste para todos os dispositivos inscritos.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="title">Título</Label>
+                                        <Input
+                                            id="title"
+                                            value={title}
+                                            onChange={(e) => setTitle(e.target.value)}
+                                            placeholder="Título da notificação"
+                                            disabled={isLoading}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="message">Mensagem</Label>
+                                        <Input
+                                            id="message"
+                                            value={message}
+                                            onChange={(e) => setMessage(e.target.value)}
+                                            placeholder="Conteúdo da mensagem"
+                                            disabled={isLoading}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="link">Link de Destino</Label>
+                                        <Input
+                                            id="link"
+                                            value={link}
+                                            onChange={(e) => setLink(e.target.value)}
+                                            placeholder="Ex: /tarefas"
+                                            disabled={isLoading}
+                                        />
+                                    </div>
+                                    <Button
+                                        onClick={handleSendNotification}
+                                        disabled={isLoading || !title || !message}
+                                        className="w-full"
+                                    >
+                                        {isLoading ? (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Send className="mr-2 h-4 w-4" />
+                                        )}
+                                        Enviar Notificação
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </TabsContent>
 
                     {/* SYSTEM TAB */}
