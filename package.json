@@ -61,6 +61,7 @@
     "dotenv": "^16.5.0",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
+    "bcryptjs": "^2.4.3",
     "firebase": "^11.9.1",
     "firebase-admin": "^13.6.0",
     "framer-motion": "^11.5.7",
@@ -80,6 +81,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
