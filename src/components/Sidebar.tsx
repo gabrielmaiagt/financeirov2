@@ -11,20 +11,22 @@ export const Sidebar = () => {
 
     return (
         <div className="hidden md:flex flex-col w-64 shrink-0 h-[calc(100vh-8rem)] sticky top-24 mr-6">
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 h-full overflow-y-auto no-scrollbar">
-                <TabsList className="flex flex-col h-auto bg-transparent p-0 gap-2 w-full justify-start">
+            <div className="bg-neutral-950/40 backdrop-blur-md border border-white/5 rounded-2xl p-3 h-full overflow-y-auto no-scrollbar shadow-xl">
+                <TabsList className="flex flex-col h-auto bg-transparent p-0 gap-1.5 w-full justify-start">
                     {NAV_ITEMS.map((item) => (
                         <TabsTrigger
                             key={item.value}
                             value={item.value}
                             className={cn(
-                                "w-full justify-start gap-3 px-4 py-3 h-auto text-sm font-medium transition-all",
-                                "data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-l-4 data-[state=active]:border-primary data-[state=active]:rounded-r-md data-[state=active]:rounded-l-none",
-                                "hover:bg-accent/50 hover:text-accent-foreground rounded-md"
+                                "group relative w-full justify-start gap-3 px-4 py-3 h-auto text-sm font-medium transition-all duration-300 rounded-xl overflow-hidden ring-offset-0 focus-visible:ring-0",
+                                "text-muted-foreground hover:text-foreground hover:bg-white/5",
+                                "data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm"
                             )}
                         >
-                            <item.icon className="w-4 h-4" />
-                            {item.label}
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 bg-primary rounded-r-full transition-all duration-300 opacity-0 group-data-[state=active]:opacity-100 group-data-[state=active]:h-1/2 shadow-[0_0_10px_hsl(var(--primary)/0.5)]" />
+
+                            <item.icon className="w-5 h-5 transition-transform duration-300 group-hover:scale-110 group-data-[state=active]:scale-110 group-data-[state=active]:text-primary" />
+                            <span className="relative z-10">{item.label}</span>
                         </TabsTrigger>
                     ))}
                 </TabsList>

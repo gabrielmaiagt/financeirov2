@@ -77,7 +77,7 @@ const OperationsTable = ({
     [firestore, orgId]
   );
   const { data: profiles } = useCollection<UserProfile>(profilesQuery);
-  
+
   const operacoesRef = useOrgCollection('operacoesSocios');
 
   const handleSaveOperation = async (operation: Omit<Operacao, 'id'>) => {
@@ -140,6 +140,7 @@ const OperationsTable = ({
       acc.gastoAnuncio += op.gastoAnuncio;
       acc.lucroLiquido += op.lucroLiquido;
       acc.totalCabral += op.totalCabral;
+      acc.valorCabral += op.valorCabral;
       acc.valorBiel += op.valorBiel;
       acc.valorSoares += op.valorSoares;
       return acc;
@@ -149,6 +150,7 @@ const OperationsTable = ({
       gastoAnuncio: 0,
       lucroLiquido: 0,
       totalCabral: 0,
+      valorCabral: 0,
       valorBiel: 0,
       valorSoares: 0,
     }
@@ -271,7 +273,7 @@ const OperationsTable = ({
                   <TableCell className="text-right font-bold sensitive-data">{formatCurrency(summary.gastoAnuncio)}</TableCell>
                   <TableCell></TableCell>
                   <TableCell className={cn('text-right font-bold sensitive-data', summary.lucroLiquido < 0 ? 'text-red-500' : 'text-green-500')}>{formatCurrency(summary.lucroLiquido)}</TableCell>
-                  <TableCell></TableCell>
+                  <TableCell className="text-right font-bold text-gray-400 sensitive-data">{formatCurrency(summary.valorCabral)}</TableCell>
                   <TableCell className="text-right font-bold text-green-400 sensitive-data">{formatCurrency(summary.valorBiel)}</TableCell>
                   <TableCell className="text-right font-bold text-yellow-400 sensitive-data">{formatCurrency(summary.valorSoares)}</TableCell>
                   <TableCell className="text-right font-bold text-blue-400 sensitive-data">{formatCurrency(summary.totalCabral)}</TableCell>

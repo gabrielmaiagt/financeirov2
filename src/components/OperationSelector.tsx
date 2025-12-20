@@ -37,8 +37,8 @@ export function OperationSelector() {
         <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-muted-foreground" />
             <Select value={selectedOperationId || undefined} onValueChange={setSelectedOperationId}>
-                <SelectTrigger className="w-[220px] bg-neutral-900/50">
-                    <SelectValue placeholder="Select operation" />
+                <SelectTrigger className="w-[260px] h-10 bg-neutral-900/50 border-neutral-800">
+                    <SelectValue placeholder="Selecione a operação" />
                 </SelectTrigger>
                 <SelectContent>
                     {operations.map((operation) => (
