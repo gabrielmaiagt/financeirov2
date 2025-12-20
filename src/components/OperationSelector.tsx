@@ -12,33 +12,35 @@ import {
 import { Building2, Loader2 } from 'lucide-react';
 import { Badge } from './ui/badge';
 
-export function OperationSelector() {
+import { cn } from '@/lib/utils';
+
+export function OperationSelector({ className }: { className?: string }) {
     const { selectedOperationId, setSelectedOperationId, operations, isLoading } = useOperation();
 
     if (isLoading) {
         return (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-900/50">
+            <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-900/50", className)}>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm text-muted-foreground">Loading...</span>
+                <span className="text-sm text-muted-foreground hidden sm:inline">Loading...</span>
             </div>
         );
     }
 
     if (operations.length === 0) {
         return (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20", className)}>
                 <Building2 className="w-4 h-4 text-yellow-500" />
-                <span className="text-sm text-yellow-200">No operations found</span>
+                <span className="text-sm text-yellow-200 hidden sm:inline">No operations</span>
             </div>
         );
     }
 
     return (
-        <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-muted-foreground" />
+        <div className={cn("flex items-center gap-2", className)}>
+            <Building2 className="w-4 h-4 text-muted-foreground shrink-0 hidden sm:block" />
             <Select value={selectedOperationId || undefined} onValueChange={setSelectedOperationId}>
-                <SelectTrigger className="w-[260px] h-10 bg-neutral-900/50 border-neutral-800">
-                    <SelectValue placeholder="Selecione a operação" />
+                <SelectTrigger className="w-[130px] sm:w-[180px] md:w-[260px] h-10 bg-neutral-900/50 border-neutral-800 text-xs sm:text-sm">
+                    <SelectValue placeholder="Operação" />
                 </SelectTrigger>
                 <SelectContent>
                     {operations.map((operation) => (

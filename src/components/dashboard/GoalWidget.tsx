@@ -11,7 +11,11 @@ import { Progress } from '@/components/ui/progress';
 import { formatCurrencyBRL } from '@/lib/formatters';
 import type { Meta } from './GoalsBoard';
 
-const GoalWidget = () => {
+interface GoalWidgetProps {
+    variant?: 'default' | 'header';
+}
+
+const GoalWidget = ({ variant = 'default' }: GoalWidgetProps) => {
     const firestore = useFirestore();
     const { orgId } = useOrganization();
     const now = new Date();
@@ -90,6 +94,36 @@ const GoalWidget = () => {
     const title = activeGoal ? activeGoal.title : 'Prêmios';
 
     if (isLoadingVendas) return null;
+
+    if (variant === 'header') {
+        return (
+            <div className="hidden lg:flex items-center gap-3 bg-neutral-900/50 backdrop-blur-sm border border-white/5 px-4 py-1.5 rounded-full hover:bg-neutral-800/80 hover:border-primary/20 hover:shadow-[0_0_15px_rgba(0,0,0,0.3)] transition-all duration-300 w-auto group cursor-default">
+                {/* Icon & Title */}
+                <div className="flex items-center gap-2">
+                    <div className="bg-yellow-500/10 p-1 rounded-full">
+                        <Trophy className="w-3.5 h-3.5 text-yellow-500" />
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors max-w-[100px] truncate">
+                        {title}
+                    </span>
+                </div>
+
+                {/* Vertical Divider */}
+                <div className="w-px h-3 bg-white/10" />
+
+                {/* Progress & Value */}
+                <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-0.5 min-w-[100px]">
+                        <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground font-medium">{Math.round(progress)}%</span>
+                            <span className="text-primary font-bold">{formatCurrencyBRL(currentRevenue)}</span>
+                        </div>
+                        <Progress value={progress} className="h-1 bg-white/5" indicatorClassName="bg-gradient-to-r from-yellow-600 to-yellow-400" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col w-[240px] gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors duration-200">

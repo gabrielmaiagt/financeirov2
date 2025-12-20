@@ -202,14 +202,48 @@ const CalendarDayCell = ({ date, tasks, dailyRevenue, dailyGross }: { date: Date
     </div>
   );
 
+  // Adjust styles to ensure valid HTML structure (td inside tr)
+  const cellClassName = "h-28 p-0 m-0 align-top border-b border-r border-neutral-800/50 first:border-l transition-colors";
+
   if (!hasContent && !isToday) {
     return (
+      <td className={cellClassName}>
+        <Dialog>
+          <DialogTrigger asChild>
+            <div className="w-full h-full p-2 flex items-start justify-start opacity-50 hover:opacity-100 hover:bg-neutral-900/20 transition-all cursor-pointer">
+              <span className="text-sm text-muted-foreground">{dayNumber}</span>
+            </div>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px] bg-neutral-950 border-neutral-800">
+            <DialogHeader>
+              <DialogTitle className="text-xl">
+                {format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              </DialogTitle>
+            </DialogHeader>
+            <DialogDetailContent />
+          </DialogContent>
+        </Dialog>
+      </td>
+    )
+  }
+
+  return (
+    <td className={cellClassName}>
       <Dialog>
-        <DialogTrigger asChild>
-          <div className="w-full h-full p-2 flex items-start justify-start opacity-50 hover:opacity-100 hover:bg-neutral-900/20 rounded-md transition-all cursor-pointer">
-            <span className="text-sm text-muted-foreground">{dayNumber}</span>
-          </div>
-        </DialogTrigger>
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <DialogTrigger asChild>
+              <div className="w-full h-full">
+                <DayContent />
+              </div>
+            </DialogTrigger>
+          </HoverCardTrigger>
+          <HoverCardContent className="w-80 p-0 overflow-hidden border-neutral-800">
+            <div className="p-4 bg-neutral-950">
+              <TooltipContent />
+            </div>
+          </HoverCardContent>
+        </HoverCard>
         <DialogContent className="sm:max-w-[500px] bg-neutral-950 border-neutral-800">
           <DialogHeader>
             <DialogTitle className="text-xl">
@@ -219,34 +253,7 @@ const CalendarDayCell = ({ date, tasks, dailyRevenue, dailyGross }: { date: Date
           <DialogDetailContent />
         </DialogContent>
       </Dialog>
-    )
-  }
-
-  return (
-    <Dialog>
-      <HoverCard>
-        <HoverCardTrigger asChild>
-          <DialogTrigger asChild>
-            <div className="w-full h-full">
-              <DayContent />
-            </div>
-          </DialogTrigger>
-        </HoverCardTrigger>
-        <HoverCardContent className="w-80 p-0 overflow-hidden border-neutral-800">
-          <div className="p-4 bg-neutral-950">
-            <TooltipContent />
-          </div>
-        </HoverCardContent>
-      </HoverCard>
-      <DialogContent className="sm:max-w-[500px] bg-neutral-950 border-neutral-800">
-        <DialogHeader>
-          <DialogTitle className="text-xl">
-            {format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-          </DialogTitle>
-        </DialogHeader>
-        <DialogDetailContent />
-      </DialogContent>
-    </Dialog>
+    </td>
   );
 };
 

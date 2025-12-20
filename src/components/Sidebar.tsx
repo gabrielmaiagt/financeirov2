@@ -3,9 +3,11 @@ import { useUI } from "@/components/ThemeProvider";
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NAV_ITEMS } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { useTabSettings } from "@/hooks/use-tab-settings";
 
 export const Sidebar = () => {
     const { settings } = useUI();
+    const { visibleTabs } = useTabSettings();
 
     if (settings.layout !== "sidebar") return null;
 
@@ -13,7 +15,7 @@ export const Sidebar = () => {
         <div className="hidden md:flex flex-col w-64 shrink-0 h-[calc(100vh-8rem)] sticky top-24 mr-6">
             <div className="bg-neutral-950/40 backdrop-blur-md border border-white/5 rounded-2xl p-3 h-full overflow-y-auto no-scrollbar shadow-xl">
                 <TabsList className="flex flex-col h-auto bg-transparent p-0 gap-1.5 w-full justify-start">
-                    {NAV_ITEMS.map((item) => (
+                    {visibleTabs.map((item) => (
                         <TabsTrigger
                             key={item.value}
                             value={item.value}

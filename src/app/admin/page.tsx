@@ -14,6 +14,7 @@ import WebhookRequestViewer from '@/components/admin/WebhookRequestViewer';
 import WebhookDocumentation from '@/components/admin/WebhookDocumentation';
 import WebhookLinksCard from '@/components/admin/WebhookLinksCard';
 import NotificationSettingsCard from '@/components/admin/NotificationSettingsCard';
+import TabSettingsCard from '@/components/admin/TabSettingsCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from '@/components/ui/separator';
 import { useOrganization } from '@/contexts/OrganizationContext';
@@ -86,8 +87,14 @@ export default function AdminPage() {
                         <TabsTrigger value="users">Usuários</TabsTrigger>
                         <TabsTrigger value="integrations">Integrações & Webhooks</TabsTrigger>
                         <TabsTrigger value="notifications">Notificações Push</TabsTrigger>
+                        <TabsTrigger value="interface">Interface</TabsTrigger>
                         <TabsTrigger value="system">Logs do Sistema</TabsTrigger>
                     </TabsList>
+
+                    {/* INTERFACE TAB */}
+                    <TabsContent value="interface" className="space-y-6">
+                        <TabSettingsCard />
+                    </TabsContent>
 
                     {/* USERS TAB */}
                     <TabsContent value="users" className="space-y-6">

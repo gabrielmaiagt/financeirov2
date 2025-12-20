@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Loader2, RefreshCw } from 'lucide-react';
 import { formatCurrencyBRL } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { startOfDay, endOfDay, isWithinInterval, eachDayOfInterval, format, getHours } from 'date-fns';
@@ -41,7 +42,13 @@ const StatCard = ({ title, value, icon: Icon, subtitle, trend }: any) => (
             <Icon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-            <div className="text-2xl font-bold">{value}</div>
+            <div className="text-2xl font-bold">
+                {typeof value === 'number' ? (
+                    <AnimatedNumber value={value} formatter={formatCurrencyBRL} />
+                ) : (
+                    value
+                )}
+            </div>
             {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
             {trend !== undefined && (
                 <div className={cn("flex items-center gap-1 text-xs mt-2", trend >= 0 ? "text-green-500" : "text-red-500")}>
@@ -327,19 +334,19 @@ export default function DashboardBoard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 <StatCard
                     title="Faturamento"
-                    value={formatCurrencyBRL(salesMetrics.totalRevenue)}
+                    value={salesMetrics.totalRevenue}
                     icon={DollarSign}
                     subtitle={`${salesMetrics.paidCount} vendas pagas`}
                 />
                 <StatCard
                     title="Gasto em Anúncios"
-                    value={formatCurrencyBRL(metaMetrics.totalSpend)}
+                    value={metaMetrics.totalSpend}
                     icon={BarChart3}
                     subtitle="Meta Ads"
                 />
                 <StatCard
                     title="Lucro"
-                    value={formatCurrencyBRL(profit)}
+                    value={profit}
                     icon={TrendingUp}
                     subtitle={profit >= 0 ? "Positivo" : "Negativo"}
                 />
@@ -351,7 +358,7 @@ export default function DashboardBoard() {
                 />
                 <StatCard
                     title="CPA"
-                    value={formatCurrencyBRL(cpa)}
+                    value={cpa}
                     icon={DollarSign}
                     subtitle="Custo por aquisição"
                 />

@@ -41,6 +41,7 @@ import { PrivacyToggleButton } from '@/components/dashboard/PrivacyToggleButton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { UserProfile as ProfileType } from '@/components/dashboard/ProfileCard';
 import { InitOrg } from '@/components/InitOrg';
+import { MobilePillNav } from "@/components/MobilePillNav";
 
 export interface Operacao {
   id?: string;
@@ -165,6 +166,7 @@ export default function Home() {
 
       <NavTabs defaultValue="lancamentos" className="w-full flex flex-col md:flex-row gap-6">
         <Sidebar />
+        <MobilePillNav />
 
         <div className="flex-1 w-full min-w-0">
           <TopBar />

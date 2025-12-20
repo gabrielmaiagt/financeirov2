@@ -36,6 +36,8 @@ import { useOrganization } from '@/contexts/OrganizationContext';
 import { useOperation } from '@/contexts/OperationContext';
 import { query, where, orderBy } from 'firebase/firestore';
 import { useOrgCollection } from '@/hooks/useFirestoreOrg';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
 interface OperationsTableProps {
   operacoes: Operacao[];
@@ -222,11 +224,21 @@ const OperationsTable = ({
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Carregando lançamentos...
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="border-neutral-800">
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-center"><Skeleton className="h-8 w-8 mx-auto rounded-full" /></TableCell>
+                  </TableRow>
+                ))
               ) : operacoes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
@@ -269,14 +281,28 @@ const OperationsTable = ({
               <TableFooter className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-neutral-800">
                 <TableRow>
                   <TableCell colSpan={2} className="font-bold">Resumo do Período</TableCell>
-                  <TableCell className="text-right font-bold sensitive-data">{formatCurrency(summary.faturamentoLiquido)}</TableCell>
-                  <TableCell className="text-right font-bold sensitive-data">{formatCurrency(summary.gastoAnuncio)}</TableCell>
+                  <TableCell className="text-right font-bold sensitive-data">
+                    <AnimatedNumber value={summary.faturamentoLiquido} formatter={formatCurrency} />
+                  </TableCell>
+                  <TableCell className="text-right font-bold sensitive-data">
+                    <AnimatedNumber value={summary.gastoAnuncio} formatter={formatCurrency} />
+                  </TableCell>
                   <TableCell></TableCell>
-                  <TableCell className={cn('text-right font-bold sensitive-data', summary.lucroLiquido < 0 ? 'text-red-500' : 'text-green-500')}>{formatCurrency(summary.lucroLiquido)}</TableCell>
-                  <TableCell className="text-right font-bold text-gray-400 sensitive-data">{formatCurrency(summary.valorCabral)}</TableCell>
-                  <TableCell className="text-right font-bold text-green-400 sensitive-data">{formatCurrency(summary.valorBiel)}</TableCell>
-                  <TableCell className="text-right font-bold text-yellow-400 sensitive-data">{formatCurrency(summary.valorSoares)}</TableCell>
-                  <TableCell className="text-right font-bold text-blue-400 sensitive-data">{formatCurrency(summary.totalCabral)}</TableCell>
+                  <TableCell className={cn('text-right font-bold sensitive-data', summary.lucroLiquido < 0 ? 'text-red-500' : 'text-green-500')}>
+                    <AnimatedNumber value={summary.lucroLiquido} formatter={formatCurrency} />
+                  </TableCell>
+                  <TableCell className="text-right font-bold text-gray-400 sensitive-data">
+                    <AnimatedNumber value={summary.valorCabral} formatter={formatCurrency} />
+                  </TableCell>
+                  <TableCell className="text-right font-bold text-green-400 sensitive-data">
+                    <AnimatedNumber value={summary.valorBiel} formatter={formatCurrency} />
+                  </TableCell>
+                  <TableCell className="text-right font-bold text-yellow-400 sensitive-data">
+                    <AnimatedNumber value={summary.valorSoares} formatter={formatCurrency} />
+                  </TableCell>
+                  <TableCell className="text-right font-bold text-blue-400 sensitive-data">
+                    <AnimatedNumber value={summary.totalCabral} formatter={formatCurrency} />
+                  </TableCell>
                   <TableCell></TableCell>
                 </TableRow>
               </TableFooter>

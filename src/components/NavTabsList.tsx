@@ -1,18 +1,19 @@
-"use client";
 import { useUI } from "@/components/ThemeProvider";
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NAV_ITEMS } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { useTabSettings } from "@/hooks/use-tab-settings";
 
 export const NavTabsList = () => {
     const { settings } = useUI();
+    const { visibleTabs } = useTabSettings();
 
     if (settings.layout !== "tabs") return null;
 
     return (
         <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 no-scrollbar">
             <TabsList className="h-auto w-max justify-start flex-nowrap bg-transparent p-0 gap-2">
-                {NAV_ITEMS.map((item) => (
+                {visibleTabs.map((item) => (
                     <TabsTrigger
                         key={item.value}
                         value={item.value}
