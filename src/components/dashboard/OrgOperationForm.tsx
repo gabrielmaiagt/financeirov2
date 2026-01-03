@@ -12,7 +12,7 @@ import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useOrgCollection, useOrgDoc } from '@/hooks/useFirestoreOrg';
 import { Plus, Trash2 } from 'lucide-react';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { serverTimestamp, updateDoc } from 'firebase/firestore';
+import { serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 
 interface OperationFormProps {
   operation: Operation | null;
@@ -87,10 +87,10 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
 
       if (operation) {
         // Update existing
-        const docRef = useOrgDoc('operations', operation.id);
-        if (docRef) {
-          await updateDoc(docRef, operationData);
-        }
+        // Update existing
+        // We cannot use hooks inside callbacks, so we perform direct referenced update
+        const docRef = doc(firestore, 'organizations', orgId, 'operations', operation.id);
+        await updateDoc(docRef, operationData);
       } else {
         // Create new
         await addDocumentNonBlocking(operationsCollection, {
