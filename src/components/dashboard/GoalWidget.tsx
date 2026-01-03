@@ -11,6 +11,8 @@ import { Progress } from '@/components/ui/progress';
 import { formatCurrencyBRL } from '@/lib/formatters';
 import type { Meta } from './GoalsBoard';
 
+import { Operacao } from '@/app/page';
+
 interface GoalWidgetProps {
     variant?: 'default' | 'header';
 }
@@ -22,21 +24,6 @@ const GoalWidget = ({ variant = 'default' }: GoalWidgetProps) => {
     const start = startOfMonth(now);
     const end = endOfMonth(now);
 
-    // Fetch Sales
-    const vendasQuery = useMemoFirebase(
-        () => {
-            if (!firestore || !orgId) return null;
-            return query(
-                collection(firestore, 'organizations', orgId, 'vendas'),
-                where('created_at', '>=', Timestamp.fromDate(start)),
-                where('created_at', '<=', Timestamp.fromDate(end))
-            );
-        },
-        [firestore, orgId]
-    );
-
-    const { data: vendas, isLoading: isLoadingVendas } = useCollection(vendasQuery);
-
     // Fetch Active Goals
     const goalsQuery = useMemoFirebase(
         () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'metas'), where('completed', '==', false)) : null),
@@ -44,56 +31,115 @@ const GoalWidget = ({ variant = 'default' }: GoalWidgetProps) => {
     );
     const { data: goals } = useCollection<Meta>(goalsQuery);
 
-    // Find the most relevant goal (e.g., one with 10k target or the first one)
+    // Find the most relevant goal
     const activeGoal = useMemo(() => {
         if (!goals || goals.length === 0) return null;
-        // Try to find a goal with 10k target first, otherwise take the first one
         return goals.find(g => g.targetValue === 10000) || goals[0];
     }, [goals]);
 
-    const metrics = useMemo(() => {
-        if (!vendas) return { revenue: 0 };
+    // Fetch Sales (Webhooks) - Only if needed
+    const shouldFetchWebhooks = activeGoal?.sourceType === 'webhooks' || (!activeGoal?.sourceType && !activeGoal?.title.includes('manual'));
+    const vendasQuery = useMemoFirebase(
+        () => {
+            if (!firestore || !orgId || !shouldFetchWebhooks) return null;
+            return query(
+                collection(firestore, 'organizations', orgId, 'vendas'),
+                where('created_at', '>=', Timestamp.fromDate(start)),
+                where('created_at', '<=', Timestamp.fromDate(end))
+            );
+        },
+        [firestore, orgId, shouldFetchWebhooks, start, end]
+    );
+    const { data: vendas, isLoading: isLoadingVendas } = useCollection(vendasQuery);
 
-        const revenue = vendas.reduce((acc: number, venda: any) => {
-            const lowerCaseStatus = venda.status?.toLowerCase() || '';
-            const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+    // Fetch Transactions (Operacoes) - Only if needed
+    const shouldFetchTransactions = activeGoal?.sourceType === 'transactions';
+    const opsQuery = useMemoFirebase(
+        () => {
+            if (!firestore || !orgId || !shouldFetchTransactions) return null;
+            return query(
+                collection(firestore, 'organizations', orgId, 'operacoesSocios'),
+                where('data', '>=', Timestamp.fromDate(start)),
+                where('data', '<=', Timestamp.fromDate(end))
+            );
+        },
+        [firestore, orgId, shouldFetchTransactions, start, end]
+    );
+    const { data: transactions } = useCollection<Operacao>(opsQuery);
 
-            // Filter by gateway if goal title specifies one
-            if (activeGoal) {
-                const title = activeGoal.title.toLowerCase();
-                const gateway = venda.gateway?.toLowerCase() || '';
+    const calculatedRevenue = useMemo(() => {
+        if (!activeGoal) return 0;
 
-                if (title.includes('paradise') && !gateway.includes('paradise')) return acc;
-                if (title.includes('buck') && !gateway.includes('buck')) return acc;
-                if (title.includes('gg') && !gateway.includes('gg')) return acc;
-            }
+        // Manual mode: return current value from DB (no calculation needed)
+        // If sourceType is undefined, fallback to legacy behavior (check title or manual)
+        // Legacy: previously it always fetched sales. Now we default to manual if not specified? 
+        // Actually the legacy code was fetching sales. Let's assume 'manual' is explicit.
+        // If undefined, we try to mimic old behavior: filter by title keywords.
 
-            if (isPaid) {
+        const type = activeGoal.sourceType;
+
+        if (type === 'manual') {
+            return activeGoal.currentValue;
+        }
+
+        if (type === 'transactions') {
+            if (!transactions) return 0;
+            return transactions.reduce((acc, op) => acc + (op.lucroLiquido || 0), 0);
+        }
+
+        // Webhooks (default legacy behavior or explicit)
+        if (type === 'webhooks' || !type) {
+            if (!vendas) return 0; // or activeGoal.currentValue to avoid flicker? 
+
+            return vendas.reduce((acc: number, venda: any) => {
+                const lowerCaseStatus = venda.status?.toLowerCase() || '';
+                const isPaid = lowerCaseStatus.includes('pago') || lowerCaseStatus.includes('paid') || lowerCaseStatus.includes('approved');
+
+                if (!isPaid) return acc;
+
+                // Legacy Title Filter (backwards compatibility)
+                if (!type) {
+                    const title = activeGoal.title.toLowerCase();
+                    const gateway = venda.gateway?.toLowerCase() || '';
+                    if (title.includes('paradise') && !gateway.includes('paradise')) return acc;
+                    if (title.includes('buck') && !gateway.includes('buck')) return acc;
+                    if (title.includes('gg') && !gateway.includes('gg')) return acc;
+                }
+
+                // Explicit Gateway Filter
+                if (type === 'webhooks' && activeGoal.webhookGateway && activeGoal.webhookGateway !== 'all') {
+                    const gateway = venda.gateway?.toLowerCase() || '';
+                    if (!gateway.includes(activeGoal.webhookGateway.toLowerCase())) return acc;
+                }
+
                 return acc + (venda.net_amount || venda.netAmount || venda.value || venda.total_amount || 0);
-            }
-            return acc;
-        }, 0);
+            }, 0);
+        }
 
-        return { revenue };
-    }, [vendas, activeGoal]);
+        return activeGoal.currentValue;
+    }, [activeGoal, transactions, vendas]);
 
     // Sync Goal with Revenue
     useEffect(() => {
-        if (!firestore || !activeGoal || metrics.revenue === 0) return;
+        if (!firestore || !activeGoal || !orgId) return;
 
-        // Only update if the difference is significant (to avoid loops with floating point)
-        if (Math.abs(activeGoal.currentValue - metrics.revenue) > 0.1) {
+        // Don't auto-update if manual
+        if (activeGoal.sourceType === 'manual') return;
+
+        // Only update if the difference is significant
+        if (Math.abs(activeGoal.currentValue - calculatedRevenue) > 0.1) {
             const goalRef = doc(firestore, 'organizations', orgId, 'metas', activeGoal.id);
-            updateDoc(goalRef, { currentValue: metrics.revenue });
+            updateDoc(goalRef, { currentValue: calculatedRevenue });
         }
-    }, [firestore, activeGoal, metrics.revenue]);
+    }, [firestore, activeGoal, calculatedRevenue, orgId]);
 
     const GOAL = activeGoal ? activeGoal.targetValue : 10000;
-    const currentRevenue = metrics.revenue;
+    // Use calculated revenue for display to feel "instant", even if DB update lags slightly
+    const currentRevenue = calculatedRevenue;
     const progress = Math.min((currentRevenue / GOAL) * 100, 100);
     const title = activeGoal ? activeGoal.title : 'Prêmios';
 
-    if (isLoadingVendas) return null;
+    if (isLoadingVendas && (activeGoal?.sourceType === 'webhooks' || !activeGoal?.sourceType)) return null;
 
     if (variant === 'header') {
         return (

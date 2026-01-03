@@ -68,11 +68,6 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
                 setPercBiel(biel.toString());
                 setPercSoares(soares.toString());
 
-                // Auto-fill cash reserve percentage if not already set
-                if (!existingOperation) {
-                    setCashReservePercentage(op.cashReservePercentage || 0);
-                }
-
                 // Auto-fill description if empty
                 if (!descricao) {
                     setDescricao(`${op.name} - ${format(new Date(), 'dd/MM')}`);
@@ -81,12 +76,13 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
         }
     }, [selectedOperationId, operations, existingOperation, descricao]);
 
+    // Auto-fill percentages happens in useEffect...
+
     useEffect(() => {
         const fat = parseFloat(faturamento.replace(',', '.')) || 0;
         const ads = parseFloat(gastoAnuncio.replace(',', '.')) || 0;
         const taxa = parseFloat(taxaGateway.replace(',', '.')) || 0;
 
-        // Use the calculator utility if an operation is selected
         const op = operations.find(o => o.id === selectedOperationId);
 
         if (op) {
@@ -96,13 +92,13 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
                 gatewayFee: taxa
             };
 
-            const result = calculateProfitDistribution(input, op, cashReservePercentage);
+            // Nova lógica: caixa é calculado internamente baseado nos parceiros da operação
+            const result = calculateProfitDistribution(input, op);
 
             setLucroLiquido(result.netProfit);
             setCashReserveValue(result.cashReserve);
 
-            // Map dynamic results back to fixed fields for compatibility
-            // Ideally we should migrate the database to store a 'partners' array instead of fixed columns
+            // Map results to legacy fields
             const cabralProfit = result.partnerProfits.find(p => p.name.toLowerCase().includes('cabral'));
             const bielProfit = result.partnerProfits.find(p => p.name.toLowerCase().includes('biel'));
             const soaresProfit = result.partnerProfits.find(p => p.name.toLowerCase().includes('soares'));
@@ -110,37 +106,29 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
             setValCabral(cabralProfit?.value || 0);
             setValBiel(bielProfit?.value || 0);
             setValSoares(soaresProfit?.value || 0);
-
-            // Total Cabral includes reimbursement if applicable
             setTotalCabral(cabralProfit?.total || 0);
 
         } else {
-            // Fallback to legacy calculation (manual percentages)
+            // Fallback manual (sem operação selecionada não tem cálculo de caixa automático)
+            const lucro = fat - ads - taxa;
+            setLucroLiquido(lucro);
+            setCashReserveValue(0);
+
             const pCabral = parseFloat(percCabral) || 0;
             const pBiel = parseFloat(percBiel) || 0;
             const pSoares = parseFloat(percSoares) || 0;
 
-            const lucro = fat - ads - taxa;
-            setLucroLiquido(lucro);
-
-            // Calculate cash reserve
-            const cashValue = lucro * (cashReservePercentage / 100);
-            setCashReserveValue(cashValue);
-
-            // Distributed profit after cash reserve
-            const distributedProfit = lucro - cashValue;
-
-            const vCabral = distributedProfit * (pCabral / 100);
-            const vBiel = distributedProfit * (pBiel / 100);
-            const vSoares = distributedProfit * (pSoares / 100);
+            const vCabral = lucro * (pCabral / 100);
+            const vBiel = lucro * (pBiel / 100);
+            const vSoares = lucro * (pSoares / 100);
 
             setValCabral(vCabral);
             setValBiel(vBiel);
             setValSoares(vSoares);
-            setTotalCabral(vCabral + ads); // Legacy assumption: Cabral pays ads
+            setTotalCabral(vCabral + ads);
         }
 
-    }, [faturamento, gastoAnuncio, taxaGateway, percCabral, percBiel, percSoares, selectedOperationId, operations, cashReservePercentage]);
+    }, [faturamento, gastoAnuncio, taxaGateway, percCabral, percBiel, percSoares, selectedOperationId, operations]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -160,7 +148,7 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
             valorBiel: valBiel,
             valorSoares: valSoares,
             totalCabral,
-            cashReservePercentage: cashReservePercentage > 0 ? cashReservePercentage : undefined,
+            // cashReservePercentage não é mais salvo no nível do lançamento globalmente
             cashReserveValue: cashReserveValue > 0 ? cashReserveValue : undefined,
         });
     };
@@ -170,232 +158,211 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
     };
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-6 p-6">
-            <div className="flex-1 space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6 p-6 h-full">
+            <div className="flex flex-col md:flex-row gap-6 flex-1 overflow-y-auto">
+                <div className="flex-1 space-y-4">
+                    <div className="space-y-2">
+                        <Label>Operação</Label>
+                        <Select value={selectedOperationId} onValueChange={setSelectedOperationId}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecione a operação..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {operations.map(op => (
+                                    <SelectItem key={op.id} value={op.id}>
+                                        {op.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
-                <div className="space-y-2">
-                    <Label>Operação</Label>
-                    <Select value={selectedOperationId} onValueChange={setSelectedOperationId}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Selecione a operação..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {operations.map(op => (
-                                <SelectItem key={op.id} value={op.id}>
-                                    {op.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                    <div className="space-y-2">
+                        <Label>Data da Operação</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !date && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {date ? format(date, "d 'de' MMMM 'de' yyyy", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={date}
+                                    onSelect={(d) => {
+                                        if (d) {
+                                            setDate(d);
+                                            // Close popover logic would go here if controlled
+                                        }
+                                    }}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
 
-                <div className="space-y-2">
-                    <Label>Data da Operação</Label>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant={"outline"}
-                                className={cn(
-                                    "w-full justify-start text-left font-normal",
-                                    !date && "text-muted-foreground"
-                                )}
-                            >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {date ? format(date, "d 'de' MMMM 'de' yyyy", { locale: ptBR }) : <span>Selecione uma data</span>}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                            <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={(d) => d && setDate(d)}
-                                initialFocus
+                    <div className="space-y-2">
+                        <Label htmlFor="descricao">Descrição</Label>
+                        <Input
+                            id="descricao"
+                            value={descricao}
+                            onChange={(e) => setDescricao(e.target.value)}
+                            placeholder="Ex: Venda 21/11"
+                            required
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="faturamento">Faturamento (R$)</Label>
+                            <Input
+                                id="faturamento"
+                                type="number"
+                                step="0.01"
+                                value={faturamento}
+                                onChange={(e) => setFaturamento(e.target.value)}
+                                placeholder="0,00"
+                                required
                             />
-                        </PopoverContent>
-                    </Popover>
-                </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="gastoAnuncio">Gasto Anúncios (R$)</Label>
+                            <Input
+                                id="gastoAnuncio"
+                                type="number"
+                                step="0.01"
+                                value={gastoAnuncio}
+                                onChange={(e) => setGastoAnuncio(e.target.value)}
+                                placeholder="0,00"
+                                required
+                            />
+                        </div>
+                    </div>
 
-                <div className="space-y-2">
-                    <Label htmlFor="descricao">Descrição</Label>
-                    <Input
-                        id="descricao"
-                        value={descricao}
-                        onChange={(e) => setDescricao(e.target.value)}
-                        placeholder="Ex: Venda 21/11"
-                        required
-                    />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label htmlFor="faturamento">Faturamento (R$)</Label>
+                        <Label htmlFor="taxaGateway">Taxa de Saque (R$)</Label>
                         <Input
-                            id="faturamento"
+                            id="taxaGateway"
                             type="number"
                             step="0.01"
-                            value={faturamento}
-                            onChange={(e) => setFaturamento(e.target.value)}
-                            placeholder="0,00"
-                            required
+                            value={taxaGateway}
+                            onChange={(e) => setTaxaGateway(e.target.value)}
+                            placeholder="4,00"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="gastoAnuncio">Gasto Anúncios (R$)</Label>
-                        <Input
-                            id="gastoAnuncio"
-                            type="number"
-                            step="0.01"
-                            value={gastoAnuncio}
-                            onChange={(e) => setGastoAnuncio(e.target.value)}
-                            placeholder="0,00"
-                            required
-                        />
-                    </div>
-                </div>
 
-                <div className="space-y-2">
-                    <Label htmlFor="taxaGateway">Taxa de Saque (R$)</Label>
-                    <Input
-                        id="taxaGateway"
-                        type="number"
-                        step="0.01"
-                        value={taxaGateway}
-                        onChange={(e) => setTaxaGateway(e.target.value)}
-                        placeholder="4,00"
-                    />
-                </div>
+                    <div className="pt-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            className="p-0 h-auto text-sm text-muted-foreground hover:text-white flex items-center gap-1"
+                            onClick={() => setShowPercentages(!showPercentages)}
+                        >
+                            {showPercentages ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            Ver Percentuais {selectedOperationId && '(Automático)'}
+                        </Button>
 
-                <div className="space-y-2">
-                    <Label htmlFor="cashReserve">Caixa da Empresa (%)</Label>
-                    <Input
-                        id="cashReserve"
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="100"
-                        value={cashReservePercentage}
-                        onChange={(e) => setCashReservePercentage(parseFloat(e.target.value) || 0)}
-                        placeholder="0"
-                    />
-                    {selectedOperationId && (
-                        <p className="text-xs text-muted-foreground">
-                            {cashReservePercentage > 0 ?
-                                `${cashReservePercentage}% do lucro vai para o caixa da empresa` :
-                                'Sem reserva de caixa para este lançamento'
-                            }
-                        </p>
-                    )}
-                </div>
-
-                <div className="pt-2">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        className="p-0 h-auto text-sm text-muted-foreground hover:text-white flex items-center gap-1"
-                        onClick={() => setShowPercentages(!showPercentages)}
-                    >
-                        {showPercentages ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        Ver Percentuais {selectedOperationId && '(Automático)'}
-                    </Button>
-
-                    {showPercentages && (
-                        <div className="grid grid-cols-3 gap-2 mt-3 p-3 bg-neutral-900/50 rounded-lg border border-neutral-800">
-                            <div className="space-y-1">
-                                <Label className="text-xs">Cabral %</Label>
-                                <Input
-                                    type="number"
-                                    value={percCabral}
-                                    onChange={e => setPercCabral(e.target.value)}
-                                    className="h-8"
-                                    disabled={!!selectedOperationId}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Biel %</Label>
-                                <Input
-                                    type="number"
-                                    value={percBiel}
-                                    onChange={e => setPercBiel(e.target.value)}
-                                    className="h-8"
-                                    disabled={!!selectedOperationId}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Soares %</Label>
-                                <Input
-                                    type="number"
-                                    value={percSoares}
-                                    onChange={e => setPercSoares(e.target.value)}
-                                    className="h-8"
-                                    disabled={!!selectedOperationId}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="w-full md:w-[300px]">
-                <Card className="p-4 h-full bg-neutral-900 border-neutral-800 flex flex-col justify-between">
-                    <div>
-                        <h4 className="font-semibold mb-4 flex items-center gap-2">
-                            <Calculator className="w-4 h-4" />
-                            Divisão de Lucro
-                        </h4>
-
-                        <div className={`p-3 rounded-lg mb-4 ${lucroLiquido >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                            <div className="text-xs opacity-80 mb-1">Lucro Líquido:</div>
-                            <div className="text-xl font-bold">{formatCurrency(lucroLiquido)}</div>
-                        </div>
-
-                        {lucroLiquido < 0 && (
-                            <div className="text-xs text-red-400 mb-4 flex items-center gap-1">
-                                ⚠️ Atenção: lucro líquido negativo.
-                            </div>
-                        )}
-
-                        {cashReserveValue > 0 && (
-                            <div className="p-3 rounded-lg mb-4 bg-blue-500/10 border border-blue-500/30">
-                                <div className="text-xs text-blue-400 opacity-80 mb-1">Caixa da Empresa:</div>
-                                <div className="text-lg font-bold text-blue-400">{formatCurrency(cashReserveValue)}</div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                    ({cashReservePercentage}% do lucro líquido)
+                        {showPercentages && (
+                            <div className="grid grid-cols-3 gap-2 mt-3 p-3 bg-neutral-900/50 rounded-lg border border-neutral-800">
+                                <div className="space-y-1">
+                                    <Label className="text-xs">Cabral %</Label>
+                                    <Input
+                                        type="number"
+                                        value={percCabral}
+                                        onChange={e => setPercCabral(e.target.value)}
+                                        className="h-8"
+                                        disabled={!!selectedOperationId}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs">Biel %</Label>
+                                    <Input
+                                        type="number"
+                                        value={percBiel}
+                                        onChange={e => setPercBiel(e.target.value)}
+                                        className="h-8"
+                                        disabled={!!selectedOperationId}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs">Soares %</Label>
+                                    <Input
+                                        type="number"
+                                        value={percSoares}
+                                        onChange={e => setPercSoares(e.target.value)}
+                                        className="h-8"
+                                        disabled={!!selectedOperationId}
+                                    />
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
 
-                        <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Cabral:</span>
-                                <span>{formatCurrency(valCabral)}</span>
+                <div className="w-full md:w-[300px] shrink-0">
+                    <Card className="p-4 bg-neutral-900 border-neutral-800 flex flex-col gap-4 sticky top-0">
+                        <div>
+                            <h4 className="font-semibold mb-4 flex items-center gap-2">
+                                <Calculator className="w-4 h-4" />
+                                Divisão de Lucro
+                            </h4>
+
+                            <div className={`p-3 rounded-lg mb-4 ${lucroLiquido >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                <div className="text-xs opacity-80 mb-1">Lucro Líquido:</div>
+                                <div className="text-xl font-bold">{formatCurrency(lucroLiquido)}</div>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Biel:</span>
-                                <span>{formatCurrency(valBiel)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Soares:</span>
-                                <span>{formatCurrency(valSoares)}</span>
+
+                            {lucroLiquido < 0 && (
+                                <div className="text-xs text-red-400 mb-4 flex items-center gap-1">
+                                    ⚠️ Atenção: lucro líquido negativo.
+                                </div>
+                            )}
+
+                            {cashReserveValue > 0 && (
+                                <div className="p-3 rounded-lg mb-4 bg-blue-500/10 border border-blue-500/30">
+                                    <div className="text-xs text-blue-400 opacity-80 mb-1">Caixa da Empresa:</div>
+                                    <div className="text-lg font-bold text-blue-400">{formatCurrency(cashReserveValue)}</div>
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                        (Acumulado dos sócios)
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Cabral:</span>
+                                    <span>{formatCurrency(valCabral)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Biel:</span>
+                                    <span>{formatCurrency(valBiel)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Soares:</span>
+                                    <span>{formatCurrency(valSoares)}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="mt-6 pt-4 border-t border-neutral-800">
-                        <div className="text-sm text-muted-foreground mb-1">Total a Receber (Cabral):</div>
-                        <div className="text-2xl font-bold text-blue-400">{formatCurrency(totalCabral)}</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                            (Lucro + Reembolso Anúncios)
+                        <div className="pt-4 border-t border-neutral-800">
+                            <div className="text-sm text-muted-foreground mb-1">Total a Receber (Cabral):</div>
+                            <div className="text-2xl font-bold text-blue-400">{formatCurrency(totalCabral)}</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                                (Lucro + Reembolso Anúncios)
+                            </div>
                         </div>
-                    </div>
-                </Card>
+                    </Card>
+                </div>
             </div>
 
-            <div className="md:hidden flex gap-2 pt-4 border-t border-neutral-800">
-                <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-                <Button type="submit" className="flex-1">Salvar Lançamento</Button>
-            </div>
-
-            <div className="hidden md:flex absolute bottom-6 right-6 gap-2">
+            <div className="flex justify-end gap-2 pt-4 border-t border-neutral-800 mt-auto">
                 <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
                 <Button type="submit">Salvar Lançamento</Button>
             </div>

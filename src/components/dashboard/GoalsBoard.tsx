@@ -37,6 +37,8 @@ export interface Meta {
   unit?: string;
   completed: boolean;
   proofImageUrls?: string[];
+  sourceType?: 'manual' | 'webhooks' | 'transactions';
+  webhookGateway?: string; // 'all', 'buckpay', 'frendz', etc.
 }
 
 const GoalsBoard = () => {

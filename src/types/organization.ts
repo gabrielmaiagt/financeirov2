@@ -32,6 +32,7 @@ export interface Organization {
 export interface Partner {
     name: string;
     percentage: number; // 0-100
+    cashReservePercentage?: number; // 0-100 contribution to company cash from this partner's share
     userId?: string; // Optional link to auth user
 }
 
@@ -50,8 +51,7 @@ export interface Operation {
     adPayer?: string; // Partner name who pays for ads (if applicable)
     adCostMode: AdCostMode; // How to handle ad spend
 
-    // Company cash reserve configuration
-    cashReservePercentage?: number; // 0-100, percentage of net profit to allocate to company cash before partner distribution
+    // Optional fields for future SaaS features
 
     // Optional fields for future SaaS features
     currency?: string; // e.g., "BRL", "USD"

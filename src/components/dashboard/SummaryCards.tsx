@@ -44,6 +44,7 @@ const SummaryCards = ({ operacoes }: { operacoes: Operacao[] }) => {
         acc.totalCabral += op.totalCabral || 0;
         acc.valorBiel += op.valorBiel || 0;
         acc.valorSoares += op.valorSoares || 0;
+        acc.cashReserve += op.cashReserveValue || 0;
         return acc;
       },
       {
@@ -53,6 +54,7 @@ const SummaryCards = ({ operacoes }: { operacoes: Operacao[] }) => {
         totalCabral: 0,
         valorBiel: 0,
         valorSoares: 0,
+        cashReserve: 0,
       }
     );
   }, [operacoes]);
@@ -100,6 +102,13 @@ const SummaryCards = ({ operacoes }: { operacoes: Operacao[] }) => {
         rawValue={totals.valorSoares}
         icon={User}
         colorClass="stat-card-green"
+      />
+      <MetricCard
+        title="Caixa da Empresa"
+        value={formatCurrency(totals.cashReserve)}
+        rawValue={totals.cashReserve}
+        icon={PiggyBank}
+        colorClass="stat-card-indigo"
       />
     </div>
   );

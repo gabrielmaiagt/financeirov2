@@ -26,78 +26,76 @@ export interface ProfitCalculationResult {
  */
 export function calculateProfitDistribution(
     input: ProfitCalculationInput,
-    operation: Operation,
-    cashReserveOverride?: number // Allow override of operation's default cash reserve percentage
+    operation: Operation
 ): ProfitCalculationResult {
     const { netRevenue, adCost, gatewayFee } = input;
 
-    // Net profit = Revenue - Ad Cost - Gateway Fee
+    // Lucro Líquido da Operação = Faturamento - Anúncios - Taxas
     const netProfit = netRevenue - adCost - gatewayFee;
 
-    // Calculate company cash reserve (from operation or override)
-    const cashReservePercentage = cashReserveOverride ?? operation.cashReservePercentage ?? 0;
-    const cashReserve = netProfit * (cashReservePercentage / 100);
-
-    // Profit to distribute among partners (after cash reserve)
-    const distributedProfit = netProfit - cashReserve;
-
+    let totalCashReserve = 0;
     const partnerProfits: PartnerProfit[] = [];
+
+    // Helper para processar cada parceiro
+    const processPartnerShare = (partner: any, grossProfitShare: number, adReimbursement: number = 0) => {
+        // Calcula contribuição para o caixa baseada na PORCENTAGEM DO SÓCIO
+        const cashContributionPct = partner.cashReservePercentage || 0;
+        const cashContribution = grossProfitShare * (cashContributionPct / 100);
+
+        // Lucro final do sócio descontando o caixa
+        const netShare = grossProfitShare - cashContribution;
+
+        // Acumula no total do caixa da empresa
+        totalCashReserve += cashContribution;
+
+        partnerProfits.push({
+            name: partner.name,
+            percentage: partner.percentage,
+            value: netShare, // Valor final que o sócio recebe (lucro)
+            adReimbursement,
+            total: netShare + adReimbursement,
+        });
+    };
 
     switch (operation.adCostMode) {
         case 'reimburse_payer': {
-            // Mode 1: Reimburse the payer first, then distribute net profit
-            // Example: Cabral paid R$1000 in ads
-            // 1. Return R$1000 to Cabral
-            // 2. Distribute remaining profit by percentages (after cash reserve)
+            // Modo 1: Primeiro reembolsa quem pagou, depois divide o lucro
+            // O lucro a ser dividido é o netProfit (que já descontou o adCost do total)
+            // Mas matematicamente aqui: netProfit é o que sobrou.
 
             operation.partners.forEach((partner) => {
-                const profitShare = distributedProfit * (partner.percentage / 100);
+                const grossProfitShare = netProfit * (partner.percentage / 100);
                 const isAdPayer = partner.name === operation.adPayer;
                 const adReimbursement = isAdPayer ? adCost : 0;
 
-                partnerProfits.push({
-                    name: partner.name,
-                    percentage: partner.percentage,
-                    value: profitShare,
-                    adReimbursement,
-                    total: profitShare + adReimbursement,
-                });
+                processPartnerShare(partner, grossProfitShare, adReimbursement);
             });
             break;
         }
 
         case 'split_among_partners': {
-            // Mode 2: Ad cost is already deducted from net profit, just distribute (after cash reserve)
+            // Modo 2: O custo já foi descontado do lucro, divide o restante
             operation.partners.forEach((partner) => {
-                const profitShare = distributedProfit * (partner.percentage / 100);
-
-                partnerProfits.push({
-                    name: partner.name,
-                    percentage: partner.percentage,
-                    value: profitShare,
-                    total: profitShare,
-                });
+                const grossProfitShare = netProfit * (partner.percentage / 100);
+                processPartnerShare(partner, grossProfitShare, 0);
             });
             break;
         }
 
         case 'solo': {
-            // Mode 3: Single owner gets everything (after cash reserve)
+            // Modo 3: Dono único
             const owner = operation.partners[0];
-
-            partnerProfits.push({
-                name: owner.name,
-                percentage: 100,
-                value: distributedProfit,
-                total: distributedProfit,
-            });
+            processPartnerShare(owner, netProfit, 0);
             break;
         }
     }
 
+    // Lucro distribuído total é o lucro líquido menos o que ficou no caixa
+    const distributedProfit = netProfit - totalCashReserve;
+
     return {
         netProfit,
-        cashReserve,
+        cashReserve: totalCashReserve,
         distributedProfit,
         partnerProfits,
     };

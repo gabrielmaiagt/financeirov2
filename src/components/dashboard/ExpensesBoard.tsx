@@ -185,9 +185,11 @@ const ExpensesBoard = () => {
     setIsDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setEditingExpense(null);
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingExpense(null);
+    }
   };
 
   const clearFilters = () => {
@@ -310,7 +312,7 @@ const ExpensesBoard = () => {
               <Button variant="outline" size="sm" onClick={exportToCSV} disabled={!filteredExpenses.length}>
                 <Download className="mr-2 h-4 w-4" /> Exportar
               </Button>
-              <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+              <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <PlusCircle className="mr-2 h-4 w-4" /> Nova Despesa
@@ -325,7 +327,7 @@ const ExpensesBoard = () => {
                   </DialogHeader>
                   <ExpenseForm
                     onSave={handleSaveExpense as any}
-                    onClose={handleCloseDialog}
+                    onClose={() => handleOpenChange(false)}
                     existingExpense={editingExpense}
                   />
                 </DialogContent>
