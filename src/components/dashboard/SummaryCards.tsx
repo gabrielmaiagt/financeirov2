@@ -34,7 +34,7 @@ const MetricCard = ({ title, value, icon: Icon, colorClass, rawValue }: { title:
 );
 
 
-const SummaryCards = ({ operacoes }: { operacoes: Operacao[] }) => {
+const SummaryCards = ({ operacoes, totalCashReserve }: { operacoes: Operacao[], totalCashReserve?: number }) => {
   const totals = useMemo(() => {
     return operacoes.reduce(
       (acc, op) => {
@@ -104,9 +104,9 @@ const SummaryCards = ({ operacoes }: { operacoes: Operacao[] }) => {
         colorClass="stat-card-green"
       />
       <MetricCard
-        title="Caixa da Empresa"
-        value={formatCurrency(totals.cashReserve)}
-        rawValue={totals.cashReserve}
+        title="Caixa da Empresa (Acumulado)"
+        value={formatCurrency(totalCashReserve ?? totals.cashReserve)}
+        rawValue={totalCashReserve ?? totals.cashReserve}
         icon={PiggyBank}
         colorClass="stat-card-indigo"
       />

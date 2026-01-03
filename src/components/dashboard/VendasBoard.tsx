@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect, Fragment } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, Timestamp, writeBatch, getDocs, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, writeBatch, getDocs, doc, addDoc, deleteDoc, updateDoc, where, limit, QueryConstraint } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { LocalNotifications } from '@capacitor/local-notifications';
@@ -222,10 +222,22 @@ const VendasBoard = () => {
 
   // Query atualizada para ordenar por created_at (novo padrão) ou receivedAt (legado)
   // Como não dá para ordenar por dois campos diferentes facilmente sem índice composto, vamos ordenar no cliente se necessário ou assumir created_at
-  const vendasQuery = useMemoFirebase(
-    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'vendas'), orderBy('created_at', 'desc')) : null),
-    [firestore, orgId]
-  );
+  const vendasQuery = useMemoFirebase(() => {
+    if (!firestore || !orgId) return null;
+    const colRef = collection(firestore, 'organizations', orgId, 'vendas');
+
+    const constraints: QueryConstraint[] = [orderBy('created_at', 'desc')];
+
+    if (dateRange?.from) {
+      constraints.push(where('created_at', '>=', Timestamp.fromDate(dateRange.from)));
+      const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+      constraints.push(where('created_at', '<=', Timestamp.fromDate(end)));
+    } else {
+      constraints.push(limit(50));
+    }
+
+    return query(colRef, ...constraints);
+  }, [firestore, orgId, dateRange]);
 
   const { data: vendasRaw, isLoading } = useCollection<any>(vendasQuery);
 

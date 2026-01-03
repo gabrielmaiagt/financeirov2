@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, query, orderBy, Timestamp, where } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, where, limit, QueryConstraint, getAggregateFromServer, sum } from 'firebase/firestore';
 import { useFirestore, useCollection } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { doc } from 'firebase/firestore';
 import { DateRange as DayPickerDateRange } from 'react-day-picker';
-import { startOfMonth, endOfDay } from 'date-fns';
+import { startOfMonth, endOfDay, startOfDay } from 'date-fns';
 
 import Header from '@/components/dashboard/Header';
 import SummaryCards from '@/components/dashboard/SummaryCards';
@@ -73,10 +73,29 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function Home() {
+  const firestore = useFirestore();
+  const { orgId } = useOrganization();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState<DayPickerDateRange | undefined>(undefined);
 
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [totalCashReserve, setTotalCashReserve] = useState<number>(0);
+
+  useEffect(() => {
+    async function fetchTotalCash() {
+      if (!firestore || !orgId) return;
+      try {
+        const coll = collection(firestore, 'organizations', orgId, 'operacoesSocios');
+        const snapshot = await getAggregateFromServer(coll, {
+          total: sum('cashReserveValue')
+        });
+        setTotalCashReserve(snapshot.data().total || 0);
+      } catch (error) {
+        console.error("Error fetching cash aggregate:", error);
+      }
+    }
+    fetchTotalCash();
+  }, [firestore, orgId]);
 
   useEffect(() => {
     // This effect runs only on the client, after hydration
@@ -112,45 +131,50 @@ export default function Home() {
   };
 
 
-  const firestore = useFirestore();
-  const { orgId } = useOrganization();
+
 
   const operacoesRef = useMemoFirebase(
     () => (firestore && orgId ? collection(firestore, 'organizations', orgId, 'operacoesSocios') : null),
     [firestore, orgId]
   );
 
+  // ... (dentro do componente)
+
   const allOperacoesQuery = useMemoFirebase(() => {
     if (!operacoesRef) return null;
-    return query(operacoesRef, orderBy('data', 'desc'));
-  }, [operacoesRef]);
+
+    // Se não tiver dateRange definido (inicialização), não busca nada ou busca um limite seguro
+    // O useEffect vai setar o dateRange logo em seguida
+    if (!dateRange?.from) {
+      return query(operacoesRef, orderBy('data', 'desc'), limit(20));
+    }
+
+    const constraints: QueryConstraint[] = [orderBy('data', 'desc')];
+
+    if (dateRange.from) {
+      constraints.push(where('data', '>=', Timestamp.fromDate(startOfDay(dateRange.from))));
+      const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+      constraints.push(where('data', '<=', Timestamp.fromDate(end)));
+    }
+
+    return query(operacoesRef, ...constraints);
+  }, [operacoesRef, dateRange]);
 
   const { data: allOperacoes, isLoading: isLoadingAllOperacoes } = useCollection<Operacao>(allOperacoesQuery);
 
   const filteredOperacoes = useMemo(() => {
+    // A filtragem de data já foi feita no servidor.
+    // Mantemos apenas a busca textual local
     if (!allOperacoes) return [];
-    let filteredByDate = allOperacoes;
-
-    if (dateRange?.from) {
-      const startDate = dateRange.from;
-      const endDate = dateRange.to || dateRange.from;
-      filteredByDate = allOperacoes.filter(op => {
-        const opDate = op.data.toDate();
-        // Adjust start time to beginning of the day and end time to end of the day
-        const start = new Date(startDate.setHours(0, 0, 0, 0));
-        const end = new Date(endDate.setHours(23, 59, 59, 999));
-        return opDate >= start && opDate <= end;
-      });
-    }
 
     if (searchTerm) {
-      return filteredByDate.filter(op =>
+      return allOperacoes.filter(op =>
         op.descricao.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    return filteredByDate;
-  }, [allOperacoes, dateRange, searchTerm]);
+    return allOperacoes;
+  }, [allOperacoes, searchTerm]);
 
   const handleDeleteOperation = (id: string) => {
     if (!firestore || !orgId) return;
@@ -189,7 +213,7 @@ export default function Home() {
               <DateRangePicker date={dateRange} onDateChange={setDateRange} className="w-full md:w-[300px]" />
             </div>
             <div className="flex flex-col gap-4 md:gap-8">
-              <SummaryCards operacoes={filteredOperacoes || []} />
+              <SummaryCards operacoes={filteredOperacoes || []} totalCashReserve={totalCashReserve} />
               <OperationsTable
                 operacoes={filteredOperacoes || []}
                 isLoading={isLoadingAllOperacoes}

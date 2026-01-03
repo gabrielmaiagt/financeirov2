@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, Timestamp, doc } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, doc, where, limit, QueryConstraint } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,10 +74,23 @@ const ExpensesBoard = () => {
   const [sortBy, setSortBy] = useState<'data' | 'valor' | 'categoria'>('data');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const expensesQuery = useMemoFirebase(
-    () => (firestore && orgId ? query(collection(firestore, 'organizations', orgId, 'despesas'), orderBy('data', 'desc')) : null),
-    [firestore, orgId]
-  );
+  const expensesQuery = useMemoFirebase(() => {
+    if (!firestore || !orgId) return null;
+    const colRef = collection(firestore, 'organizations', orgId, 'despesas');
+
+    const constraints: QueryConstraint[] = [orderBy('data', 'desc')];
+
+    if (dateRange?.from) {
+      constraints.push(where('data', '>=', Timestamp.fromDate(dateRange.from)));
+      // dateRange.to pode ser undefined se o usuário selecionar só start
+      const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+      constraints.push(where('data', '<=', Timestamp.fromDate(end)));
+    } else {
+      constraints.push(limit(50));
+    }
+
+    return query(colRef, ...constraints);
+  }, [firestore, orgId, dateRange]);
 
   const { data: allExpenses, isLoading } = useCollection<Despesa>(expensesQuery);
 
