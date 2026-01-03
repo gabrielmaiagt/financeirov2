@@ -27,7 +27,11 @@ interface OperationFormProps {
 
 export function OperationForm({ onSave, onClose, existingOperation }: OperationFormProps) {
     const { operations } = useOperation();
-    const [date, setDate] = useState<Date>(existingOperation ? existingOperation.data.toDate() : new Date());
+    const [dates, setDates] = useState<Date[] | undefined>(
+        existingOperation
+            ? [existingOperation.data.toDate(), ...(existingOperation.datasAdicionais?.map(t => t.toDate()) || [])].filter((d, i, self) => self.findIndex(t => t.getTime() === d.getTime()) === i)
+            : [new Date()]
+    );
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [descricao, setDescricao] = useState(existingOperation?.descricao || '');
     const [faturamento, setFaturamento] = useState(existingOperation?.faturamentoLiquido?.toString() || '');
@@ -134,9 +138,19 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (!dates || dates.length === 0) {
+            alert("Selecione pelo menos uma data.");
+            return;
+        }
+
+        // Sort dates to determine main date (last one)
+        const sortedDates = [...dates].sort((a, b) => a.getTime() - b.getTime());
+        const mainDate = sortedDates[sortedDates.length - 1];
+
         onSave({
             operationId: selectedOperationId,
-            data: Timestamp.fromDate(date),
+            data: Timestamp.fromDate(mainDate),
+            datasAdicionais: sortedDates.map(d => Timestamp.fromDate(d)),
             descricao,
             faturamentoLiquido: parseFloat(faturamento.replace(',', '.')) || 0,
             gastoAnuncio: parseFloat(gastoAnuncio.replace(',', '.')) || 0,
@@ -186,25 +200,28 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
                                     variant={"outline"}
                                     className={cn(
                                         "w-full justify-start text-left font-normal",
-                                        !date && "text-muted-foreground"
+                                        (!dates || dates.length === 0) && "text-muted-foreground"
                                     )}
                                 >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {date ? format(date, "d 'de' MMMM 'de' yyyy", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                    {dates && dates.length > 0 ? (
+                                        dates.length > 1 ? (
+                                            `${dates.length} datas selecionadas`
+                                        ) : (
+                                            format(dates[0], "d 'de' MMMM 'de' yyyy", { locale: ptBR })
+                                        )
+                                    ) : (
+                                        <span>Selecione uma ou mais datas</span>
+                                    )}
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0">
                                 <Calendar
-                                    mode="single"
-                                    selected={date}
-                                    onSelect={(d) => {
-                                        if (d) {
-                                            setDate(d);
-                                            setIsCalendarOpen(false);
-                                        }
-                                    }}
+                                    mode="multiple"
+                                    selected={dates}
+                                    onSelect={setDates}
                                     initialFocus
-                                    required
+                                // required removed as it behaves differently in multiple mode
                                 />
                             </PopoverContent>
                         </Popover>

@@ -21,6 +21,8 @@ const formSchema = z.object({
   descricao: z.string().min(1, 'A descrição é obrigatória.'),
   valor: z.number({ invalid_type_error: 'Valor inválido' }).min(0.01, 'O valor deve ser maior que zero.'),
   categoria: z.string().min(1, 'A categoria é obrigatória.'),
+  paidBy: z.enum(['company', 'partner']).default('company'),
+  payerName: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -39,6 +41,8 @@ const ExpenseForm = ({ onSave, onClose, existingExpense }: ExpenseFormProps) => 
       descricao: existingExpense?.descricao || '',
       valor: existingExpense?.valor || 0,
       categoria: existingExpense?.categoria || undefined,
+      paidBy: (existingExpense as any)?.paidBy || 'company',
+      payerName: (existingExpense as any)?.payerName || '',
     },
   });
 
@@ -46,6 +50,7 @@ const ExpenseForm = ({ onSave, onClose, existingExpense }: ExpenseFormProps) => 
     onSave({
       ...data,
       data: Timestamp.fromDate(data.data),
+      reimbursementStatus: data.paidBy === 'company' ? 'none' : 'pending',
     } as any);
     reset();
     onClose();
@@ -123,6 +128,53 @@ const ExpenseForm = ({ onSave, onClose, existingExpense }: ExpenseFormProps) => 
                 )}
               />
               {errors.categoria && <p className="text-sm text-red-500">{errors.categoria.message}</p>}
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-2 border-t border-neutral-800">
+            <Label>Origem do Pagamento</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="paidBy" className="text-xs text-muted-foreground">Quem pagou?</Label>
+                <Controller
+                  name="paidBy"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="company">Caixa da Empresa</SelectItem>
+                        <SelectItem value="partner">Sócio (Reembolso)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <Controller
+                name="paidBy"
+                control={control}
+                render={({ field }) => field.value === 'partner' ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="payerName" className="text-xs text-muted-foreground">Nome do Sócio</Label>
+                    <Controller
+                      name="payerName"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Cabral">Cabral</SelectItem>
+                            <SelectItem value="Biel">Biel</SelectItem>
+                            <SelectItem value="Soares">Soares</SelectItem>
+                            <SelectItem value="Outro">Outro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                ) : <></>}
+              />
             </div>
           </div>
         </div>

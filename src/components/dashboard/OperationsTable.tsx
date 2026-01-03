@@ -248,7 +248,15 @@ const OperationsTable = ({
               ) : (
                 operacoes.map((op) => (
                   <TableRow key={op.id} className="table-row-animate border-neutral-800">
-                    <TableCell>{op.data?.toDate ? format(op.data.toDate(), 'dd/MM/yy') : 'N/A'}</TableCell>
+                    <TableCell>
+                      {op.datasAdicionais && op.datasAdicionais.length > 1 ? (
+                        <div className="cursor-help underline decoration-dotted" title={op.datasAdicionais.map(d => format(d.toDate(), 'dd/MM/yy')).join(', ')}>
+                          {op.datasAdicionais.length} datas
+                        </div>
+                      ) : (
+                        op.data?.toDate ? format(op.data.toDate(), 'dd/MM/yy') : 'N/A'
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium max-w-[200px] truncate">{getCellContent(op.descricao)}</TableCell>
                     <TableCell className="text-right sensitive-data">{formatCurrency(op.faturamentoLiquido)}</TableCell>
                     <TableCell className="text-right sensitive-data">{formatCurrency(op.gastoAnuncio)}</TableCell>

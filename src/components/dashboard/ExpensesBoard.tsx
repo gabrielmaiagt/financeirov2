@@ -37,6 +37,10 @@ export interface Despesa {
   data: Timestamp;
   categoria: string;
   recorrente?: boolean;
+  paidBy?: 'company' | 'partner'; // Quem pagou originalmente
+  payerName?: string; // Nome do sócio se paidBy === 'partner'
+  reimbursementStatus?: 'pending' | 'paid' | 'none'; // Status do reembolso
+  paidAt?: Timestamp; // Data do pagamento/reembolso efetivo
 }
 
 const formatCurrency = (value: number) => {

@@ -61,6 +61,7 @@ export interface Operacao {
   totalCabral: number;
   cashReservePercentage?: number; // Can override operation default
   cashReserveValue?: number; // Calculated value for company cash
+  datasAdicionais?: Timestamp[]; // Para lançamentos com múltiplas datas
 }
 
 interface BeforeInstallPromptEvent extends Event {
