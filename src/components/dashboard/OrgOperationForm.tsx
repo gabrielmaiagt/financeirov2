@@ -30,6 +30,7 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
   const [adCostMode, setAdCostMode] = useState<AdCostMode>(operation?.adCostMode || 'solo');
   const [adPayer, setAdPayer] = useState(operation?.adPayer || '');
   const [active, setActive] = useState(operation?.active ?? true);
+  const [cashReservePercentage, setCashReservePercentage] = useState(operation?.cashReservePercentage || 0);
 
   const totalPercentage = partners.reduce((sum, p) => sum + (p.percentage || 0), 0);
 
@@ -64,6 +65,7 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
       partners,
       adCostMode,
       adPayer: adCostMode === 'reimburse_payer' ? adPayer : undefined,
+      cashReservePercentage: cashReservePercentage > 0 ? cashReservePercentage : undefined,
       active,
       updatedAt: serverTimestamp(),
     };
@@ -197,6 +199,23 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
           </Select>
         </div>
       )}
+
+      <div className="space-y-2">
+        <Label htmlFor="cashReservePercentage">Caixa da Empresa (%)</Label>
+        <Input
+          id="cashReservePercentage"
+          type="number"
+          min="0"
+          max="100"
+          step="0.1"
+          value={cashReservePercentage}
+          onChange={(e) => setCashReservePercentage(parseFloat(e.target.value) || 0)}
+          placeholder="0"
+        />
+        <p className="text-xs text-muted-foreground">
+          Porcentagem do lucro líquido que será destinada ao caixa da empresa antes da distribuição entre os sócios.
+        </p>
+      </div>
 
       <div className="flex items-center space-x-2">
         <Switch id="active" checked={active} onCheckedChange={setActive} />

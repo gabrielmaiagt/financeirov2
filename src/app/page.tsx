@@ -59,6 +59,8 @@ export interface Operacao {
   valorBiel: number;
   valorSoares: number;
   totalCabral: number;
+  cashReservePercentage?: number; // Can override operation default
+  cashReserveValue?: number; // Calculated value for company cash
 }
 
 interface BeforeInstallPromptEvent extends Event {

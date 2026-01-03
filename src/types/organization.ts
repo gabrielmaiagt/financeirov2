@@ -50,6 +50,9 @@ export interface Operation {
     adPayer?: string; // Partner name who pays for ads (if applicable)
     adCostMode: AdCostMode; // How to handle ad spend
 
+    // Company cash reserve configuration
+    cashReservePercentage?: number; // 0-100, percentage of net profit to allocate to company cash before partner distribution
+
     // Optional fields for future SaaS features
     currency?: string; // e.g., "BRL", "USD"
     timezone?: string; // e.g., "America/Sao_Paulo"

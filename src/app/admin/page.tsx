@@ -13,6 +13,7 @@ import { UserManagement } from '@/components/admin/UserManagement';
 import WebhookRequestViewer from '@/components/admin/WebhookRequestViewer';
 import WebhookDocumentation from '@/components/admin/WebhookDocumentation';
 import WebhookLinksCard from '@/components/admin/WebhookLinksCard';
+import WebhookDebugger from '@/components/admin/WebhookDebugger';
 import NotificationSettingsCard from '@/components/admin/NotificationSettingsCard';
 import TabSettingsCard from '@/components/admin/TabSettingsCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -103,6 +104,9 @@ export default function AdminPage() {
 
                     {/* INTEGRATIONS TAB */}
                     <TabsContent value="integrations" className="space-y-6">
+                        <div className="w-full">
+                            <WebhookDebugger />
+                        </div>
                         <div className="grid gap-6 md:grid-cols-2">
                             <div className="space-y-6">
                                 <WebhookLinksCard />

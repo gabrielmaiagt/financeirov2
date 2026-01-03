@@ -49,6 +49,10 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
     const [valSoares, setValSoares] = useState(0);
     const [totalCabral, setTotalCabral] = useState(0);
 
+    // Company cash reserve
+    const [cashReservePercentage, setCashReservePercentage] = useState(existingOperation?.cashReservePercentage || 0);
+    const [cashReserveValue, setCashReserveValue] = useState(0);
+
     // Auto-fill percentages when operation is selected
     useEffect(() => {
         if (selectedOperationId && !existingOperation) {
@@ -63,6 +67,11 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
                 setPercCabral(cabral.toString());
                 setPercBiel(biel.toString());
                 setPercSoares(soares.toString());
+
+                // Auto-fill cash reserve percentage if not already set
+                if (!existingOperation) {
+                    setCashReservePercentage(op.cashReservePercentage || 0);
+                }
 
                 // Auto-fill description if empty
                 if (!descricao) {
@@ -87,9 +96,10 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
                 gatewayFee: taxa
             };
 
-            const result = calculateProfitDistribution(input, op);
+            const result = calculateProfitDistribution(input, op, cashReservePercentage);
 
             setLucroLiquido(result.netProfit);
+            setCashReserveValue(result.cashReserve);
 
             // Map dynamic results back to fixed fields for compatibility
             // Ideally we should migrate the database to store a 'partners' array instead of fixed columns
@@ -113,9 +123,16 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
             const lucro = fat - ads - taxa;
             setLucroLiquido(lucro);
 
-            const vCabral = lucro * (pCabral / 100);
-            const vBiel = lucro * (pBiel / 100);
-            const vSoares = lucro * (pSoares / 100);
+            // Calculate cash reserve
+            const cashValue = lucro * (cashReservePercentage / 100);
+            setCashReserveValue(cashValue);
+
+            // Distributed profit after cash reserve
+            const distributedProfit = lucro - cashValue;
+
+            const vCabral = distributedProfit * (pCabral / 100);
+            const vBiel = distributedProfit * (pBiel / 100);
+            const vSoares = distributedProfit * (pSoares / 100);
 
             setValCabral(vCabral);
             setValBiel(vBiel);
@@ -123,7 +140,7 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
             setTotalCabral(vCabral + ads); // Legacy assumption: Cabral pays ads
         }
 
-    }, [faturamento, gastoAnuncio, taxaGateway, percCabral, percBiel, percSoares, selectedOperationId, operations]);
+    }, [faturamento, gastoAnuncio, taxaGateway, percCabral, percBiel, percSoares, selectedOperationId, operations, cashReservePercentage]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -143,6 +160,8 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
             valorBiel: valBiel,
             valorSoares: valSoares,
             totalCabral,
+            cashReservePercentage: cashReservePercentage > 0 ? cashReservePercentage : undefined,
+            cashReserveValue: cashReserveValue > 0 ? cashReserveValue : undefined,
         });
     };
 
@@ -246,6 +265,28 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
                     />
                 </div>
 
+                <div className="space-y-2">
+                    <Label htmlFor="cashReserve">Caixa da Empresa (%)</Label>
+                    <Input
+                        id="cashReserve"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={cashReservePercentage}
+                        onChange={(e) => setCashReservePercentage(parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                    />
+                    {selectedOperationId && (
+                        <p className="text-xs text-muted-foreground">
+                            {cashReservePercentage > 0 ?
+                                `${cashReservePercentage}% do lucro vai para o caixa da empresa` :
+                                'Sem reserva de caixa para este lançamento'
+                            }
+                        </p>
+                    )}
+                </div>
+
                 <div className="pt-2">
                     <Button
                         type="button"
@@ -310,6 +351,16 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
                         {lucroLiquido < 0 && (
                             <div className="text-xs text-red-400 mb-4 flex items-center gap-1">
                                 ⚠️ Atenção: lucro líquido negativo.
+                            </div>
+                        )}
+
+                        {cashReserveValue > 0 && (
+                            <div className="p-3 rounded-lg mb-4 bg-blue-500/10 border border-blue-500/30">
+                                <div className="text-xs text-blue-400 opacity-80 mb-1">Caixa da Empresa:</div>
+                                <div className="text-lg font-bold text-blue-400">{formatCurrency(cashReserveValue)}</div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    ({cashReservePercentage}% do lucro líquido)
+                                </div>
                             </div>
                         )}
 

@@ -16,6 +16,8 @@ export interface PartnerProfit {
 
 export interface ProfitCalculationResult {
     netProfit: number; // Lucro Líquido
+    cashReserve: number; // Company cash reserve amount
+    distributedProfit: number; // Profit distributed among partners (netProfit - cashReserve)
     partnerProfits: PartnerProfit[];
 }
 
@@ -24,12 +26,20 @@ export interface ProfitCalculationResult {
  */
 export function calculateProfitDistribution(
     input: ProfitCalculationInput,
-    operation: Operation
+    operation: Operation,
+    cashReserveOverride?: number // Allow override of operation's default cash reserve percentage
 ): ProfitCalculationResult {
     const { netRevenue, adCost, gatewayFee } = input;
 
     // Net profit = Revenue - Ad Cost - Gateway Fee
     const netProfit = netRevenue - adCost - gatewayFee;
+
+    // Calculate company cash reserve (from operation or override)
+    const cashReservePercentage = cashReserveOverride ?? operation.cashReservePercentage ?? 0;
+    const cashReserve = netProfit * (cashReservePercentage / 100);
+
+    // Profit to distribute among partners (after cash reserve)
+    const distributedProfit = netProfit - cashReserve;
 
     const partnerProfits: PartnerProfit[] = [];
 
@@ -38,10 +48,10 @@ export function calculateProfitDistribution(
             // Mode 1: Reimburse the payer first, then distribute net profit
             // Example: Cabral paid R$1000 in ads
             // 1. Return R$1000 to Cabral
-            // 2. Distribute remaining profit by percentages
+            // 2. Distribute remaining profit by percentages (after cash reserve)
 
             operation.partners.forEach((partner) => {
-                const profitShare = netProfit * (partner.percentage / 100);
+                const profitShare = distributedProfit * (partner.percentage / 100);
                 const isAdPayer = partner.name === operation.adPayer;
                 const adReimbursement = isAdPayer ? adCost : 0;
 
@@ -57,9 +67,9 @@ export function calculateProfitDistribution(
         }
 
         case 'split_among_partners': {
-            // Mode 2: Ad cost is already deducted from net profit, just distribute
+            // Mode 2: Ad cost is already deducted from net profit, just distribute (after cash reserve)
             operation.partners.forEach((partner) => {
-                const profitShare = netProfit * (partner.percentage / 100);
+                const profitShare = distributedProfit * (partner.percentage / 100);
 
                 partnerProfits.push({
                     name: partner.name,
@@ -72,14 +82,14 @@ export function calculateProfitDistribution(
         }
 
         case 'solo': {
-            // Mode 3: Single owner gets everything
+            // Mode 3: Single owner gets everything (after cash reserve)
             const owner = operation.partners[0];
 
             partnerProfits.push({
                 name: owner.name,
                 percentage: 100,
-                value: netProfit,
-                total: netProfit,
+                value: distributedProfit,
+                total: distributedProfit,
             });
             break;
         }
@@ -87,6 +97,8 @@ export function calculateProfitDistribution(
 
     return {
         netProfit,
+        cashReserve,
+        distributedProfit,
         partnerProfits,
     };
 }

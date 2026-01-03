@@ -28,16 +28,17 @@ type FormData = z.infer<typeof formSchema>;
 interface ExpenseFormProps {
   onSave: (data: Omit<FormData, 'id'>) => void;
   onClose: () => void;
+  existingExpense?: { id: string; descricao: string; valor: number; data: any; categoria: string } | null;
 }
 
-const ExpenseForm = ({ onSave, onClose }: ExpenseFormProps) => {
+const ExpenseForm = ({ onSave, onClose, existingExpense }: ExpenseFormProps) => {
   const { control, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      data: new Date(),
-      descricao: '',
-      valor: 0,
-      categoria: undefined,
+      data: existingExpense?.data?.toDate ? existingExpense.data.toDate() : new Date(),
+      descricao: existingExpense?.descricao || '',
+      valor: existingExpense?.valor || 0,
+      categoria: existingExpense?.categoria || undefined,
     },
   });
 
