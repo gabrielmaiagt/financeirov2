@@ -204,6 +204,7 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
                                         }
                                     }}
                                     initialFocus
+                                    required
                                 />
                             </PopoverContent>
                         </Popover>

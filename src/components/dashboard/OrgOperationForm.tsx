@@ -62,13 +62,17 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
 
     try {
       // Sanitize partners data to ensure numbers are valid and no undefined values
-      const sanitizedPartners: Partner[] = partners.map(p => ({
-        name: p.name,
-        percentage: Number(p.percentage) || 0,
-        // Ensure cashReservePercentage is a number or 0, never undefined if we want to save it
-        cashReservePercentage: p.cashReservePercentage ? (Number(p.cashReservePercentage) || 0) : 0,
-        userId: p.userId || undefined
-      }));
+      const sanitizedPartners: Partner[] = partners.map(p => {
+        const partner: Partner = {
+          name: p.name,
+          percentage: Number(p.percentage) || 0,
+          cashReservePercentage: p.cashReservePercentage ? (Number(p.cashReservePercentage) || 0) : 0,
+        };
+        if (p.userId) {
+          partner.userId = p.userId;
+        }
+        return partner;
+      });
 
       const operationData = {
         orgId,
@@ -76,7 +80,7 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
         category,
         partners: sanitizedPartners,
         adCostMode,
-        adPayer: adCostMode === 'reimburse_payer' ? adPayer : undefined,
+        ...(adCostMode === 'reimburse_payer' ? { adPayer } : {}),
         active,
         updatedAt: serverTimestamp(),
       };
