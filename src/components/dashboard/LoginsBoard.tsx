@@ -86,8 +86,8 @@ const LoginsBoard = () => {
               <PlusCircle className="mr-2 h-4 w-4" /> Novo Login
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg p-0 flex flex-col">
-            <DialogHeader className="p-6 pb-0">
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
               <DialogTitle>{editingLogin ? 'Editar Login' : 'Adicionar Novo Login'}</DialogTitle>
               <DialogDescription>
                 Salve as credenciais de um serviço para acesso rápido.

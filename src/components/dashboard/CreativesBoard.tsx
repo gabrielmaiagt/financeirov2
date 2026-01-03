@@ -373,8 +373,8 @@ const CreativesBoard = () => {
                 <PlusCircle className="mr-2 h-4 w-4" /> Nova Leva
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg p-0 flex flex-col">
-              <DialogHeader className="p-6 pb-0">
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
                 <DialogTitle>Adicionar Nova Leva de Criativos</DialogTitle>
                 <DialogDescription>
                   Insira o link do Drive e a data da nova leva de anúncios.

@@ -30,6 +30,7 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
   const [adCostMode, setAdCostMode] = useState<AdCostMode>(operation?.adCostMode || 'solo');
   const [adPayer, setAdPayer] = useState(operation?.adPayer || '');
   const [active, setActive] = useState(operation?.active ?? true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const totalPercentage = partners.reduce((sum, p) => sum + (p.percentage || 0), 0);
 
@@ -57,32 +58,50 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
       return;
     }
 
-    const operationData = {
-      orgId,
-      name,
-      category,
-      partners,
-      adCostMode,
-      adPayer: adCostMode === 'reimburse_payer' ? adPayer : undefined,
-      active,
-      updatedAt: serverTimestamp(),
-    };
+    setIsSubmitting(true);
 
-    if (operation) {
-      // Update existing
-      const docRef = useOrgDoc('operations', operation.id);
-      if (docRef) {
-        await updateDoc(docRef, operationData);
+    try {
+      // Sanitize partners data to ensure numbers are valid and no undefined values
+      const sanitizedPartners: Partner[] = partners.map(p => ({
+        name: p.name,
+        percentage: Number(p.percentage) || 0,
+        // Ensure cashReservePercentage is a number or 0, never undefined if we want to save it
+        cashReservePercentage: p.cashReservePercentage ? (Number(p.cashReservePercentage) || 0) : 0,
+        userId: p.userId || undefined
+      }));
+
+      const operationData = {
+        orgId,
+        name,
+        category,
+        partners: sanitizedPartners,
+        adCostMode,
+        adPayer: adCostMode === 'reimburse_payer' ? adPayer : undefined,
+        active,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (operation) {
+        // Update existing
+        const docRef = useOrgDoc('operations', operation.id);
+        if (docRef) {
+          await updateDoc(docRef, operationData);
+        }
+      } else {
+        // Create new
+        await addDocumentNonBlocking(operationsCollection, {
+          ...operationData,
+          createdAt: serverTimestamp(),
+        });
       }
-    } else {
-      // Create new
-      await addDocumentNonBlocking(operationsCollection, {
-        ...operationData,
-        createdAt: serverTimestamp(),
-      });
-    }
 
-    onClose();
+      onClose();
+    } catch (error) {
+      console.error("Error saving operation:", error);
+      alert("Erro ao salvar operação. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -217,11 +236,11 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
       </div>
 
       <div className="flex justify-end gap-2 pt-4 border-t">
-        <Button type="button" variant="outline" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
           Cancelar
         </Button>
-        <Button type="submit">
-          {operation ? 'Salvar Alterações' : 'Criar Operação'}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Salvando...' : (operation ? 'Salvar Alterações' : 'Criar Operação')}
         </Button>
       </div>
     </form>

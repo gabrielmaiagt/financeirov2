@@ -60,8 +60,8 @@ const OfertasEscaladasBoard = () => {
               <PlusCircle className="mr-2 h-4 w-4" /> Nova Oferta
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg p-0 flex flex-col">
-            <DialogHeader className="p-6 pb-0">
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
               <DialogTitle>Adicionar Nova Oferta Escalada</DialogTitle>
               <DialogDescription>
                 Registre uma oferta de alta performance com seus links.

@@ -170,7 +170,7 @@ export default function OperationsBoard() {
             )}
 
             <Dialog open={isFormOpen} onOpenChange={handleDialogChange}>
-                <DialogContent className="sm:max-w-2xl">
+                <DialogContent className="sm:max-w-2xl p-6">
                     <DialogHeader>
                         <DialogTitle>{editingOperation ? 'Editar Operação' : 'Nova Operação'}</DialogTitle>
                         <DialogDescription>

@@ -191,8 +191,8 @@ const OperationsTable = ({
               <Button onClick={handleOpenNew}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Novo Lançamento
               </Button>
-              <DialogContent className="sm:max-w-3xl p-0 flex flex-col">
-                <DialogHeader className="p-6 pb-0">
+              <DialogContent className="sm:max-w-3xl">
+                <DialogHeader>
                   <DialogTitle>{editingOperation ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle>
                   <DialogDescription>
                     {editingOperation ? 'Ajuste os dados da operação.' : 'Preencha os dados da operação para calcular a divisão.'}

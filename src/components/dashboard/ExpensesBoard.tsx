@@ -331,8 +331,8 @@ const ExpensesBoard = () => {
                     <PlusCircle className="mr-2 h-4 w-4" /> Nova Despesa
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-lg p-0 flex flex-col">
-                  <DialogHeader className="p-6 pb-0">
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
                     <DialogTitle>{editingExpense ? 'Editar Despesa' : 'Adicionar Nova Despesa'}</DialogTitle>
                     <DialogDescription>
                       {editingExpense ? 'Modifique os dados da despesa.' : 'Registre um novo gasto da operação.'}

@@ -28,6 +28,7 @@ interface OperationFormProps {
 export function OperationForm({ onSave, onClose, existingOperation }: OperationFormProps) {
     const { operations } = useOperation();
     const [date, setDate] = useState<Date>(existingOperation ? existingOperation.data.toDate() : new Date());
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [descricao, setDescricao] = useState(existingOperation?.descricao || '');
     const [faturamento, setFaturamento] = useState(existingOperation?.faturamentoLiquido?.toString() || '');
     const [gastoAnuncio, setGastoAnuncio] = useState(existingOperation?.gastoAnuncio?.toString() || '');
@@ -179,7 +180,7 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
 
                     <div className="space-y-2">
                         <Label>Data da Operação</Label>
-                        <Popover>
+                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant={"outline"}
@@ -199,7 +200,7 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
                                     onSelect={(d) => {
                                         if (d) {
                                             setDate(d);
-                                            // Close popover logic would go here if controlled
+                                            setIsCalendarOpen(false);
                                         }
                                     }}
                                     initialFocus

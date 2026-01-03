@@ -107,8 +107,8 @@ const QuotesBoard = () => {
           <Button onClick={handleOpenNew}>
             <PlusCircle className="mr-2 h-4 w-4" /> Nova Frase
           </Button>
-          <DialogContent className="sm:max-w-lg p-0 flex flex-col">
-            <DialogHeader className="p-6 pb-0">
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
               <DialogTitle>{editingQuote ? 'Editar Frase' : 'Adicionar Nova Frase'}</DialogTitle>
               <DialogDescription>
                 {editingQuote ? 'Ajuste os detalhes da frase.' : 'Adicione uma nova frase para inspirar a equipe.'}

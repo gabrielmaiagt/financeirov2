@@ -120,8 +120,8 @@ const ProfilesBoard = ({ installable, handleInstall }: ProfilesBoardProps) => {
       </div>
 
       <Dialog open={isProfileDialogOpen} onOpenChange={handleProfileDialogChange}>
-        <DialogContent className="sm:max-w-lg p-0 flex flex-col">
-          <DialogHeader className="p-6 pb-0">
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
             <DialogTitle>Editar Perfil</DialogTitle>
             <DialogDescription>
               Altere as informações do perfil. As alterações serão visíveis para todos.
@@ -136,8 +136,8 @@ const ProfilesBoard = ({ installable, handleInstall }: ProfilesBoardProps) => {
       </Dialog>
 
       <Dialog open={isSoundDialogOpen} onOpenChange={handleSoundDialogChange}>
-        <DialogContent className="sm:max-w-lg p-0 flex flex-col">
-          <DialogHeader className="p-6 pb-0">
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
             <DialogTitle>Configurar Sons de Comemoração</DialogTitle>
             <DialogDescription>
               Personalize os sons para cada evento. Cole a URL de um arquivo de áudio (.mp3, .wav).

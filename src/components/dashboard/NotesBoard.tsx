@@ -83,8 +83,8 @@ const NotesBoard = () => {
               <PlusCircle className="mr-2 h-4 w-4" /> Nova Anotação
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg p-0 flex flex-col">
-            <DialogHeader className="p-6 pb-0">
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
               <DialogTitle>{editingNote ? 'Editar Anotação' : 'Adicionar Nova Anotação'}</DialogTitle>
               <DialogDescription>
                 {editingNote ? 'Ajuste os detalhes da sua anotação.' : 'Use este espaço para notas rápidas, ideias ou lembretes.'}

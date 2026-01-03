@@ -382,8 +382,8 @@ const TasksBoard = () => {
         </AlertDialog>
 
         <Dialog open={isFormOpen} onOpenChange={handleDialogChange}>
-          <DialogContent className="sm:max-w-lg p-0 flex flex-col">
-            <DialogHeader className="p-6 pb-0">
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
               <DialogTitle>{editingTask ? 'Editar Tarefa' : 'Adicionar Nova Tarefa'}</DialogTitle>
               <DialogDescription>
                 {editingTask ? 'Ajuste os detalhes da sua tarefa.' : 'Preencha os detalhes da tarefa que você quer criar.'}

@@ -167,8 +167,8 @@ const GoalsBoard = () => {
               <PlusCircle className="mr-2 h-4 w-4" /> Nova Meta
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg p-0 flex flex-col">
-            <DialogHeader className="p-6 pb-0">
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
               <DialogTitle>{editingGoal ? 'Editar Meta' : 'Adicionar Nova Meta'}</DialogTitle>
               <DialogDescription>
                 {editingGoal ? 'Ajuste os detalhes da sua meta.' : 'Defina um objetivo, seu valor alvo e acompanhe seu progresso.'}
@@ -245,8 +245,8 @@ const GoalsBoard = () => {
       </AlertDialog>
 
       <Dialog open={isPhotosDialogOpen} onOpenChange={handlePhotosDialogChange}>
-        <DialogContent className="sm:max-w-2xl p-0 flex flex-col">
-          <DialogHeader className="p-6 pb-0">
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
             <DialogTitle>Fotos da Conquista: {goalForPhotos?.title}</DialogTitle>
             <DialogDescription>
               Adicione até 3 fotos para celebrar esta meta alcançada. Uma para cada sócio!

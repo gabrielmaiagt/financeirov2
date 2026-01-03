@@ -14,6 +14,7 @@ import WebhookRequestViewer from '@/components/admin/WebhookRequestViewer';
 import WebhookDocumentation from '@/components/admin/WebhookDocumentation';
 import WebhookLinksCard from '@/components/admin/WebhookLinksCard';
 import WebhookDebugger from '@/components/admin/WebhookDebugger';
+import AddGatewayGuide from '@/components/admin/AddGatewayGuide';
 import NotificationSettingsCard from '@/components/admin/NotificationSettingsCard';
 import TabSettingsCard from '@/components/admin/TabSettingsCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -114,6 +115,9 @@ export default function AdminPage() {
                             </div>
                             <div>
                                 <WebhookRequestViewer />
+                            </div>
+                            <div className="col-span-1 md:col-span-2">
+                                <AddGatewayGuide />
                             </div>
                         </div>
                     </TabsContent>
