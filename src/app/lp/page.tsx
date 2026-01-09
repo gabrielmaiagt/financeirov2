@@ -1,15 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Check, Zap, TrendingUp, Shield, Smartphone, BarChart3, ArrowRight, ChevronDown, Star, DollarSign, Clock, Users } from 'lucide-react';
+import { Check, Zap, TrendingUp, Shield, Smartphone, BarChart3, ArrowRight, ChevronDown, Star, X, Play } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function LandingPage() {
     const [faqOpen, setFaqOpen] = useState<number | null>(null);
+    const [videoOpen, setVideoOpen] = useState(false);
 
+    // ... (features, testimonials, faqs arrays permanecem iguais)
     const features = [
         {
             icon: <TrendingUp className="w-6 h-6" />,
@@ -37,7 +40,7 @@ export default function LandingPage() {
             description: "Dados criptografados no Firebase com autenticação de 2 fatores"
         },
         {
-            icon: <Clock className="w-6 h-6" />,
+            icon: <Smartphone className="w-6 h-6" />,
             title: "Economize Horas",
             description: "Automatize tarefas que levavam horas em poucos cliques"
         }
@@ -89,6 +92,41 @@ export default function LandingPage() {
 
     return (
         <div className="min-h-screen bg-black text-white overflow-hidden">
+            {/* Video Demo Modal */}
+            <AnimatePresence>
+                {videoOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setVideoOpen(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="relative w-full max-w-4xl aspect-video bg-neutral-900 rounded-2xl overflow-hidden border border-primary/30 shadow-2xl shadow-primary/20"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={() => setVideoOpen(false)}
+                                className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center z-10 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                            <iframe
+                                className="w-full h-full"
+                                src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                                title="Demo do Painel Financeiro"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Background Effects */}
             <div className="fixed inset-0 -z-10">
                 <div className="absolute inset-0 bg-gradient-to-br from-black via-neutral-950 to-black" />
@@ -121,13 +159,24 @@ export default function LandingPage() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                            <Button size="lg" className="text-lg px-8 py-6 bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-600 group">
-                                Começar Agora por R$ 29,90/mês
-                                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                            <Button
+                                size="lg"
+                                className="relative text-lg px-8 py-7 bg-gradient-to-r from-primary via-emerald-500 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500 shadow-lg shadow-primary/50 hover:shadow-xl hover:shadow-primary/60 hover:scale-105 font-bold group border-2 border-primary/20"
+                            >
+                                <span className="relative z-10 flex items-center gap-2">
+                                    🚀 Começar Agora - R$ 29,90/mês
+                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                </span>
+                                <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/20 to-primary/0 opacity-0 group-hover:opacity-100 blur-xl transition-opacity" />
                             </Button>
-                            <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-neutral-700 hover:bg-neutral-900">
-                                Ver Demo
-                                <ChevronDown className="ml-2 w-5 h-5" />
+                            <Button
+                                size="lg"
+                                variant="outline"
+                                className="text-lg px-8 py-7 border-2 border-neutral-700 hover:bg-neutral-900 hover:border-primary/50 transition-all group"
+                                onClick={() => setVideoOpen(true)}
+                            >
+                                <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                                Ver Demo em Vídeo
                             </Button>
                         </div>
 
@@ -136,7 +185,7 @@ export default function LandingPage() {
                         </p>
                     </motion.div>
 
-                    {/* Hero Visual */}
+                    {/* Hero Visual with Real Image */}
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -144,55 +193,23 @@ export default function LandingPage() {
                         className="mt-16"
                     >
                         <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-emerald-500/20 blur-3xl" />
-                            <div className="relative bg-gradient-to-br from-neutral-900/90 to-neutral-950/90 backdrop-blur-xl border border-neutral-800 rounded-2xl p-8 shadow-2xl">
-                                <div className="grid grid-cols-3 gap-6">
-                                    <div className="col-span-3 md:col-span-2 space-y-4">
-                                        <div className="flex items-center justify-between p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                                            <div>
-                                                <p className="text-sm text-neutral-400">Faturamento Hoje</p>
-                                                <p className="text-3xl font-bold text-emerald-400">R$ 8.459,32</p>
-                                            </div>
-                                            <TrendingUp className="w-8 h-8 text-emerald-400" />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="p-4 bg-neutral-900/50 border border-neutral-800 rounded-lg">
-                                                <p className="text-sm text-neutral-400">Lucro Líquido</p>
-                                                <p className="text-2xl font-bold">R$ 5.247,18</p>
-                                            </div>
-                                            <div className="p-4 bg-neutral-900/50 border border-neutral-800 rounded-lg">
-                                                <p className="text-sm text-neutral-400">ROI Médio</p>
-                                                <p className="text-2xl font-bold text-primary">247%</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="col-span-3 md:col-span-1 space-y-4">
-                                        <div className="p-4 bg-neutral-900/50 border border-neutral-800 rounded-lg">
-                                            <p className="text-xs text-neutral-400 mb-2">Divisão Automática</p>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between text-sm">
-                                                    <span>Sócio A</span>
-                                                    <span className="font-bold">R$ 1.835,51</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span>Sócio B</span>
-                                                    <span className="font-bold">R$ 1.835,51</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span>Caixa</span>
-                                                    <span className="font-bold text-primary">R$ 1.576,16</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-emerald-500/30 blur-3xl" />
+                            <div className="relative rounded-2xl overflow-hidden border border-neutral-800 shadow-2xl">
+                                <Image
+                                    src="/lp-assets/dashboard.png"
+                                    alt="Dashboard do Painel Financeiro"
+                                    width={1200}
+                                    height={800}
+                                    className="w-full h-auto"
+                                    priority
+                                />
                             </div>
                         </div>
                     </motion.div>
                 </div>
             </section>
 
-            {/* Social Proof */}
+            {/* Social Proof - unchanged */}
             <section className="py-12 border-y border-neutral-800 bg-neutral-950/50">
                 <div className="max-w-6xl mx-auto px-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
@@ -216,7 +233,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Features */}
+            {/* Features with Images */}
             <section className="py-32 px-4">
                 <div className="max-w-6xl mx-auto">
                     <motion.div
@@ -234,7 +251,7 @@ export default function LandingPage() {
                         </p>
                     </motion.div>
 
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
                         {features.map((feature, index) => (
                             <motion.div
                                 key={index}
@@ -257,10 +274,50 @@ export default function LandingPage() {
                             </motion.div>
                         ))}
                     </div>
+
+                    {/* Product Screenshots */}
+                    <div className="grid md:grid-cols-2 gap-8">
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="relative group"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-emerald-500/20 blur-2xl group-hover:blur-3xl transition-all" />
+                            <div className="relative rounded-xl overflow-hidden border border-neutral-800 group-hover:border-primary/50 transition-all">
+                                <Image
+                                    src="/lp-assets/analytics.png"
+                                    alt="Analytics Dashboard"
+                                    width={600}
+                                    height={400}
+                                    className="w-full h-auto"
+                                />
+                            </div>
+                        </motion.div>
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="relative group"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-l from-primary/20 to-emerald-500/20 blur-2xl group-hover:blur-3xl transition-all" />
+                            <div className="relative rounded-xl overflow-hidden border border-neutral-800 group-hover:border-primary/50 transition-all">
+                                <Image
+                                    src="/lp-assets/widget.png"
+                                    alt="Widget iOS"
+                                    width={600}
+                                    height={400}
+                                    className="w-full h-auto"
+                                />
+                            </div>
+                        </motion.div>
+                    </div>
                 </div>
             </section>
 
-            {/* How It Works */}
+            {/* How It Works - unch
+
+anged from original */}
             <section className="py-32 px-4 bg-neutral-950/50">
                 <div className="max-w-6xl mx-auto">
                     <motion.div
@@ -307,7 +364,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Testimonials */}
+            {/* Testimonials - unchanged */}
             <section className="py-32 px-4">
                 <div className="max-w-6xl mx-auto">
                     <motion.div
@@ -351,7 +408,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Pricing */}
+            {/* Pricing - IMPROVED FOR MOBILE */}
             <section className="py-32 px-4 bg-neutral-950/50">
                 <div className="max-w-4xl mx-auto">
                     <motion.div
@@ -375,20 +432,20 @@ export default function LandingPage() {
                         transition={{ duration: 0.5 }}
                     >
                         <Card className="relative overflow-hidden bg-gradient-to-br from-neutral-900 via-neutral-950 to-black border-2 border-primary/50 shadow-2xl shadow-primary/20">
-                            <div className="absolute top-0 right-0 bg-primary text-black px-6 py-2 text-sm font-bold">
+                            <div className="absolute top-0 right-0 bg-gradient-to-r from-primary to-emerald-500 text-black px-4 md:px-6 py-2 text-xs md:text-sm font-bold">
                                 MAIS POPULAR
                             </div>
-                            <div className="p-12">
+                            <div className="p-6 md:p-12">
                                 <div className="text-center mb-8">
-                                    <p className="text-neutral-400 mb-2">Plano Mensal</p>
+                                    <p className="text-neutral-400 mb-2 text-sm md:text-base">Plano Mensal</p>
                                     <div className="flex items-baseline justify-center gap-2">
-                                        <span className="text-6xl font-bold text-primary">R$ 29,90</span>
-                                        <span className="text-2xl text-neutral-400">/mês</span>
+                                        <span className="text-4xl md:text-6xl font-bold text-primary">R$ 29,90</span>
+                                        <span className="text-xl md:text-2xl text-neutral-400">/mês</span>
                                     </div>
-                                    <p className="text-sm text-neutral-500 mt-2">Aproximadamente R$ 1,00 por dia</p>
+                                    <p className="text-xs md:text-sm text-neutral-500 mt-2">Aproximadamente R$ 1,00 por dia</p>
                                 </div>
 
-                                <ul className="space-y-4 mb-8">
+                                <ul className="space-y-3 md:space-y-4 mb-8 max-h-[400px] md:max-h-none overflow-y-auto px-2">
                                     {[
                                         "Divisão Automática de Lucros Ilimitada",
                                         "Dashboard em Tempo Real",
@@ -402,18 +459,23 @@ export default function LandingPage() {
                                         "Backup Automático Diário"
                                     ].map((item, index) => (
                                         <li key={index} className="flex items-start gap-3">
-                                            <Check className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
-                                            <span className="text-neutral-300">{item}</span>
+                                            <Check className="w-5 h-5 md:w-6 md:h-6 text-primary flex-shrink-0 mt-0.5" />
+                                            <span className="text-sm md:text-base text-neutral-300">{item}</span>
                                         </li>
                                     ))}
                                 </ul>
 
-                                <Button size="lg" className="w-full text-lg py-6 bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-600 group">
-                                    Começar Agora - R$ 29,90/mês
-                                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                <Button
+                                    size="lg"
+                                    className="w-full text-base md:text-lg py-6 md:py-7 bg-gradient-to-r from-primary via-emerald-500 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500 shadow-lg shadow-primary/50 hover:shadow-xl hover:shadow-primary/60 hover:scale-105 font-bold group border-2 border-primary/20"
+                                >
+                                    <span className="relative z-10 flex items-center justify-center gap-2">
+                                        🚀 Começar Agora - R$ 29,90/mês
+                                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </span>
                                 </Button>
 
-                                <p className="text-center text-sm text-neutral-500 mt-6">
+                                <p className="text-center text-xs md:text-sm text-neutral-500 mt-6">
                                     🔒 Pagamento seguro • Cancele quando quiser
                                 </p>
                             </div>
@@ -421,7 +483,7 @@ export default function LandingPage() {
                     </motion.div>
 
                     <div className="text-center mt-12">
-                        <p className="text-neutral-400">
+                        <p className="text-sm md:text-base text-neutral-400">
                             Prefere pagar anualmente e <span className="text-primary font-bold">economizar 20%</span>?{' '}
                             <Link href="#" className="text-primary hover:underline">Fale conosco</Link>
                         </p>
@@ -429,7 +491,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* FAQ */}
+            {/* FAQ - unchanged from original */}
             <section className="py-32 px-4">
                 <div className="max-w-3xl mx-auto">
                     <motion.div
@@ -483,7 +545,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* CTA Final */}
+            {/* CTA Final with Better Button */}
             <section className="py-32 px-4 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-emerald-500/20 to-primary/20 blur-3xl" />
                 <div className="max-w-4xl mx-auto text-center relative">
@@ -501,9 +563,15 @@ export default function LandingPage() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button size="lg" className="text-xl px-12 py-8 bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-600 group">
-                                Começar Agora - R$ 29,90/mês
-                                <ArrowRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                            <Button
+                                size="lg"
+                                className="relative text-xl px-12 py-8 bg-gradient-to-r from-primary via-emerald-500 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500 shadow-2xl shadow-primary/50 hover:shadow-[0_0_50px_rgba(var(--primary),0.8)] hover:scale-110 font-bold group border-2 border-primary/20 overflow-hidden"
+                            >
+                                <span className="relative z-10 flex items-center gap-2">
+                                    🎯 Começar Agora - R$ 29,90/mês
+                                    <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                                </span>
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                             </Button>
                         </div>
 
@@ -514,7 +582,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Footer */}
+            {/* Footer - unchanged */}
             <footer className="border-t border-neutral-800 py-12 px-4">
                 <div className="max-w-6xl mx-auto">
                     <div className="grid md:grid-cols-4 gap-8 mb-8">
