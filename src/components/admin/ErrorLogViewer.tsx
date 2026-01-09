@@ -6,7 +6,7 @@ import { useOrganization } from '@/contexts/OrganizationContext';
 import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ServerCrash, Smartphone } from 'lucide-react';
+import { Loader2, ServerCrash, Smartphone, AlertCircle, Clock } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import TimeAgo from './TimeAgo';
 
@@ -33,67 +33,90 @@ const ErrorLogViewer = () => {
   const getContextBadge = (context: string) => {
     if (context.includes('api')) {
       return (
-        <Badge variant="destructive" className="whitespace-nowrap">
-          <ServerCrash className="w-3 h-3 mr-1" /> Backend
+        <Badge variant="destructive" className="whitespace-nowrap bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.3)]">
+          <ServerCrash className="w-3 h-3 mr-1.5" /> Backend
         </Badge>
       );
     }
     return (
-      <Badge variant="secondary" className="whitespace-nowrap">
-        <Smartphone className="w-3 h-3 mr-1" /> Frontend
+      <Badge variant="secondary" className="whitespace-nowrap bg-blue-500/20 text-blue-400 border-blue-500/50 hover:bg-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
+        <Smartphone className="w-3 h-3 mr-1.5" /> Frontend
       </Badge>
     );
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Log de Erros do Sistema</CardTitle>
-        <CardDescription>
+    <Card className="border-neutral-800 bg-neutral-950/50">
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-yellow-500" />
+          <CardTitle className="text-xl">Log de Erros do Sistema</CardTitle>
+        </div>
+        <CardDescription className="text-base">
           Visualize os erros que ocorreram no sistema para ajudar na depuração.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="border rounded-lg max-h-[500px] overflow-y-auto">
+        <div className="border border-neutral-800 rounded-lg max-h-[600px] overflow-y-auto bg-neutral-900/30">
           {isLoading && (
-            <div className="flex justify-center items-center h-24 text-center">
-              <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+            <div className="flex justify-center items-center h-32 text-center">
+              <Loader2 className="mx-auto h-6 w-6 animate-spin text-blue-500" />
             </div>
           )}
           {!isLoading && (!errorLogs || errorLogs.length === 0) && (
-            <div className="flex justify-center items-center h-24 text-center text-muted-foreground">
-              Nenhum erro registrado. Tudo certo por aqui!
+            <div className="flex flex-col justify-center items-center h-32 text-center gap-2 py-8">
+              <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-green-500" />
+              </div>
+              <p className="text-muted-foreground text-sm">Nenhum erro registrado. Tudo certo por aqui! ✨</p>
             </div>
           )}
-          {!isLoading && errorLogs && (
-            <Accordion type="multiple" className="divide-y divide-border">
+          {!isLoading && errorLogs && errorLogs.length > 0 && (
+            <Accordion type="multiple" className="divide-y divide-neutral-800">
               {errorLogs.map((log) => (
                 <AccordionItem value={log.id} key={log.id} className="border-b-0">
-                  <AccordionTrigger className="grid grid-cols-[150px_120px_1fr] items-center text-left p-4 hover:bg-muted/50 hover:no-underline">
-                    <TimeAgo timestamp={log.timestamp} />
-                    <span>{getContextBadge(log.context)}</span>
-                    <span className="font-mono text-sm truncate">{log.message}</span>
+                  <AccordionTrigger className="grid grid-cols-[auto_auto_1fr] gap-4 items-center text-left px-5 py-4 hover:bg-neutral-800/50 hover:no-underline transition-colors rounded-md mx-1">
+                    <div className="flex items-center gap-2 min-w-[140px]">
+                      <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                      <TimeAgo timestamp={log.timestamp} />
+                    </div>
+                    <div className="flex items-center">
+                      {getContextBadge(log.context)}
+                    </div>
+                    <span className="font-mono text-sm truncate text-neutral-300">{log.message}</span>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="p-4 pt-0 bg-muted/20">
-                      <div className="p-4 bg-neutral-900 rounded-md">
-                        <h4 className="font-semibold mb-2">Detalhes do Erro</h4>
-                        <p className="text-sm font-semibold mb-2">Mensagem: <span className="font-mono text-sm">{log.message}</span></p>
+                    <div className="px-5 pb-4 pt-2">
+                      <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-lg space-y-4">
+                        <div className="space-y-2">
+                          <h4 className="font-semibold text-base flex items-center gap-2 text-red-400">
+                            <AlertCircle className="w-4 h-4" />
+                            Detalhes do Erro
+                          </h4>
+                          <div className="pl-6 space-y-2">
+                            <p className="text-sm">
+                              <span className="font-semibold text-muted-foreground">Mensagem:</span>{' '}
+                              <span className="font-mono text-sm text-neutral-200">{log.message}</span>
+                            </p>
+                          </div>
+                        </div>
+
                         {log.stack && (
-                          <>
-                            <p className="text-xs font-semibold text-muted-foreground">Stack Trace:</p>
-                            <pre className="mt-1 text-xs whitespace-pre-wrap bg-black p-2 rounded-md font-mono">
+                          <div className="space-y-2 pt-3 border-t border-neutral-800">
+                            <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wide">Stack Trace</p>
+                            <pre className="text-xs whitespace-pre-wrap bg-black/50 border border-neutral-800 p-4 rounded-md font-mono text-neutral-300 leading-relaxed overflow-x-auto">
                               <code>{log.stack}</code>
                             </pre>
-                          </>
+                          </div>
                         )}
+
                         {log.details && Object.keys(log.details).length > 0 && (
-                          <>
-                            <p className="text-xs font-semibold text-muted-foreground mt-4">Detalhes Adicionais:</p>
-                            <pre className="mt-1 text-xs whitespace-pre-wrap bg-black p-2 rounded-md font-mono">
+                          <div className="space-y-2 pt-3 border-t border-neutral-800">
+                            <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide">Detalhes Adicionais</p>
+                            <pre className="text-xs whitespace-pre-wrap bg-black/50 border border-neutral-800 p-4 rounded-md font-mono text-neutral-300 leading-relaxed overflow-x-auto">
                               <code>{JSON.stringify(log.details, null, 2)}</code>
                             </pre>
-                          </>
+                          </div>
                         )}
                       </div>
                     </div>

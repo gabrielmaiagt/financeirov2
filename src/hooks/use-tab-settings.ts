@@ -6,6 +6,7 @@ import { NAV_ITEMS } from '@/lib/navigation';
 
 export interface TabSettings {
     hiddenTabs?: string[];
+    mobileNavStyle?: 'floating' | 'hamburger';
 }
 
 export function useTabSettings() {

@@ -40,12 +40,12 @@ export function OperationProvider({ children }: { children: ReactNode }) {
         return operations.find(op => op.id === selectedOperationId) || null;
     }, [selectedOperationId, operations]);
 
-    // Auto-select first operation if none selected
-    useEffect(() => {
-        if (!selectedOperationId && operations && operations.length > 0) {
-            setSelectedOperationId(operations[0].id);
-        }
-    }, [operations, selectedOperationId]);
+    // Auto-select first operation if none selected - DISABLED to show all by default
+    // useEffect(() => {
+    //     if (!selectedOperationId && operations && operations.length > 0) {
+    //         setSelectedOperationId(operations[0].id);
+    //     }
+    // }, [operations, selectedOperationId]);
 
     const value = {
         selectedOperationId,

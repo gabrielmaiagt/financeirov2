@@ -5,6 +5,7 @@ import { collection, query, orderBy, Timestamp, where, limit, QueryConstraint, g
 import { useFirestore, useCollection } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { useOperation } from '@/contexts/OperationContext';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { doc } from 'firebase/firestore';
 import { DateRange as DayPickerDateRange } from 'react-day-picker';
@@ -42,6 +43,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { UserProfile as ProfileType } from '@/components/dashboard/ProfileCard';
 import { InitOrg } from '@/components/InitOrg';
 import { MobilePillNav } from "@/components/MobilePillNav";
+import { MobileHamburgerMenu } from "@/components/MobileHamburgerMenu";
+import { useTabSettings } from "@/hooks/use-tab-settings";
 
 export interface Operacao {
   id?: string;
@@ -76,6 +79,8 @@ interface BeforeInstallPromptEvent extends Event {
 export default function Home() {
   const firestore = useFirestore();
   const { orgId } = useOrganization();
+  const { selectedOperationId } = useOperation();
+  const { settings } = useTabSettings();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState<DayPickerDateRange | undefined>(undefined);
 
@@ -144,13 +149,24 @@ export default function Home() {
   const allOperacoesQuery = useMemoFirebase(() => {
     if (!operacoesRef) return null;
 
-    // Se não tiver dateRange definido (inicialização), não busca nada ou busca um limite seguro
-    // O useEffect vai setar o dateRange logo em seguida
+    // Se não tiver dateRange definido, busca todos os registros ordenados por data
     if (!dateRange?.from) {
-      return query(operacoesRef, orderBy('data', 'desc'), limit(20));
+      const constraints: QueryConstraint[] = [orderBy('data', 'desc')];
+
+      // Filtrar por operação selecionada
+      if (selectedOperationId) {
+        constraints.unshift(where('operationId', '==', selectedOperationId));
+      }
+
+      return query(operacoesRef, ...constraints);
     }
 
-    const constraints: QueryConstraint[] = [orderBy('data', 'desc')];
+    const constraints: QueryConstraint[] = [];
+
+    // IMPORTANTE: where deve vir antes de orderBy para índices do Firestore
+    if (selectedOperationId) {
+      constraints.push(where('operationId', '==', selectedOperationId));
+    }
 
     if (dateRange.from) {
       constraints.push(where('data', '>=', Timestamp.fromDate(startOfDay(dateRange.from))));
@@ -158,10 +174,21 @@ export default function Home() {
       constraints.push(where('data', '<=', Timestamp.fromDate(end)));
     }
 
+    constraints.push(orderBy('data', 'desc'));
+
     return query(operacoesRef, ...constraints);
-  }, [operacoesRef, dateRange]);
+  }, [operacoesRef, dateRange, selectedOperationId]);
 
   const { data: allOperacoes, isLoading: isLoadingAllOperacoes } = useCollection<Operacao>(allOperacoesQuery);
+
+  // DEBUG: Log para investigar quantos registros estão sendo retornados
+  useEffect(() => {
+    console.log('=== DEBUG LANÇAMENTOS ===');
+    console.log('Total lançamentos retornados:', allOperacoes?.length || 0);
+    console.log('DateRange:', dateRange);
+    console.log('SelectedOperationId:', selectedOperationId);
+    console.log('Lançamentos:', allOperacoes);
+  }, [allOperacoes, dateRange, selectedOperationId]);
 
   const filteredOperacoes = useMemo(() => {
     // A filtragem de data já foi feita no servidor.
@@ -193,7 +220,11 @@ export default function Home() {
 
       <NavTabs defaultValue="lancamentos" className="w-full flex flex-col md:flex-row gap-6">
         <Sidebar />
-        <MobilePillNav />
+        {(!settings?.mobileNavStyle || settings?.mobileNavStyle === 'floating') ? (
+          <MobilePillNav />
+        ) : (
+          <MobileHamburgerMenu />
+        )}
 
         <div className="flex-1 w-full min-w-0">
           <TopBar />

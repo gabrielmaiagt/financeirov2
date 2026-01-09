@@ -11,7 +11,7 @@ export const NavTabsList = () => {
     if (settings.layout !== "tabs") return null;
 
     return (
-        <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 no-scrollbar">
+        <div className="hidden md:block w-full overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 no-scrollbar">
             <TabsList className="h-auto w-max justify-start flex-nowrap bg-transparent p-0 gap-2">
                 {visibleTabs.map((item) => (
                     <TabsTrigger

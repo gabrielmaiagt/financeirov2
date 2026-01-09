@@ -176,7 +176,10 @@ export const FrendzCartItemSchema = z.object({
     offer_id: z.number().optional().nullable(),
     title: z.string().optional().nullable(),
     cover: z.string().optional().nullable(),
-    price: z.number().optional().nullable(), // in centavos
+    price: z.preprocess((val) => {
+        if (val === '' || val === null || val === undefined) return null;
+        return Number(val);
+    }, z.number()).optional().nullable(), // Handle string or number, in centavos
     quantity: z.number().optional().nullable(),
     operation_type: z.number().optional().nullable(), // 1=main, 2=orderbump, 3=upsell
     tangible: z.boolean().optional().nullable(),
@@ -193,14 +196,27 @@ export const FrendzTrackingSchema = z.object({
 
 export const FrendzTransactionSchema = z.object({
     id: z.string().or(z.number().transform(String)).optional().nullable(),
+    hash: z.string().optional().nullable(),
     status: z.string().optional().nullable(),
     method: z.string().optional().nullable(),
+    payment_method: z.string().optional().nullable(),
+    payment_type: z.string().optional().nullable(),
+    payment_status: z.string().optional().nullable(),
+    payment_data: z.string().optional().nullable(),
     tracking_code: z.string().optional().nullable(),
     country: z.string().optional().nullable(),
-    amount: z.number().optional().nullable(), // in centavos
-    net_amount: z.number().optional().nullable(), // in centavos
+    installments: z.string().or(z.number().transform(String)).optional().nullable(),
+    amount: z.preprocess((val) => {
+        if (val === '' || val === null || val === undefined) return null;
+        return Number(val);
+    }, z.number()).optional().nullable(), // Handle string or number, in centavos
+    net_amount: z.preprocess((val) => {
+        if (val === '' || val === null || val === undefined) return null;
+        return Number(val);
+    }, z.number()).optional().nullable(), // Handle string or number, in centavos
     url: z.string().optional().nullable(),
     checkout_url: z.string().optional().nullable(),
+    created_at: z.string().optional().nullable(),
     billet: z.object({
         url: z.string().optional().nullable(),
         barcode: z.string().optional().nullable(),
@@ -228,7 +244,10 @@ export const FrendzWebhookSchema = z.object({
     offer: z.object({
         hash: z.string().optional().nullable(),
         title: z.string().optional().nullable(),
-        price: z.number().optional().nullable(), // in centavos
+        price: z.preprocess((val) => {
+            if (val === '' || val === null || val === undefined) return null;
+            return Number(val);
+        }, z.number()).optional().nullable(), // Handle string or number, in centavos
         payment_methods: z.string().optional().nullable(), // For cart.abandoned
     }).optional().nullable(),
     items: z.array(FrendzCartItemSchema).optional().nullable(),
@@ -243,7 +262,10 @@ export const FrendzWebhookSchema = z.object({
     hash: z.string().optional().nullable(),
     transaction_id: z.string().or(z.number().transform(String)).optional().nullable(),
     id: z.string().or(z.number().transform(String)).optional().nullable(),
-    amount: z.preprocess((val) => Number(val), z.number()).optional().nullable(),
+    amount: z.preprocess((val) => {
+        if (val === '' || val === null || val === undefined) return null;
+        return Number(val);
+    }, z.number()).optional().nullable(),
     payment_method: z.string().optional().nullable(),
     installments: z.number().optional().nullable(),
     cart: z.array(FrendzCartItemSchema).optional().nullable(),
@@ -260,8 +282,8 @@ export const FrendzWebhookSchema = z.object({
     abandoned_id: z.number().optional().nullable(),
 }).transform((data) => ({
     ...data,
-    transaction_id: data.transaction?.id || data.hash || data.transaction_id || data.id || 'unknown_id',
-    status: data.transaction?.status || data.status || data.event || 'unknown',
+    transaction_id: data.transaction?.id || data.transaction?.hash || data.hash || data.transaction_id || data.id || 'unknown_id',
+    status: data.transaction?.status || data.transaction?.payment_status || data.status || data.event || 'unknown',
     amount: data.transaction?.amount || data.amount || 0,
     cart: data.items || data.cart || [],
 }));

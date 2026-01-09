@@ -78,6 +78,13 @@ export function UserManagement() {
 
     const { data: users, isLoading: isLoadingUsers } = useCollection<UserData>(usersQuery);
 
+    // Check if current user is admin based on Firestore data
+    const currentUserData = users?.find(u => u.id === currentUser?.uid);
+    const isUserAdmin = currentUserData?.role === 'admin' || isAdmin;
+
+    // Allow access if no users exist yet (first-time setup) or if user is admin
+    const hasAccess = isUserAdmin || (users && users.length === 0);
+
     // Reset fields when opening dialogs
     useEffect(() => {
         if (editingUser) {
@@ -167,7 +174,18 @@ export function UserManagement() {
         }
     };
 
-    if (!isAdmin) {
+    // Show loading while checking permissions
+    if (isLoadingUsers) {
+        return (
+            <Card className="border-neutral-800">
+                <CardContent className="flex justify-center items-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (!hasAccess) {
         return (
             <Alert>
                 <AlertDescription>

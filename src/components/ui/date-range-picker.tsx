@@ -61,6 +61,18 @@ export function DateRangePicker({
       case 'thisMonth':
         onDateChange({ from: startOfMonth(now), to: endOfMonth(now) });
         break;
+      case 'lastMonth':
+        const lastMonth = addDays(startOfMonth(now), -1); // Último dia do mês anterior
+        onDateChange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) });
+        break;
+      case 'last3Months':
+        const threeMonthsAgo = addDays(now, -90);
+        onDateChange({ from: threeMonthsAgo, to: now });
+        break;
+      case 'lastYear':
+        const oneYearAgo = addDays(now, -365);
+        onDateChange({ from: oneYearAgo, to: now });
+        break;
       case 'all':
         onDateChange(undefined); // Represents "Maximum" or "All time"
         break;
@@ -104,6 +116,9 @@ export function DateRangePicker({
                 <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('last7')}>Últimos 7 dias</Button>
                 <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('last30')}>Últimos 30 dias</Button>
                 <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('thisMonth')}>Este mês</Button>
+                <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('lastMonth')}>Mês passado</Button>
+                <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('last3Months')}>Últimos 3 meses</Button>
+                <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('lastYear')}>Último ano</Button>
                 <Button variant="ghost" className="justify-start" onClick={() => handlePresetChange('all')}>Período completo</Button>
               </div>
             </div>

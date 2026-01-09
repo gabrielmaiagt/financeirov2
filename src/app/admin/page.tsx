@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Send, Users as UsersIcon, Webhook, Bell, Activity, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import ErrorLogViewer from '@/components/admin/ErrorLogViewer';
 import { UserManagement } from '@/components/admin/UserManagement';
@@ -17,17 +17,55 @@ import WebhookDebugger from '@/components/admin/WebhookDebugger';
 import AddGatewayGuide from '@/components/admin/AddGatewayGuide';
 import NotificationSettingsCard from '@/components/admin/NotificationSettingsCard';
 import TabSettingsCard from '@/components/admin/TabSettingsCard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from '@/components/ui/separator';
+import { WidgetConfigCard } from '@/components/admin/WidgetConfigCard';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { AdminHeader } from '@/components/admin/AdminHeader';
+import { StatsCard } from '@/components/admin/StatsCard';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { useCollection } from '@/firebase';
+import { useMemoFirebase } from '@/firebase/provider';
+import { collection } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 export default function AdminPage() {
+    const [activeTab, setActiveTab] = useState('users');
     const [title, setTitle] = useState('🔔 Notificação de Teste');
     const [message, setMessage] = useState('Esta é uma mensagem de teste para verificar as notificações push.');
     const [link, setLink] = useState('/');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const { orgId } = useOrganization();
+    const firestore = useFirestore();
+
+    // Fetch stats for cards
+    const usersQuery = useMemoFirebase(
+        () => firestore && orgId ? collection(firestore, 'organizations', orgId, 'users') : null,
+        [firestore, orgId]
+    );
+    const { data: users } = useCollection(usersQuery);
+
+    const webhooksQuery = useMemoFirebase(
+        () => firestore && orgId ? collection(firestore, 'organizations', orgId, 'webhookLogs') : null,
+        [firestore, orgId]
+    );
+    const { data: webhookLogs } = useCollection(webhooksQuery);
+
+    const notificationsQuery = useMemoFirebase(
+        () => firestore && orgId ? collection(firestore, 'organizations', orgId, 'pushSubscriptions') : null,
+        [firestore, orgId]
+    );
+    const { data: pushSubscriptions } = useCollection(notificationsQuery);
+
+    // Calculate today's webhooks
+    const webhooksToday = useMemo(() => {
+        if (!webhookLogs) return 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return webhookLogs.filter(log => {
+            const logDate = log.timestamp?.toDate() || new Date(0);
+            return logDate >= today;
+        }).length;
+    }, [webhookLogs]);
 
     const handleSendNotification = async () => {
         setIsLoading(true);
@@ -64,131 +102,224 @@ export default function AdminPage() {
         }
     };
 
-
     return (
-        <div className="flex flex-col items-center min-h-screen bg-background text-foreground p-4 md:p-8">
-            <div className="absolute top-0 left-0 w-full h-full bg-black -z-10">
-                <div className="absolute inset-0 bg-radial-gradient(ellipse_at_center,rgba(20,20,20,1)_0%,rgba(0,0,0,1)_100%)"></div>
+        <div className="min-h-screen bg-black text-foreground">
+            {/* Background gradient */}
+            <div className="fixed top-0 left-0 w-full h-full -z-10">
+                <div className="absolute inset-0 bg-gradient-to-br from-neutral-950 via-black to-black"></div>
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-900/10 via-transparent to-transparent"></div>
             </div>
 
-            <div className="w-full max-w-6xl space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                    <div>
-                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                            Painel Administrativo
-                        </h1>
-                        <p className="text-muted-foreground">Gerencie usuários, integrações e monitore o sistema.</p>
+            <div className="flex">
+                {/* Sidebar */}
+                <AdminSidebar
+                    mode="tabs"
+                    activeValue={activeTab}
+                    onItemClick={setActiveTab}
+                />
+
+                {/* Main Content */}
+                <main className="flex-1 p-8 space-y-8 overflow-y-auto">
+                    {/* Header with back button */}
+                    <div className="flex items-center gap-4 mb-4">
+                        <Button asChild variant="outline" size="sm">
+                            <Link href="/" className="gap-2">
+                                <ArrowLeft className="w-4 h-4" />
+                                Dashboard
+                            </Link>
+                        </Button>
                     </div>
-                    <Button asChild variant="outline">
-                        <Link href="/">Voltar ao Painel Principal</Link>
-                    </Button>
-                </div>
 
-                <Tabs defaultValue="users" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 mb-8">
-                        <TabsTrigger value="users">Usuários</TabsTrigger>
-                        <TabsTrigger value="integrations">Integrações & Webhooks</TabsTrigger>
-                        <TabsTrigger value="notifications">Notificações Push</TabsTrigger>
-                        <TabsTrigger value="interface">Interface</TabsTrigger>
-                        <TabsTrigger value="system">Logs do Sistema</TabsTrigger>
-                    </TabsList>
+                    {/* Stats Cards - Show different stats based on active tab */}
+                    {activeTab === 'users' && (
+                        <>
+                            <AdminHeader
+                                title="Gerenciamento de Usuários"
+                                description="Visualize e gerencie todos os usuários da organização"
+                            />
+                            <div className="grid gap-6 md:grid-cols-3 mb-8">
+                                <StatsCard
+                                    title="Total de Usuários"
+                                    value={users?.length || 0}
+                                    icon={UsersIcon}
+                                    variant="success"
+                                />
+                                <StatsCard
+                                    title="Administradores"
+                                    value={users?.filter(u => u.role === 'admin').length || 0}
+                                    icon={UsersIcon}
+                                    variant="info"
+                                />
+                                <StatsCard
+                                    title="Usuários Ativos"
+                                    value={users?.filter(u => u.active !== false).length || 0}
+                                    icon={Activity}
+                                    variant="default"
+                                />
+                            </div>
+                            <UserManagement />
+                        </>
+                    )}
 
-                    {/* INTERFACE TAB */}
-                    <TabsContent value="interface" className="space-y-6">
-                        <TabSettingsCard />
-                    </TabsContent>
-
-                    {/* USERS TAB */}
-                    <TabsContent value="users" className="space-y-6">
-                        <UserManagement />
-                    </TabsContent>
-
-                    {/* INTEGRATIONS TAB */}
-                    <TabsContent value="integrations" className="space-y-6">
-                        <div className="w-full">
-                            <WebhookDebugger />
-                        </div>
-                        <div className="grid gap-6 md:grid-cols-2">
+                    {activeTab === 'integrations' && (
+                        <>
+                            <AdminHeader
+                                title="Integrações & Webhooks"
+                                description="Configure e monitore integrações de pagamento e webhooks"
+                            />
+                            <div className="grid gap-6 md:grid-cols-3 mb-8">
+                                <StatsCard
+                                    title="Webhooks Hoje"
+                                    value={webhooksToday}
+                                    icon={Webhook}
+                                    variant="info"
+                                />
+                                <StatsCard
+                                    title="Total de Logs"
+                                    value={webhookLogs?.length || 0}
+                                    icon={Activity}
+                                    variant="default"
+                                />
+                                <StatsCard
+                                    title="Taxa de Sucesso"
+                                    value={webhookLogs?.length ? `${Math.round((webhookLogs.filter(l => l.status === 'success').length / webhookLogs.length) * 100)}%` : '0%'}
+                                    icon={Activity}
+                                    variant="success"
+                                />
+                            </div>
                             <div className="space-y-6">
-                                <WebhookLinksCard />
-                                <WebhookDocumentation />
+                                <WebhookDebugger />
+                                <div className="grid gap-6 md:grid-cols-2">
+                                    <div className="space-y-6">
+                                        <WebhookLinksCard />
+                                        <WebhookDocumentation />
+                                    </div>
+                                    <div>
+                                        <WebhookRequestViewer />
+                                    </div>
+                                    <div className="col-span-1 md:col-span-2">
+                                        <AddGatewayGuide />
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <WebhookRequestViewer />
-                            </div>
-                            <div className="col-span-1 md:col-span-2">
-                                <AddGatewayGuide />
-                            </div>
-                        </div>
-                    </TabsContent>
+                        </>
+                    )}
 
-                    {/* NOTIFICATIONS TAB */}
-                    <TabsContent value="notifications" className="space-y-6">
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <NotificationSettingsCard />
-                            <Card className="w-full">
-                                <CardHeader>
-                                    <CardTitle>Testar Notificações Push</CardTitle>
-                                    <CardDescription>
-                                        Envie mensagens de teste para todos os dispositivos inscritos.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="title">Título</Label>
-                                        <Input
-                                            id="title"
-                                            value={title}
-                                            onChange={(e) => setTitle(e.target.value)}
-                                            placeholder="Título da notificação"
-                                            disabled={isLoading}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="message">Mensagem</Label>
-                                        <Input
-                                            id="message"
-                                            value={message}
-                                            onChange={(e) => setMessage(e.target.value)}
-                                            placeholder="Conteúdo da mensagem"
-                                            disabled={isLoading}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="link">Link de Destino</Label>
-                                        <Input
-                                            id="link"
-                                            value={link}
-                                            onChange={(e) => setLink(e.target.value)}
-                                            placeholder="Ex: /tarefas"
-                                            disabled={isLoading}
-                                        />
-                                    </div>
-                                    <Button
-                                        onClick={handleSendNotification}
-                                        disabled={isLoading || !title || !message}
-                                        className="w-full"
-                                    >
-                                        {isLoading ? (
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <Send className="mr-2 h-4 w-4" />
-                                        )}
-                                        Enviar Notificação
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </TabsContent>
+                    {activeTab === 'notifications' && (
+                        <>
+                            <AdminHeader
+                                title="Notificações Push"
+                                description="Configure e envie notificações para todos os usuários"
+                            />
+                            <div className="grid gap-6 md:grid-cols-3 mb-8">
+                                <StatsCard
+                                    title="Dispositivos Ativos"
+                                    value={pushSubscriptions?.length || 0}
+                                    icon={Bell}
+                                    variant="info"
+                                />
+                                <StatsCard
+                                    title="Notificações Enviadas"
+                                    value="0"
+                                    icon={Send}
+                                    variant="default"
+                                />
+                                <StatsCard
+                                    title="Taxa de Clique"
+                                    value="0%"
+                                    icon={Activity}
+                                    variant="success"
+                                />
+                            </div>
+                            <div className="grid gap-6 md:grid-cols-2">
+                                <NotificationSettingsCard />
+                                <Card className="bg-neutral-900/50 backdrop-blur-sm border-neutral-800">
+                                    <CardHeader>
+                                        <CardTitle>Testar Notificações Push</CardTitle>
+                                        <CardDescription>
+                                            Envie mensagens de teste para todos os dispositivos inscritos.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="title">Título</Label>
+                                            <Input
+                                                id="title"
+                                                value={title}
+                                                onChange={(e) => setTitle(e.target.value)}
+                                                placeholder="Título da notificação"
+                                                disabled={isLoading}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="message">Mensagem</Label>
+                                            <Input
+                                                id="message"
+                                                value={message}
+                                                onChange={(e) => setMessage(e.target.value)}
+                                                placeholder="Conteúdo da mensagem"
+                                                disabled={isLoading}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="link">Link de Destino</Label>
+                                            <Input
+                                                id="link"
+                                                value={link}
+                                                onChange={(e) => setLink(e.target.value)}
+                                                placeholder="Ex: /tarefas"
+                                                disabled={isLoading}
+                                            />
+                                        </div>
+                                        <Button
+                                            onClick={handleSendNotification}
+                                            disabled={isLoading || !title || !message}
+                                            className="w-full bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500"
+                                        >
+                                            {isLoading ? (
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Send className="mr-2 h-4 w-4" />
+                                            )}
+                                            Enviar Notificação
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </>
+                    )}
 
-                    {/* SYSTEM TAB */}
-                    <TabsContent value="system" className="space-y-6">
-                        <div className="grid gap-6">
+                    {activeTab === 'widget' && (
+                        <>
+                            <AdminHeader
+                                title="Widget Mobile"
+                                description="Configure seu widget iOS para acompanhar métricas na tela inicial"
+                            />
+                            <WidgetConfigCard />
+                        </>
+                    )}
+
+                    {activeTab === 'interface' && (
+                        <>
+                            <AdminHeader
+                                title="Configurações de Interface"
+                                description="Personalize a aparência e o comportamento da interface"
+                            />
+                            <TabSettingsCard />
+                        </>
+                    )}
+
+                    {activeTab === 'system' && (
+                        <>
+                            <AdminHeader
+                                title="Logs do Sistema"
+                                description="Monitore erros e atividades do sistema"
+                            />
                             <ErrorLogViewer />
-                        </div>
-                    </TabsContent>
-                </Tabs>
+                        </>
+                    )}
+                </main>
             </div>
-        </div >
+        </div>
     );
 }

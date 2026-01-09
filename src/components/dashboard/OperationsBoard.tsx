@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useFirestore } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Pencil, Trash2, Building2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { useOperation } from '@/contexts/OperationContext';
 import { Operation, OperationCategory, AdCostMode } from '@/types/organization';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,7 +24,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { useOrgDoc } from '@/hooks/useFirestoreOrg';
+
 
 const categoryColors: Record<OperationCategory, string> = {
     infoproduct: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -41,6 +43,7 @@ const adCostModeLabels: Record<AdCostMode, string> = {
 
 export default function OperationsBoard() {
     const firestore = useFirestore();
+    const { orgId } = useOrganization();
     const { operations, isLoading } = useOperation();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingOperation, setEditingOperation] = useState<Operation | null>(null);
@@ -58,10 +61,8 @@ export default function OperationsBoard() {
 
     const handleDelete = (id: string) => {
         if (!firestore) return;
-        const docRef = useOrgDoc('operations', id);
-        if (docRef) {
-            deleteDocumentNonBlocking(docRef);
-        }
+        const docRef = doc(firestore, 'organizations', orgId, 'operations', id);
+        deleteDocumentNonBlocking(docRef);
         setItemToDelete(null);
     };
 

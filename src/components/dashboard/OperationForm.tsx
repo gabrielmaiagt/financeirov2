@@ -215,11 +215,23 @@ export function OperationForm({ onSave, onClose, existingOperation }: OperationF
                                     )}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
+                            <PopoverContent
+                                className="w-auto p-0"
+                                onInteractOutside={(e) => {
+                                    // Prevent closing when clicking inside the calendar
+                                    const target = e.target as HTMLElement;
+                                    if (target.closest('.rdp')) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                            >
                                 <Calendar
                                     mode="multiple"
                                     selected={dates}
-                                    onSelect={setDates}
+                                    onSelect={(newDates) => {
+                                        // Ensure we always have a valid array value
+                                        setDates(newDates || []);
+                                    }}
                                     initialFocus
                                 // required removed as it behaves differently in multiple mode
                                 />

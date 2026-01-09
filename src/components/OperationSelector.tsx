@@ -38,11 +38,16 @@ export function OperationSelector({ className }: { className?: string }) {
     return (
         <div className={cn("flex items-center gap-2", className)}>
             <Building2 className="w-4 h-4 text-muted-foreground shrink-0 hidden sm:block" />
-            <Select value={selectedOperationId || undefined} onValueChange={setSelectedOperationId}>
+            <Select value={selectedOperationId || 'all'} onValueChange={(value) => setSelectedOperationId(value === 'all' ? null : value)}>
                 <SelectTrigger className="w-[130px] sm:w-[180px] md:w-[260px] h-10 bg-neutral-900/50 border-neutral-800 text-xs sm:text-sm">
                     <SelectValue placeholder="Operação" />
                 </SelectTrigger>
                 <SelectContent>
+                    <SelectItem value="all">
+                        <div className="flex items-center gap-2">
+                            <span className="font-semibold">Todas as Operações</span>
+                        </div>
+                    </SelectItem>
                     {operations.map((operation) => (
                         <SelectItem key={operation.id} value={operation.id}>
                             <div className="flex items-center gap-2">
