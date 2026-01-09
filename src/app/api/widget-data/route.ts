@@ -70,6 +70,10 @@ async function validateToken(token: string): Promise<{
     try {
         const { firestore } = initializeFirebase();
 
+        console.log('=== WIDGET TOKEN VALIDATION ===');
+        console.log('Token length:', token?.length);
+        console.log('Token preview:', token?.substring(0, 15) + '...');
+
         // Buscar em todas as organizações (otimizar com collection group query)
         const tokensSnapshot = await firestore
             .collectionGroup('widget_tokens')
@@ -78,16 +82,39 @@ async function validateToken(token: string): Promise<{
             .limit(1)
             .get();
 
+        console.log('Tokens found:', tokensSnapshot.size);
+
         if (tokensSnapshot.empty) {
+            console.log('❌ No active tokens found for this value');
+
+            // Debug: Check if token exists but inactive
+            const allTokensSnapshot = await firestore
+                .collectionGroup('widget_tokens')
+                .where('token', '==', token)
+                .get();
+
+            console.log('Total tokens (including inactive):', allTokensSnapshot.size);
+            if (!allTokensSnapshot.empty) {
+                const doc = allTokensSnapshot.docs[0];
+                console.log('Token exists but active =', doc.data().active);
+            }
+
             return null;
         }
 
         const tokenDoc = tokensSnapshot.docs[0];
         const data = tokenDoc.data();
 
+        console.log('✅ Token found!');
+        console.log('Token path:', tokenDoc.ref.path);
+        console.log('Token data:', { userId: data.userId, active: data.active });
+
         // Extrair orgId do path
         const pathParts = tokenDoc.ref.path.split('/');
         const orgId = pathParts[1]; // organizations/{orgId}/widget_tokens/{tokenId}
+
+        console.log('Extracted orgId:', orgId);
+        console.log('=== END VALIDATION ===');
 
         return {
             tokenId: tokenDoc.id,
@@ -95,7 +122,7 @@ async function validateToken(token: string): Promise<{
             orgId: orgId,
         };
     } catch (error) {
-        console.error('Error validating token:', error);
+        console.error('❌ Error validating token:', error);
         return null;
     }
 }
