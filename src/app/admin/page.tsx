@@ -23,6 +23,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { StatsCard } from '@/components/admin/StatsCard';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useCollection } from '@/firebase';
+import { cn } from '@/lib/utils';
 import { useMemoFirebase } from '@/firebase/provider';
 import { collection } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
@@ -110,16 +111,46 @@ export default function AdminPage() {
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-900/10 via-transparent to-transparent"></div>
             </div>
 
-            <div className="flex">
-                {/* Sidebar */}
-                <AdminSidebar
-                    mode="tabs"
-                    activeValue={activeTab}
-                    onItemClick={setActiveTab}
-                />
+            <div className="flex flex-col md:flex-row">
+                {/* Sidebar - Hidden on mobile */}
+                <div className="hidden md:block">
+                    <AdminSidebar
+                        mode="tabs"
+                        activeValue={activeTab}
+                        onItemClick={setActiveTab}
+                    />
+                </div>
+
+                {/* Mobile Tabs - Only visible on small screens */}
+                <div className="md:hidden sticky top-0 z-10 bg-neutral-950/95 backdrop-blur-xl border-b border-white/10 overflow-x-auto">
+                    <div className="flex gap-2 p-3 min-w-max">
+                        {[
+                            { label: 'Usuários', value: 'users', icon: '👥' },
+                            { label: 'Integrações', value: 'integrations', icon: '🔗' },
+                            { label: 'Notificações', value: 'notifications', icon: '🔔' },
+                            { label: 'Widget', value: 'widget', icon: '📱' },
+                            { label: 'Interface', value: 'interface', icon: '🎨' },
+                            { label: 'Logs', value: 'system', icon: '📊' },
+                        ].map((tab) => (
+                            <button
+                                key={tab.value}
+                                onClick={() => setActiveTab(tab.value)}
+                                className={cn(
+                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
+                                    activeTab === tab.value
+                                        ? "bg-primary/20 text-primary border border-primary/30"
+                                        : "bg-neutral-900/50 text-muted-foreground hover:bg-neutral-800/50"
+                                )}
+                            >
+                                <span className="mr-1.5">{tab.icon}</span>
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
                 {/* Main Content */}
-                <main className="flex-1 p-8 space-y-8 overflow-y-auto">
+                <main className="flex-1 p-4 md:p-8 space-y-6 md:space-y-8 overflow-y-auto">
                     {/* Header with back button */}
                     <div className="flex items-center gap-4 mb-4">
                         <Button asChild variant="outline" size="sm">

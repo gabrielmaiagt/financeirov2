@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Bell, Loader2, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { WebhookFilters } from './WebhookFilters';
 
 // Define the structure for a template
 interface NotificationTemplate {
@@ -27,6 +28,23 @@ interface NotificationSettings {
     sale_approved: NotificationTemplate;
     sale_pending: NotificationTemplate;
     sale_refunded: NotificationTemplate;
+
+    // NEW: Webhook filters
+    notifyPending?: boolean;      // Enable/disable PIX gerado notifications
+    notifyApproved?: boolean;     // Enable/disable PIX pago notifications
+    notifyRefunded?: boolean;     // Enable/disable refund notifications
+    playSound?: boolean;          // Enable/disable notification sound
+
+    // NEW: Scheduled motivational notifications
+    scheduledEnabled?: boolean;    // Master toggle for scheduled notifications
+    schedules?: {
+        '06:00'?: boolean;
+        '08:00'?: boolean;
+        '10:00'?: boolean;
+        '12:00'?: boolean;
+        '18:00'?: boolean;
+        '22:00'?: boolean;
+    };
 }
 
 const DEFAULT_SETTINGS: NotificationSettings = {
@@ -216,6 +234,13 @@ const NotificationSettingsCard = () => {
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
+
+                {/* Webhook Filters */}
+                <WebhookFilters
+                    settings={settings}
+                    onToggle={updateTemplate as any}
+                    isSaving={isSaving}
+                />
 
                 <div className="flex justify-end pt-4 border-t border-border/50">
                     <Button onClick={handleSave} disabled={isSaving}>
