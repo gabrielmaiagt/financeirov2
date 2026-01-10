@@ -25,7 +25,7 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full h-16 border-b border-white/5 bg-neutral-950/60 backdrop-blur-xl px-4 md:px-6 flex items-center justify-between gap-4 transition-all duration-300">
+    <header className="sticky top-0 z-[100] w-full h-16 border-b border-white/5 bg-neutral-950/60 backdrop-blur-xl px-4 md:px-6 flex items-center justify-between gap-4 transition-all duration-300">
 
       {/* Brand Section (Left) */}
       <div className="flex-1 flex items-center justify-start min-w-0">
