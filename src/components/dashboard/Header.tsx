@@ -46,7 +46,7 @@ const Header = () => {
 
       {/* Centered Goal Widget (Middle) */}
       {/* Visible on lg+ screens, taking priority over avatars */}
-      <div className="hidden lg:flex items-center justify-center shrink-0 mx-4">
+      <div className="hidden lg:flex items-center justify-center shrink-0 mx-4 relative z-0">
         <GoalWidget variant="header" />
       </div>
 
