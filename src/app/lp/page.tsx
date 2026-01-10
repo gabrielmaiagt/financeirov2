@@ -159,16 +159,18 @@ export default function LandingPage() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                            <Button
-                                size="lg"
-                                className="relative text-lg px-8 py-7 bg-gradient-to-r from-primary via-emerald-500 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500 shadow-lg shadow-primary/50 hover:shadow-xl hover:shadow-primary/60 hover:scale-105 font-bold group border-2 border-primary/20"
-                            >
-                                <span className="relative z-10 flex items-center gap-2">
-                                    🚀 Começar Agora - R$ 29,90/mês
-                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                </span>
-                                <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/20 to-primary/0 opacity-0 group-hover:opacity-100 blur-xl transition-opacity" />
-                            </Button>
+                            <Link href="/signup">
+                                <Button
+                                    size="lg"
+                                    className="relative text-lg px-8 py-7 bg-gradient-to-r from-primary via-emerald-500 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500 shadow-lg shadow-primary/50 hover:shadow-xl hover:shadow-primary/60 hover:scale-105 font-bold group border-2 border-primary/20"
+                                >
+                                    <span className="relative z-10 flex items-center gap-2">
+                                        🚀 Começar Agora - R$ 29,90/mês
+                                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </span>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/20 to-primary/0 opacity-0 group-hover:opacity-100 blur-xl transition-opacity" />
+                                </Button>
+                            </Link>
                             <Button
                                 size="lg"
                                 variant="outline"
@@ -465,15 +467,17 @@ anged from original */}
                                     ))}
                                 </ul>
 
-                                <Button
-                                    size="lg"
-                                    className="w-full text-base md:text-lg py-6 md:py-7 bg-gradient-to-r from-primary via-emerald-500 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500 shadow-lg shadow-primary/50 hover:shadow-xl hover:shadow-primary/60 hover:scale-105 font-bold group border-2 border-primary/20"
-                                >
-                                    <span className="relative z-10 flex items-center justify-center gap-2">
-                                        🚀 Começar Agora - R$ 29,90/mês
-                                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                    </span>
-                                </Button>
+                                <Link href="/signup">
+                                    <Button
+                                        size="lg"
+                                        className="w-full text-base md:text-lg py-6 md:py-7 bg-gradient-to-r from-primary via-emerald-500 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500 shadow-lg shadow-primary/50 hover:shadow-xl hover:shadow-primary/60 hover:scale-105 font-bold group border-2 border-primary/20"
+                                    >
+                                        <span className="relative z-10 flex items-center justify-center gap-2">
+                                            🚀 Começar Agora - R$ 29,90/mês
+                                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                        </span>
+                                    </Button>
+                                </Link>
 
                                 <p className="text-center text-xs md:text-sm text-neutral-500 mt-6">
                                     🔒 Pagamento seguro • Cancele quando quiser
@@ -563,16 +567,18 @@ anged from original */}
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button
-                                size="lg"
-                                className="relative text-xl px-12 py-8 bg-gradient-to-r from-primary via-emerald-500 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500 shadow-2xl shadow-primary/50 hover:shadow-[0_0_50px_rgba(var(--primary),0.8)] hover:scale-110 font-bold group border-2 border-primary/20 overflow-hidden"
-                            >
-                                <span className="relative z-10 flex items-center gap-2">
-                                    🎯 Começar Agora - R$ 29,90/mês
-                                    <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-                                </span>
-                                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                            </Button>
+                            <Link href="/signup">
+                                <Button
+                                    size="lg"
+                                    className="relative text-xl px-12 py-8 bg-gradient-to-r from-primary via-emerald-500 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500 shadow-2xl shadow-primary/50 hover:shadow-[0_0_50px_rgba(var(--primary),0.8)] hover:scale-110 font-bold group border-2 border-primary/20 overflow-hidden"
+                                >
+                                    <span className="relative z-10 flex items-center gap-2">
+                                        🎯 Começar Agora - R$ 29,90/mês
+                                        <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                                    </span>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                                </Button>
+                            </Link>
                         </div>
 
                         <p className="text-sm text-neutral-500 mt-8">
