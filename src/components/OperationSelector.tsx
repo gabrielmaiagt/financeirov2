@@ -42,7 +42,7 @@ export function OperationSelector({ className }: { className?: string }) {
                 <SelectTrigger className="w-[130px] sm:w-[180px] md:w-[260px] h-10 bg-neutral-900/50 border-neutral-800 text-xs sm:text-sm">
                     <SelectValue placeholder="Operação" />
                 </SelectTrigger>
-                <SelectContent className="z-[1]">
+                <SelectContent className="z-[200]">
                     <SelectItem value="all">
                         <div className="flex items-center gap-2">
                             <span className="font-semibold">Todas as Operações</span>
