@@ -64,6 +64,24 @@ export default function LandingPage() {
             role: "Sócio, Agência Premium",
             text: "O widget iOS é genial. Acompanho tudo sem nem abrir o app!",
             rating: 5
+        },
+        {
+            name: "Ana Paula Rodrigues",
+            role: "Fundadora, InfoProduto Brasil",
+            text: "Finalmente um painel que entende o mercado brasileiro. Vale cada centavo!",
+            rating: 5
+        },
+        {
+            name: "Pedro Oliveira",
+            role: "CFO, StartUp XYZ",
+            text: "Automação real de verdade. O que levava horas agora é automático. Incrível!",
+            rating: 5
+        },
+        {
+            name: "Juliana Santos",
+            role: "E-commerce Manager",
+            text: "Transparência total com os sócios. Acabou a dor de cabeça no fim do mês.",
+            rating: 5
         }
     ];
 
@@ -87,6 +105,34 @@ export default function LandingPage() {
         {
             question: "Preciso de conhecimento técnico?",
             answer: "Não! A interface é intuitiva e pensada para não-técnicos. Se souber usar um celular, vai conseguir usar o painel."
+        },
+        {
+            question: "Existe período de teste grátis?",
+            answer: "Sim! Oferecemos 7 dias de garantia incondicional. Se não gostar, devolvemos 100% do seu dinheiro sem perguntas."
+        },
+        {
+            question: "Como funciona o Widget iOS?",
+            answer: "O widget mostra suas vendas do dia direto na tela inicial do iPhone. Basta adicionar o widget do Safari e configurar a URL do seu painel."
+        },
+        {
+            question: "Posso ter múltiplas operações?",
+            answer: "Sim! Você pode criar quantas operações quiser (diferentes produtos, serviços, etc.) e cada uma com sua própria divisão de lucros."
+        },
+        {
+            question: "Como configuro os webhooks?",
+            answer: "No painel Admin, você encontra as URLs de webhook prontas para copiar e colar nas configurações do seu gateway de pagamento. É literalmente copiar e colar."
+        },
+        {
+            question: "O suporte está incluído?",
+            answer: "Sim! Suporte prioritário via WhatsApp está incluído em todos os planos. Respondemos em até 2 horas úteis."
+        },
+        {
+            question: "Posso exportar os dados?",
+            answer: "Sim! Você pode exportar relatórios em PDF e Excel a qualquer momento. Seus dados são seus e você tem controle total."
+        },
+        {
+            question: "Há limite de vendas ou transações?",
+            answer: "Não! Processo ilimitado de transações. Seja você faturando R$ 10mil ou R$ 10 milhões por mês, o preço é o mesmo."
         }
     ];
 
