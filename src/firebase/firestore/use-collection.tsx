@@ -80,12 +80,7 @@ export function useCollection<T = any>(
         for (const doc of snapshot.docs) {
           results.push({ ...(doc.data() as T), id: doc.id });
         }
-        // Only update if results changed to prevent infinite loops
-        setData((prev) => {
-          const newJson = JSON.stringify(results);
-          const prevJson = JSON.stringify(prev);
-          return newJson !== prevJson ? results : prev;
-        });
+        setData(results);
         setError(null);
         setIsLoading(false);
       },
