@@ -5,15 +5,24 @@ import NotificationBell from './NotificationBell';
 import GoalWidget from './GoalWidget';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Settings, Users, Palette, LayoutDashboard, ShieldAlert, Wallet } from 'lucide-react';
+import { Settings, Users, Palette, LayoutDashboard, ShieldAlert, Wallet, LogOut, User } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { OperationSelector } from '@/components/OperationSelector';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const Header = () => {
   const firestore = useFirestore();
   const { orgId } = useOrganization();
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full h-16 border-b border-white/5 bg-neutral-950/60 backdrop-blur-xl px-4 md:px-6 flex items-center justify-between gap-4 transition-all duration-300">
@@ -64,6 +73,27 @@ const Header = () => {
                 <Settings className="w-4 h-4 text-muted-foreground" />
               </Button>
             </Link>
+            <div className="w-px h-4 bg-white/10 mx-0.5" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white/5 transition-colors" title="Perfil">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user?.displayName || 'Usuário'}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sair</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
