@@ -28,7 +28,7 @@ const Header = () => {
     <header className="sticky top-0 z-[100] w-full h-16 border-b border-white/5 bg-neutral-950/60 backdrop-blur-xl px-4 md:px-6 flex items-center justify-between gap-4 transition-all duration-300">
 
       {/* Brand Section (Left) */}
-      <div className="flex-1 flex items-center justify-start min-w-0 relative z-10">
+      <div className="flex items-center justify-start shrink-0 relative z-10">
         <div className="flex items-center gap-3">
           <div className="bg-primary/20 p-2 rounded-xl shrink-0">
             <Wallet className="w-5 h-5 text-primary" />
@@ -51,50 +51,51 @@ const Header = () => {
       </div>
 
       {/* Right Section: Controls & Team (Right) */}
-      <div className="flex-1 flex items-center justify-end gap-1 md:gap-4 min-w-0">
+      <div className="flex items-center justify-end gap-2 shrink-0">
 
-        {/* Controls */}
-        <div className="flex items-center gap-1 md:gap-2">
-          {/* Operation selector - hidden on mobile */}
-          <div className="hidden sm:block">
-            <OperationSelector className="w-auto" />
+        {/* Operation selector - only on larger screens */}
+        <div className="hidden lg:block">
+          <OperationSelector className="w-auto" />
+        </div>
+
+        {/* Compact controls group */}
+        <div className="flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/5">
+          {/* Theme switcher - hidden on small/medium screens */}
+          <div className="hidden xl:block">
+            <ThemeSwitcher />
           </div>
-
-          <div className="flex items-center gap-0.5 md:gap-1 bg-white/5 rounded-full p-0.5 md:p-1 border border-white/5 shrink-0">
-            {/* Theme switcher - hidden on mobile */}
-            <div className="hidden md:block">
-              <ThemeSwitcher />
-            </div>
-            <div className="hidden md:block w-px h-4 bg-white/10 mx-0.5" />
-            <NotificationBell />
-            <div className="w-px h-4 bg-white/10 mx-0.5" />
-            <Link href="/admin">
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white/5 transition-colors" title="Painel Admin">
-                <Settings className="w-4 h-4 text-muted-foreground" />
-              </Button>
-            </Link>
-            <div className="w-px h-4 bg-white/10 mx-0.5" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white/5 transition-colors" title="Perfil">
-                  <User className="w-4 h-4 text-muted-foreground" />
+          {user && (
+            <>
+              <NotificationBell />
+              <div className="w-px h-4 bg-white/10 mx-0.5" />
+              <Link href="/admin">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white/5 transition-colors" title="Painel Admin">
+                  <Settings className="w-4 h-4 text-muted-foreground" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.displayName || 'Usuário'}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sair</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              </Link>
+              <div className="w-px h-4 bg-white/10 mx-0.5" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white/5 transition-colors" title="Perfil">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user?.displayName || 'Usuário'}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sair</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
         </div>
       </div>
     </header>
