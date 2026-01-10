@@ -1,0 +1,83 @@
+/* Premium Theme Variables - inspirado no dashboard analytics */
+[data-theme="premium"] {
+  /* Background colors */
+  --background: 15 20 25; /* #0f1419 - muito escuro */
+  --foreground: 248 250 252;
+  
+  /* Card backgrounds */
+  --card: 20 26 35; /* #141a23 */
+  --card-foreground: 248 250 252;
+  
+  /* Popover */
+  --popover: 20 26 35;
+  --popover-foreground: 248 250 252;
+  
+  /* Primary - Gradient Cyan to Purple */
+  --primary: 56 189 248; /* cyan-400 */
+  --primary-foreground: 15 20 25;
+  
+  /* Secondary - Purple accent */
+  --secondary: 139 92 246; /* violet-500 */
+  --secondary-foreground: 248 250 252;
+  
+  /* Muted */
+  --muted: 30 41 59; /* slate-800 */
+  --muted-foreground: 148 163 184;
+  
+  /* Accent - Emerald */
+  --accent: 52 211 153; /* emerald-400 */
+  --accent-foreground: 15 20 25;
+  
+  /* Destructive */
+  --destructive: 239 68 68;
+  --destructive-foreground: 248 250 252;
+  
+  /* Border */
+  --border: 51 65 85; /* slate-700 with alpha */
+  --input: 51 65 85;
+  --ring: 56 189 248;
+  
+  /* Radius */
+  --radius: 0.75rem;
+  
+  /* Chart colors - Gradient palette */
+  --chart-1: 56 189 248; /* cyan */
+  --chart-2: 139 92 246; /* purple */
+  --chart-3: 34 211 238; /* cyan-500 */
+  --chart-4: 168 85 247; /* purple-500 */
+  --chart-5: 52 211 153; /* emerald */
+}
+
+/* Premium theme gradients */
+[data-theme="premium"] .gradient-primary {
+  background: linear-gradient(135deg, rgb(56, 189, 248) 0%, rgb(139, 92, 246) 100%);
+}
+
+[data-theme="premium"] .gradient-card {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+}
+
+[data-theme="premium"] .gradient-chart {
+  background: linear-gradient(180deg, rgb(56, 189, 248) 0%, rgb(139, 92, 246) 50%, rgb(168, 85, 247) 100%);
+}
+
+/* Glow effects */
+[data-theme="premium"] .glow-cyan {
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+}
+
+[data-theme="premium"] .glow-purple {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+/* Card styling for premium theme */
+[data-theme="premium"] .card {
+  background: linear-gradient(135deg, rgba(20, 26, 35, 0.9) 0%, rgba(30, 41, 59, 0.5) 100%);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+[data-theme="premium"] .card:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.2);
+}
