@@ -51,7 +51,25 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!firestore || !operationsCollection) return;
+    console.log('🔍 Submit triggered:', { firestore: !!firestore, operationsCollection: !!operationsCollection, orgId });
+
+    if (!firestore) {
+      console.error('❌ Firestore not available');
+      alert('Erro: Firestore não está inicializado. Tente recarregar a página.');
+      return;
+    }
+
+    if (!orgId) {
+      console.error('❌ orgId not available');
+      alert('Erro: Organização não identificada. Faça logout e login novamente.');
+      return;
+    }
+
+    if (!operationsCollection) {
+      console.error('❌ operationsCollection not available');
+      alert('Erro: Coleção de operações não disponível. Tente recarregar a página.');
+      return;
+    }
 
     if (totalPercentage !== 100) {
       alert('A soma das porcentagens deve ser exatamente 100%');
@@ -61,6 +79,8 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
     setIsSubmitting(true);
 
     try {
+      console.log('📝 Creating operation with data:', { name, category, partners, adCostMode });
+
       // Sanitize partners data to ensure numbers are valid and no undefined values
       const sanitizedPartners: Partner[] = partners.map(p => {
         const partner: Partner = {
@@ -87,22 +107,24 @@ export function OrgOperationForm({ operation, onClose }: OperationFormProps) {
 
       if (operation) {
         // Update existing
-        // Update existing
-        // We cannot use hooks inside callbacks, so we perform direct referenced update
+        console.log('✏️ Updating existing operation:', operation.id);
         const docRef = doc(firestore, 'organizations', orgId, 'operations', operation.id);
         await updateDoc(docRef, operationData);
+        console.log('✅ Operation updated successfully');
       } else {
         // Create new
+        console.log('➕ Creating new operation...');
         await addDocumentNonBlocking(operationsCollection, {
           ...operationData,
           createdAt: serverTimestamp(),
         });
+        console.log('✅ Operation created successfully');
       }
 
       onClose();
     } catch (error) {
-      console.error("Error saving operation:", error);
-      alert("Erro ao salvar operação. Tente novamente.");
+      console.error('❌ Error saving operation:', error);
+      alert(`Erro ao salvar operação: ${error instanceof Error ? error.message : 'Tente novamente.'}`);
     } finally {
       setIsSubmitting(false);
     }

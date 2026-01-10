@@ -91,7 +91,10 @@ export default function DashboardBoard() {
     const [loadingCampaigns, setLoadingCampaigns] = useState(false);
 
     useEffect(() => {
-        if (!firestore || !dateRange?.from) return;
+        if (!firestore || !dateRange?.from || !orgId) {
+            console.log('Skipping campaign fetch: missing firestore, dateRange, or orgId');
+            return;
+        }
 
         const fetchCampaigns = async () => {
             setLoadingCampaigns(true);
@@ -101,22 +104,27 @@ export default function DashboardBoard() {
             const end = dateRange.to || dateRange.from!;
             const days = eachDayOfInterval({ start, end });
 
-            for (const day of days) {
-                const dateStr = format(day, 'yyyy-MM-dd');
-                const campaignsRef = collection(firestore, 'organizations', orgId, 'meta_spend_daily', dateStr, 'campaigns');
-                const snapshot = await getDocs(campaignsRef);
+            try {
+                for (const day of days) {
+                    const dateStr = format(day, 'yyyy-MM-dd');
+                    const campaignsRef = collection(firestore, 'organizations', orgId, 'meta_spend_daily', dateStr, 'campaigns');
+                    const snapshot = await getDocs(campaignsRef);
 
-                snapshot.forEach((doc) => {
-                    campaigns.push({ id: doc.id, ...doc.data() } as any);
-                });
+                    snapshot.forEach((doc) => {
+                        campaigns.push({ id: doc.id, ...doc.data() } as any);
+                    });
+                }
+
+                setMetaCampaigns(campaigns);
+            } catch (error) {
+                console.error('Error fetching campaigns:', error);
+            } finally {
+                setLoadingCampaigns(false);
             }
-
-            setMetaCampaigns(campaigns);
-            setLoadingCampaigns(false);
         };
 
         fetchCampaigns();
-    }, [firestore, dateRange, metaSpendDocs]);
+    }, [firestore, dateRange, orgId, metaSpendDocs]);
 
     // Filtrar vendas por data
     const filteredVendas = useMemo(() => {
