@@ -30,8 +30,12 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
     const isLoading = isAuthLoading || isDocLoading;
 
-    // Only show "Not Found" if we actually tried to fetch (user is logged in) and failed
-    const isNotFound = user && !isLoading && orgId && !organization;
+    // Only show "Not Found" if:
+    // 1. Auth is fully loaded (not loading anymore)
+    // 2. User is logged in
+    // 3. Org loading is done
+    // 4. Still no organization found
+    const isNotFound = !isAuthLoading && user && !isDocLoading && orgId && !organization;
     const error = docError || (isNotFound ? new Error(`Organization '${orgId}' not found`) : null);
 
     const value = {
