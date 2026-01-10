@@ -45,8 +45,8 @@ const Header = () => {
       </div>
 
       {/* Centered Goal Widget (Middle) */}
-      {/* Visible only on xl+ screens to avoid overlap with operation selector */}
-      <div className="hidden xl:flex items-center justify-center shrink-0 mx-4 relative z-0">
+      {/* Visible only on 2xl screens (1536px+) to completely avoid overlap */}
+      <div className="hidden 2xl:flex items-center justify-center shrink-0 mx-4">
         <GoalWidget variant="header" />
       </div>
 
