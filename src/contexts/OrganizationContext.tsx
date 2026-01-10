@@ -18,7 +18,7 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(u
 export function OrganizationProvider({ children }: { children: ReactNode }) {
     const { user, isLoading: isAuthLoading } = useAuth();
     // Get orgId from authenticated user's custom claims
-    const orgId = user?.orgId || null;
+    const orgId = user?.orgId || 'interno-fluxo';
     const firestore = useFirestore();
 
     const orgRef = useMemo(() => {
