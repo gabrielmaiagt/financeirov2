@@ -10,7 +10,7 @@ export interface Organization {
     id: string;
     name: string;
     slug: string;
-    theme: 'default' | 'cartoon' | 'neon' | 'retro';
+    theme: 'default' | 'cartoon' | 'glassmorphism' | 'cyberpunk';
     branding?: OrganizationBranding;
     features: {
         financials: boolean;

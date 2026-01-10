@@ -1,4 +1,4 @@
-export type Theme = "default" | "cartoon" | "retro" | "neon";
+export type Theme = "default" | "cartoon" | "glassmorphism" | "cyberpunk";
 export type Layout = "tabs" | "sidebar" | "topbar";
 
 export interface UISettings {

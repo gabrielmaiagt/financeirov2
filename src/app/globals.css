@@ -48,106 +48,134 @@
     --ring: 262.1 83.3% 57.8%;
   }
 
-  /* Cartoon Theme - Neo-Brutalist Variables */
+  /* ========================================
+     CARTOON THEME - Neo-Brutalist Style
+     ======================================== */
   [data-theme="cartoon"] {
-    --background: 260 25% 15%;
-    /* Deep Indigo #1e1b2e */
-    --foreground: 0 0% 100%;
-    /* White */
+    --background: 45 85% 95%;
+    /* Warm cream #fdf7e4 */
+    --foreground: 0 0% 5%;
+    /* Almost black */
 
-    --card: 260 25% 20%;
-    /* Lighter Indigo #26233a */
-    --card-foreground: 0 0% 100%;
+    --card: 0 0% 100%;
+    /* Pure white */
+    --card-foreground: 0 0% 5%;
 
-    --popover: 260 25% 20%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 5%;
 
-    --primary: 320 100% 60%;
-    /* Hot Pink #ff33cc */
+    --primary: 350 100% 60%;
+    /* Hot Pink #ff3366 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 50 100% 60%;
-    /* Bright Yellow #ffea33 */
-    --secondary-foreground: 260 25% 15%;
+    --secondary: 50 100% 50%;
+    /* Bright Yellow #ffd700 */
+    --secondary-foreground: 0 0% 5%;
 
-    --muted: 260 20% 30%;
-    --muted-foreground: 260 10% 80%;
+    --muted: 210 15% 90%;
+    --muted-foreground: 0 0% 30%;
 
-    --accent: 180 100% 50%;
-    /* Cyan #00ffff */
-    --accent-foreground: 260 25% 15%;
+    --accent: 170 100% 45%;
+    /* Teal #00d9a3 */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 100% 65%;
+    --destructive: 0 100% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 0%;
-    /* Black Borders */
-    --input: 260 20% 30%;
-    --ring: 320 100% 60%;
+    /* Pure black borders */
+    --input: 0 0% 95%;
+    --ring: 350 100% 60%;
 
     --radius: 1.5rem;
     /* Very rounded */
 
-    /* Custom card color variables for multi-colored cards */
-    --card-green: 160 100% 40%;
-    --card-blue: 190 100% 45%;
-    --card-orange: 30 100% 55%;
-    --card-red: 340 100% 60%;
-    --card-purple: 280 100% 65%;
+    /* Custom comic-style colors */
+    --comic-blue: 220 100% 55%;
+    --comic-orange: 30 100% 55%;
+    --comic-purple: 280 100% 60%;
+    --comic-green: 150 100% 45%;
   }
 
-  /* Retro Theme */
-  [data-theme="retro"] {
-    --background: 260 10% 10%;
-    --foreground: 35 30% 90%;
-    --card: 260 10% 13%;
-    --card-foreground: 35 30% 90%;
-    --popover: 260 10% 13%;
-    --popover-foreground: 35 30% 90%;
-    --primary: 15 100% 65%;
-    /* #ff7f50 */
+  /* ========================================
+     GLASSMORPHISM THEME - Modern Blur Effect
+     ======================================== */
+  [data-theme="glassmorphism"] {
+    --background: 220 25% 8%;
+    /* Deep blue-black */
+    --foreground: 0 0% 100%;
+
+    --card: 220 20% 12%;
+    /* Slightly lighter */
+    --card-foreground: 0 0% 100%;
+
+    --popover: 220 20% 12%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 200 100% 60%;
+    /* Sky blue #33ccff */
     --primary-foreground: 0 0% 100%;
-    --secondary: 260 25% 45%;
-    /* #6b5b95 */
+
+    --secondary: 280 100% 60%;
+    /* Purple #cc33ff */
     --secondary-foreground: 0 0% 100%;
-    --muted: 260 10% 20%;
-    --muted-foreground: 260 10% 60%;
-    --accent: 80 40% 50%;
-    /* #88b04b */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 60% 50%;
+
+    --muted: 220 15% 20%;
+    --muted-foreground: 220 10% 70%;
+
+    --accent: 160 100% 50%;
+    /* Mint #00ffaa */
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 100% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 260 10% 25%;
-    --input: 260 10% 25%;
-    --ring: 15 100% 65%;
-    --radius: 0.25rem;
+
+    --border: 220 25% 25%;
+    --input: 220 20% 15%;
+    --ring: 200 100% 60%;
+
+    --radius: 1.25rem;
   }
 
-  /* Neon Theme */
-  [data-theme="neon"] {
-    --background: 280 50% 5%;
-    --foreground: 280 20% 95%;
-    --card: 280 50% 8%;
-    --card-foreground: 280 20% 95%;
-    --popover: 280 50% 8%;
-    --popover-foreground: 280 20% 95%;
-    --primary: 300 100% 50%;
-    /* #ff00ff */
-    --primary-foreground: 0 0% 100%;
+  /* ========================================
+     CYBERPUNK THEME - Neon Future
+     ======================================== */
+  [data-theme="cyberpunk"] {
+    --background: 280 40% 8%;
+    /* Dark purple-black #0d0814 */
+    --foreground: 180 100% 80%;
+    /* Cyan text */
+
+    --card: 280 35% 12%;
+    --card-foreground: 180 100% 80%;
+
+    --popover: 280 35% 12%;
+    --popover-foreground: 180 100% 80%;
+
+    --primary: 300 100% 55%;
+    /* Hot magenta #ff00ff */
+    --primary-foreground: 0 0% 0%;
+
     --secondary: 180 100% 50%;
-    /* #00ffff */
+    /* Cyan #00ffff */
     --secondary-foreground: 0 0% 0%;
-    --muted: 280 30% 20%;
-    --muted-foreground: 280 20% 70%;
+
+    --muted: 280 25% 20%;
+    --muted-foreground: 280 10% 60%;
+
     --accent: 60 100% 50%;
-    /* #ffff00 */
+    /* Yellow #ffff00 */
     --accent-foreground: 0 0% 0%;
+
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
+
     --border: 300 100% 50%;
-    --input: 180 100% 50%;
-    --ring: 300 100% 50%;
-    --radius: 0px;
+    --input: 280 30% 15%;
+    --ring: 300 100% 55%;
+
+    --radius: 0rem;
+    /* Sharp corners */
   }
 }
 
@@ -169,145 +197,308 @@
     user-select: none;
   }
 
-  /* Cartoon Theme - Global Component Overrides */
+  /* ========================================
+     CARTOON THEME - Component Overrides
+     ======================================== */
+
+  /* Background pattern */
+  [data-theme="cartoon"] body {
+    background-image:
+      repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255, 51, 102, .03) 35px, rgba(255, 51, 102, .03) 70px);
+    animation: cartoonBG 20s linear infinite;
+  }
+
+  @keyframes cartoonBG {
+    0% {
+      background-position: 0 0;
+    }
+
+    100% {
+      background-position: 1000px 1000px;
+    }
+  }
+
+  /* Everything gets black borders */
   [data-theme="cartoon"] * {
-    border-color: #000;
-    /* Default to black borders if not specified */
+    border-color: #000 !important;
   }
 
-  /* Cards & Containers */
+  /* Cards - Comic book style */
   [data-theme="cartoon"] .card,
-  [data-theme="cartoon"] .popover,
-  [data-theme="cartoon"] .dialog-content,
-  [data-theme="cartoon"] .sheet-content {
-    border: 2px solid #000 !important;
-    box-shadow: 6px 6px 0px 0px #000 !important;
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  [data-theme="cartoon"] [class*="card"] {
+    border: 4px solid #000 !important;
+    box-shadow: 8px 8px 0px 0px #000 !important;
+    background: linear-gradient(135deg, #fff 0%, #fef9f0 100%) !important;
+    transition: all 0.15s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
   }
 
-  /* Buttons */
+  [data-theme="cartoon"] .card:hover {
+    transform: translate(-2px, -2px) rotate(-0.5deg) !important;
+    box-shadow: 10px 10px 0px 0px #000 !important;
+  }
+
+  /* Buttons - POW! effect */
   [data-theme="cartoon"] button,
-  [data-theme="cartoon"] .btn,
   [data-theme="cartoon"] [role="button"] {
-    border: 2px solid #000 !important;
-    box-shadow: 4px 4px 0px 0px #000 !important;
-    font-weight: 700 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: 3px solid #000 !important;
+    box-shadow: 5px 5px 0px 0px #000 !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    transition: all 0.1s ease !important;
+    position: relative !important;
   }
 
-  [data-theme="cartoon"] button:active,
-  [data-theme="cartoon"] .btn:active,
-  [data-theme="cartoon"] [role="button"]:active {
-    transform: translate(2px, 2px) !important;
+  [data-theme="cartoon"] button:before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border: 2px dashed rgba(0, 0, 0, 0.15);
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  [data-theme="cartoon"] button:active {
+    transform: translate(3px, 3px) !important;
     box-shadow: 2px 2px 0px 0px #000 !important;
   }
 
-  [data-theme="cartoon"] button:hover,
-  [data-theme="cartoon"] .btn:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 5px 5px 0px 0px #000 !important;
+  [data-theme="cartoon"] button:hover {
+    transform: translate(-1px, -1px) scale(1.02) !important;
+    box-shadow: 6px 6px 0px 0px #000 !important;
+    animation: buttonWobble 0.3s ease !important;
   }
 
-  /* Inputs & Selects */
+  @keyframes buttonWobble {
+
+    0%,
+    100% {
+      transform: translate(-1px, -1px) rotate(0deg);
+    }
+
+    25% {
+      transform: translate(-1px, -1px) rotate(-1deg);
+    }
+
+    75% {
+      transform: translate(-1px, -1px) rotate(1deg);
+    }
+  }
+
+  /* Inputs - Comic style */
   [data-theme="cartoon"] input,
-  [data-theme="cartoon"] select,
   [data-theme="cartoon"] textarea,
-  [data-theme="cartoon"] [role="combobox"] {
-    border: 2px solid #000 !important;
-    background-color: hsl(260, 20%, 25%) !important;
-    box-shadow: 3px 3px 0px 0px rgba(0, 0, 0, 0.5) !important;
-    color: white !important;
+  [data-theme="cartoon"] select {
+    border: 3px solid #000 !important;
+    background: #fff !important;
+    box-shadow: inset 3px 3px 0px rgba(0, 0, 0, 0.1) !important;
+    color: #000 !important;
+    font-weight: 600 !important;
   }
 
   [data-theme="cartoon"] input:focus,
-  [data-theme="cartoon"] select:focus,
-  [data-theme="cartoon"] textarea:focus {
-    box-shadow: 4px 4px 0px 0px hsl(var(--primary)) !important;
-    transform: translate(-1px, -1px);
+  [data-theme="cartoon"] textarea:focus,
+  [data-theme="cartoon"] select:focus {
+    box-shadow: 0 0 0 3px hsl(var(--primary)), inset 3px 3px 0px rgba(0, 0, 0, 0.1) !important;
+    transform: scale(1.02) !important;
   }
 
-  /* Badges & Tags */
+  /* Badges - Speech bubbles */
   [data-theme="cartoon"] .badge {
     border: 2px solid #000 !important;
-    box-shadow: 2px 2px 0px 0px #000 !important;
-    font-weight: 800;
+    box-shadow: 3px 3px 0px 0px #000 !important;
+    font-weight: 900 !important;
+    position: relative;
   }
 
-  /* Tabs */
+  /* Tabs - Comic panels */
   [data-theme="cartoon"] [role="tablist"] {
-    background-color: rgba(0, 0, 0, 0.2) !important;
-    border: 2px solid #000 !important;
-    padding: 6px !important;
+    background: linear-gradient(to right, #fff, #fef9f0) !important;
+    border: 3px solid #000 !important;
+    box-shadow: 5px 5px 0px #000 !important;
+    padding: 8px !important;
   }
 
   [data-theme="cartoon"] [role="tab"][data-state="active"] {
-    background-color: hsl(var(--primary)) !important;
+    background: hsl(var(--primary)) !important;
     color: white !important;
-    border: 2px solid #000 !important;
-    box-shadow: 3px 3px 0px 0px #000 !important;
+    border: 3px solid #000 !important;
+    box-shadow: 4px 4px 0px 0px #000 !important;
+    transform: scale(1.05) translateY(-2px) !important;
   }
 
-  /* Cartoon: Apply vibrant colors to specific stat cards with hard borders */
+  /* Stat Cards - POW, BANG, BOOM colors */
   [data-theme="cartoon"] .stat-card-green {
-    background: hsl(var(--card-green)) !important;
-    border: 2px solid #000 !important;
-    box-shadow: 6px 6px 0px 0px #000 !important;
+    background: linear-gradient(135deg, #00ff88 0%, #00d96f 100%) !important;
+    border: 4px solid #000 !important;
+    box-shadow: 8px 8px 0px 0px #000 !important;
+    color: #000 !important;
   }
 
   [data-theme="cartoon"] .stat-card-blue {
-    background: hsl(var(--card-blue)) !important;
-    border: 2px solid #000 !important;
-    box-shadow: 6px 6px 0px 0px #000 !important;
+    background: linear-gradient(135deg, #33ccff 0%, #0099ff 100%) !important;
+    border: 4px solid #000 !important;
+    box-shadow: 8px 8px 0px 0px #000 !important;
+    color: #000 !important;
   }
 
   [data-theme="cartoon"] .stat-card-orange {
-    background: hsl(var(--card-orange)) !important;
-    border: 2px solid #000 !important;
-    box-shadow: 6px 6px 0px 0px #000 !important;
-  }
-
-  [data-theme="cartoon"] .stat-card-red {
-    background: hsl(var(--card-red)) !important;
-    border: 2px solid #000 !important;
-    box-shadow: 6px 6px 0px 0px #000 !important;
+    background: linear-gradient(135deg, #ffaa33 0%, #ff8800 100%) !important;
+    border: 4px solid #000 !important;
+    box-shadow: 8px 8px 0px 0px #000 !important;
+    color: #000 !important;
   }
 
   [data-theme="cartoon"] .stat-card-purple {
-    background: hsl(var(--card-purple)) !important;
-    border: 2px solid #000 !important;
-    box-shadow: 6px 6px 0px 0px #000 !important;
+    background: linear-gradient(135deg, #cc66ff 0%, #9933ff 100%) !important;
+    border: 4px solid #000 !important;
+    box-shadow: 8px 8px 0px 0px #000 !important;
+    color: #000 !important;
   }
 
-  [data-theme="retro"] .bg-neutral-800,
-  [data-theme="retro"] .bg-neutral-900,
-  [data-theme="retro"] .bg-neutral-950 {
-    background-color: hsl(var(--card)) !important;
+  /* Numbers get comic effect */
+  [data-theme="cartoon"] .text-3xl,
+  [data-theme="cartoon"] .text-4xl,
+  [data-theme="cartoon"] .text-5xl {
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.2);
+    font-weight: 900 !important;
   }
 
-  [data-theme="retro"] .border-neutral-700,
-  [data-theme="retro"] .border-neutral-800 {
-    border-color: hsl(var(--border)) !important;
+  /* ========================================
+     GLASSMORPHISM THEME - Frosted Glass
+     ======================================== */
+
+  [data-theme="glassmorphism"] body {
+    background: linear-gradient(135deg, #0a1628 0%, #1a2645 50%, #0f1b2e 100%);
+    background-size: 400% 400%;
+    animation: glassGradient 15s ease infinite;
   }
 
-  [data-theme="retro"] .text-primary {
-    color: hsl(var(--primary)) !important;
+  @keyframes glassGradient {
+
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
   }
 
-  [data-theme="neon"] .bg-neutral-800,
-  [data-theme="neon"] .bg-neutral-900,
-  [data-theme="neon"] .bg-neutral-950 {
-    background-color: hsl(var(--card)) !important;
+  [data-theme="glassmorphism"] .card,
+  [data-theme="glassmorphism"] [class*="card"] {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37) !important;
+    transition: all 0.3s ease !important;
   }
 
-  [data-theme="neon"] .border-neutral-700,
-  [data-theme="neon"] .border-neutral-800 {
-    border-color: hsl(var(--border)) !important;
+  [data-theme="glassmorphism"] .card:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(51, 204, 255, 0.4) !important;
+    box-shadow: 0 8px 32px 0 rgba(51, 204, 255, 0.2) !important;
+    transform: translateY(-2px) !important;
   }
 
-  [data-theme="neon"] .text-primary {
-    color: hsl(var(--primary)) !important;
+  [data-theme="glassmorphism"] button {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    transition: all 0.3s ease !important;
+  }
+
+  [data-theme="glassmorphism"] button:hover {
+    background: rgba(51, 204, 255, 0.2) !important;
+    border-color: rgba(51, 204, 255, 0.5) !important;
+    box-shadow: 0 0 20px rgba(51, 204, 255, 0.3) !important;
+  }
+
+  /* ========================================
+     CYBERPUNK THEME - Neon Glow
+     ======================================== */
+
+  [data-theme="cyberpunk"] body {
+    background: linear-gradient(to bottom, #0d0814, #1a0f2e, #0d0814);
+    background-size: 100% 200%;
+    animation: cyberBG 10s ease-in-out infinite;
+  }
+
+  @keyframes cyberBG {
+
+    0%,
+    100% {
+      background-position: 0% 0%;
+    }
+
+    50% {
+      background-position: 0% 100%;
+    }
+  }
+
+  [data-theme="cyberpunk"] .card {
+    background: rgba(26, 15, 46, 0.9) !important;
+    border: 2px solid #ff00ff !important;
+    box-shadow:
+      0 0 20px rgba(255, 0, 255, 0.3),
+      inset 0 0 20px rgba(255, 0, 255, 0.05) !important;
+    animation: cyberPulse 3s ease-in-out infinite !important;
+  }
+
+  @keyframes cyberPulse {
+
+    0%,
+    100% {
+      box-shadow:
+        0 0 20px rgba(255, 0, 255, 0.3),
+        inset 0 0 20px rgba(255, 0, 255, 0.05);
+    }
+
+    50% {
+      box-shadow:
+        0 0 30px rgba(255, 0, 255, 0.5),
+        inset 0 0 30px rgba(255, 0, 255, 0.1);
+    }
+  }
+
+  [data-theme="cyberpunk"] button {
+    background: linear-gradient(135deg, #ff00ff, #00ffff) !important;
+    border: none !important;
+    color: #000 !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.5) !important;
+    transition: all 0.3s ease !important;
+  }
+
+  [data-theme="cyberpunk"] button:hover {
+    box-shadow:
+      0 0 25px rgba(255, 0, 255, 0.8),
+      0 0 50px rgba(0, 255, 255, 0.5) !important;
+    transform: scale(1.05) !important;
+  }
+
+  [data-theme="cyberpunk"] .text-primary {
+    color: #ff00ff !important;
+    text-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+  }
+
+  [data-theme="cyberpunk"] input,
+  [data-theme="cyberpunk"] textarea {
+    background: rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid #00ffff !important;
+    color: #00ffff !important;
+    box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.2) !important;
+  }
+
+  [data-theme="cyberpunk"] input:focus,
+  [data-theme="cyberpunk"] textarea:focus {
+    border-color: #ff00ff !important;
+    box-shadow:
+      0 0 15px rgba(255, 0, 255, 0.5),
+      inset 0 0 15px rgba(255, 0, 255, 0.2) !important;
   }
 }
 
@@ -335,8 +526,6 @@
   }
 
   /* Rich Animations */
-
-  /* Card Hover Animation - Smooth lift and glow */
   .card-hover {
     transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
       box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -347,7 +536,6 @@
     box-shadow: 0 12px 24px -8px rgba(138, 92, 246, 0.3);
   }
 
-  /* Number Counter Animation - Numbers count up */
   @keyframes numberCount {
     from {
       opacity: 0;
@@ -364,7 +552,6 @@
     animation: numberCount 400ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Value Flash - Green flash when value updates */
   .value-updated {
     animation: valueFlash 400ms ease-out;
   }
@@ -381,7 +568,6 @@
     }
   }
 
-  /* Table Row Animation */
   .table-row-animate {
     transition: background 120ms ease-out, transform 120ms ease-out;
   }
@@ -403,7 +589,6 @@
     opacity: 1;
   }
 
-  /* Tab Transition - Smooth fade and slide */
   .tab-content-animate {
     animation: tabEnter 220ms cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -420,7 +605,6 @@
     }
   }
 
-  /* Skeleton Loading */
   .skeleton-shine {
     background: linear-gradient(90deg,
         #1b1b1b 0%,
@@ -440,7 +624,6 @@
     }
   }
 
-  /* Button Press */
   .btn-press {
     transition: transform 0.1s ease-out;
   }

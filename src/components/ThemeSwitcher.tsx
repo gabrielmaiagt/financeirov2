@@ -35,20 +35,20 @@ export const ThemeSwitcher = () => {
                         </SelectItem>
                         <SelectItem value="cartoon">
                             <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-[#ff6f61]"></div>
-                                <span>Cartoon</span>
+                                <div className="w-3 h-3 rounded-full bg-[#ff3366] border-2 border-black"></div>
+                                <span>🎨 Cartoon</span>
                             </div>
                         </SelectItem>
-                        <SelectItem value="retro">
+                        <SelectItem value="glassmorphism">
                             <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-[#ff7f50]"></div>
-                                <span>Retro</span>
+                                <div className="w-3 h-3 rounded-full bg-[#33ccff] opacity-60"></div>
+                                <span>✨ Glassmorphism</span>
                             </div>
                         </SelectItem>
-                        <SelectItem value="neon">
+                        <SelectItem value="cyberpunk">
                             <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-[#ff00ff]"></div>
-                                <span>Neon</span>
+                                <div className="w-3 h-3 rounded-full bg-gradient-to-r from-[#ff00ff] to-[#00ffff]"></div>
+                                <span>⚡ Cyberpunk</span>
                             </div>
                         </SelectItem>
                     </SelectContent>
