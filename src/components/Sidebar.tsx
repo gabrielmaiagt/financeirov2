@@ -32,8 +32,8 @@ export const Sidebar = () => {
         if (tabs.length === 0) return null;
 
         return (
-            <div className="space-y-1">
-                <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground/60 px-3 mb-2">
+            <div className="space-y-0.5">
+                <h3 className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground/40 px-4 py-2 mb-1">
                     {title}
                 </h3>
                 {tabs.map((item) => {
@@ -44,17 +44,17 @@ export const Sidebar = () => {
                             key={item.value}
                             value={item.value}
                             className={cn(
-                                "group relative w-full justify-start gap-3 px-3 py-2.5 h-auto text-sm font-medium transition-all duration-200 rounded-lg overflow-hidden ring-offset-0 focus-visible:ring-0",
-                                "text-muted-foreground hover:text-foreground hover:bg-white/5",
-                                "data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-l-2 data-[state=active]:border-primary"
+                                "group relative w-full justify-start gap-3.5 px-4 py-2.5 h-auto text-[13px] font-medium transition-all duration-150 rounded-none overflow-visible ring-offset-0 focus-visible:ring-0 border-l-[3px] border-transparent",
+                                "text-muted-foreground/70 hover:text-foreground hover:bg-white/[0.02] hover:border-l-muted-foreground/20",
+                                "data-[state=active]:bg-white/[0.04] data-[state=active]:text-foreground data-[state=active]:border-l-primary data-[state=active]:font-semibold"
                             )}
                         >
                             <Icon className={cn(
-                                "w-4 h-4 shrink-0 transition-all duration-200",
-                                "group-hover:scale-110",
-                                "group-data-[state=active]:scale-110 group-data-[state=active]:text-primary"
+                                "w-[18px] h-[18px] shrink-0 transition-all duration-150",
+                                "group-hover:text-foreground",
+                                "group-data-[state=active]:text-primary"
                             )} />
-                            <span className="relative z-10">{item.label}</span>
+                            <span className="relative z-10 tracking-wide">{item.label}</span>
                         </TabsTrigger>
                     );
                 })}
@@ -63,23 +63,23 @@ export const Sidebar = () => {
     };
 
     return (
-        <div className="hidden md:flex flex-col w-64 shrink-0 h-[calc(100vh-4rem)] sticky top-16 border-r border-white/5">
-            <div className="flex flex-col h-full bg-neutral-950/60 backdrop-blur-sm">
+        <div className="hidden md:flex flex-col w-[260px] shrink-0 h-[calc(100vh-4rem)] sticky top-16 border-r border-white/[0.06]">
+            <div className="flex flex-col h-full bg-[#0a0a0a]">
 
                 {/* Content - Navigation with sections */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar">
-                    <TabsList className="flex flex-col h-auto bg-transparent p-0 gap-6 w-full justify-start">
-                        {renderSection("Principal", mainTabs)}
+                <div className="flex-1 overflow-y-auto py-6 space-y-5 no-scrollbar">
+                    <TabsList className="flex flex-col h-auto bg-transparent p-0 gap-5 w-full justify-start">
+                        {renderSection("Geral", mainTabs)}
                         {renderSection("Gestão", managementTabs)}
                         {renderSection("Conteúdo", contentTabs)}
                         {renderSection("Outros", otherTabs)}
                     </TabsList>
                 </div>
 
-                {/* Footer - Version only */}
-                <div className="p-4 border-t border-white/5">
-                    <p className="text-[10px] text-muted-foreground/50 text-center uppercase tracking-wider">
-                        v 2.0
+                {/* Footer */}
+                <div className="px-4 py-4 border-t border-white/[0.06]">
+                    <p className="text-[10px] text-muted-foreground/30 text-center uppercase tracking-widest font-semibold">
+                        Versão 2.0
                     </p>
                 </div>
             </div>
